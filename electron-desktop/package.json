@@ -1,0 +1,41 @@
+{
+  "name": "nonsense-chat",
+  "productName": "Nonsense Chat",
+  "version": "1.0.0",
+  "description": "Nonsense Chat Desktop Application",
+  "author": "Nonsense",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis -c.publish=never"
+  },
+  "build": {
+    "appId": "com.nonsense.chat",
+    "productName": "Nonsense Chat",
+    "publish": null,
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "public/**/*",
+      "server/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nonsense Chat"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}

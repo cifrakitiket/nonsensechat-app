@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+electron-desktop/node_modules
+
+# Builds & Packages
+dist/
+dist-installer/
+electron-desktop/dist/
+electron-desktop/dist-installer/
+.next/
+*.exe
+
+# Data & Logs
+data/
+pb_data/
+*.log
+aqtinstall.log
+
+# System & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment
+.env
+.env*.local

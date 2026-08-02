@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://nonsensechattm-e5d18.web.app", "http://localhost:8000", "*"],
+    "method": ["GET", "HEAD", "DELETE", "PUT", "POST", "PATCH", "OPTIONS"],
+    "responseHeader": ["Content-Type", "x-goog-meta-*", "authorization", "x-appwrite-*"],
+    "maxAgeSeconds": 3600
+  }
+]
