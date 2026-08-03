@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId "com.nonsense.chat"
-        minSdk 21
+        minSdkVersion flutter.minSdkVersion
         targetSdk 34
         versionCode 1
         versionName "1.0.0"
