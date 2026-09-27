@@ -34,3 +34,6 @@ flutter_android/android/.gradle/
 
 .claude/
 */.claude/
+
+public.zip
+public/*.zip
