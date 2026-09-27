@@ -1,27 +1,10 @@
 {
   "hosting": {
-    "site": "nonsensechattm-e5d18",
     "public": "public",
-    "cleanUrls": true,
-    "headers": [
-      {
-        "source": "**/*.@(html|js)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate, max-age=0"
-          }
-        ]
-      },
-      {
-        "source": "/version.json",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate, max-age=0"
-          }
-        ]
-      }
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
     ],
     "rewrites": [
       {

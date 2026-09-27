@@ -25,3 +25,12 @@ Thumbs.db
 # Environment
 .env
 .env*.local
+flutter_android/build/
+flutter_android/.dart_tool/
+*.zip
+.firebase/
+
+flutter_android/android/.gradle/
+
+.claude/
+*/.claude/
