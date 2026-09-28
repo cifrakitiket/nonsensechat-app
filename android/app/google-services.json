@@ -1,0 +1,50 @@
+{
+  "project_info": {
+    "project_number": "497380539024",
+    "firebase_url": "https://nonsensechattm-e5d18-default-rtdb.firebaseio.com",
+    "project_id": "nonsensechattm-e5d18",
+    "storage_bucket": "nonsensechattm-e5d18.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:497380539024:android:cace5570f62f9e073af615",
+        "android_client_info": {
+          "package_name": "com.nonsensechat.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "497380539024-client.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVH8_UhxO5hAj0ZBlA_lRw3B0hnN1zEOc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:497380539024:android:cace5570f62f9e073af616",
+        "android_client_info": {
+          "package_name": "com.nonsensechat.app.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVH8_UhxO5hAj0ZBlA_lRw3B0hnN1zEOc"
+        }
+      ],
+      "services": {}
+    }
+  ],
+  "configuration_version": "1"
+}

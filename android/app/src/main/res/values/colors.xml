@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backgrounds (Deep Space Dark / Obsidian) -->
+    <color name="bg_main">#080C14</color>
+    <color name="bg_surface">#0F172A</color>
+    <color name="bg_card">#131D31</color>
+    <color name="bg_card_hover">#1A263E</color>
+    <color name="bg_elevated">#1E293B</color>
+
+    <!-- Bubbles -->
+    <color name="bubble_outgoing">#102E42</color>
+    <color name="bubble_outgoing_border">#1D4A66</color>
+    <color name="bubble_incoming">#152033</color>
+    <color name="bubble_incoming_border">#22324D</color>
+
+    <!-- Accents & Highlights -->
+    <color name="accent_green">#00FF88</color>
+    <color name="accent_green_glow">#3300FF88</color>
+    <color name="accent_cyan">#00D2FF</color>
+    <color name="accent_purple">#8B5CF6</color>
+    <color name="accent_indigo">#6366F1</color>
+
+    <!-- Typography -->
+    <color name="text_primary">#F8FAFC</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_tertiary">#64748B</color>
+    <color name="text_disabled">#475569</color>
+
+    <!-- Statuses -->
+    <color name="online_green">#22C55E</color>
+    <color name="online_glow">#4D22C55E</color>
+    <color name="danger_red">#EF4444</color>
+    <color name="warning_orange">#F59E0B</color>
+
+    <!-- Borders & Dividers -->
+    <color name="border_subtle">#1E293B</color>
+    <color name="border_focus">#00FF88</color>
+    <color name="border_glass">#1AFFFFFF</color>
+
+    <!-- Overlay & Spoilers -->
+    <color name="spoiler_dust_tint">#0D1626</color>
+    <color name="overlay_dim">#99000000</color>
+    <color name="frosted_button">#40111827</color>
+</resources>
