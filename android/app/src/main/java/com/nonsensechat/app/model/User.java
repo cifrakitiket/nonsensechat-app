@@ -1,6 +1,7 @@
 package com.nonsensechat.app.model;
 
 import com.google.firebase.database.IgnoreExtraProperties;
+import com.google.firebase.database.PropertyName;
 import java.io.Serializable;
 
 @IgnoreExtraProperties
@@ -10,11 +11,14 @@ public class User implements Serializable {
     public String displayName;
     public String email;
     public String avatar;
+    public String photoURL;
     public String bio;
     public boolean online;
-    public long lastSeen;
-    public long typingAt;
+    public Object lastSeen;
+    public String typingIn;
+    public Object typingAt;
     public String customStatus;
+    public boolean verified;
 
     public User() {}
 
@@ -24,7 +28,6 @@ public class User implements Serializable {
         this.displayName = nick;
         this.email = email;
         this.online = true;
-        this.lastSeen = System.currentTimeMillis();
     }
 
     public String getDisplayNameOrNick() {
@@ -34,17 +37,29 @@ public class User implements Serializable {
         return "Пользователь";
     }
 
-    public String getInitials() {
-        String name = getDisplayNameOrNick();
-        if (name.isEmpty()) return "?";
-        String[] parts = name.trim().split("\\s+");
-        if (parts.length >= 2 && !parts[0].isEmpty() && !parts[1].isEmpty()) {
-            return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
-        }
-        return name.substring(0, Math.min(2, name.length())).toUpperCase();
+    public String getEffectiveAvatar() {
+        if (avatar != null && !avatar.trim().isEmpty()) return avatar;
+        if (photoURL != null && !photoURL.trim().isEmpty()) return photoURL;
+        return null;
     }
 
-    public boolean isTypingNow() {
-        return (System.currentTimeMillis() - typingAt) < 4500;
+    public long getTypingAtMillis() {
+        if (typingAt instanceof Long) return (Long) typingAt;
+        if (typingAt instanceof Double) return ((Double) typingAt).longValue();
+        return 0;
+    }
+
+    public boolean isTypingInChat(String chatId) {
+        if (chatId == null || !chatId.equals(typingIn)) return false;
+        long time = getTypingAtMillis();
+        if (time <= 0) return false;
+        long diff = System.currentTimeMillis() - time;
+        return diff >= 0 && diff < 4500;
+    }
+
+    public long getLastSeenMillis() {
+        if (lastSeen instanceof Long) return (Long) lastSeen;
+        if (lastSeen instanceof Double) return ((Double) lastSeen).longValue();
+        return 0;
     }
 }

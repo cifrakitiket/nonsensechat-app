@@ -2,15 +2,21 @@ package com.nonsensechat.app.ui.main;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -25,7 +31,10 @@ import com.nonsensechat.app.ui.auth.AuthActivity;
 import com.nonsensechat.app.ui.chat.ChatActivity;
 import com.nonsensechat.app.ui.custom.AvatarView;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
     private RecyclerView rvChats;
@@ -41,6 +50,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Responsive Window Insets (Status bar & Navigation bar)
+        View mainCoord = findViewById(R.id.mainCoordinator);
+        View appBar = findViewById(R.id.appBarLayout);
+        ViewCompat.setOnApplyWindowInsetsListener(mainCoord, (v, insets) -> {
+            Insets sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            appBar.setPadding(0, sysBars.top, 0, 0);
+            v.setPadding(sysBars.left, 0, sysBars.right, 0);
+            return insets;
+        });
 
         rvChats = findViewById(R.id.rvChats);
         swipeRefresh = findViewById(R.id.swipeRefresh);
@@ -65,8 +84,10 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnSearchToggle).setOnClickListener(v -> {
             boolean visible = searchContainer.getVisibility() == View.VISIBLE;
             searchContainer.setVisibility(visible ? View.GONE : View.VISIBLE);
+            if (!visible) etSearchChats.requestFocus();
         });
 
+        findViewById(R.id.btnSettings).setOnClickListener(v -> showProfileDialog());
         findViewById(R.id.btnNewChat).setOnClickListener(v -> showNewChatDialog());
         findViewById(R.id.fabNewChat).setOnClickListener(v -> showNewChatDialog());
         btnProfileAvatar.setOnClickListener(v -> showProfileDialog());
@@ -75,17 +96,27 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupTabs() {
-        TextView tabAll = findViewById(R.id.tabAll);
-        TextView tabDirect = findViewById(R.id.tabDirect);
-        TextView tabGroups = findViewById(R.id.tabGroups);
-        TextView tabChannels = findViewById(R.id.tabChannels);
+        LinearLayout tabAll = findViewById(R.id.tabAll);
+        LinearLayout tabDirect = findViewById(R.id.tabDirect);
+        LinearLayout tabGroups = findViewById(R.id.tabGroups);
+        LinearLayout tabChannels = findViewById(R.id.tabChannels);
 
         View.OnClickListener listener = v -> {
             int id = v.getId();
-            if (id == R.id.tabAll) currentTab = "all";
-            else if (id == R.id.tabDirect) currentTab = "direct";
-            else if (id == R.id.tabGroups) currentTab = "group";
-            else if (id == R.id.tabChannels) currentTab = "channel";
+            resetTabPills();
+            if (id == R.id.tabAll) {
+                currentTab = "all";
+                highlightTab(tabAll, R.id.tvTabAll);
+            } else if (id == R.id.tabDirect) {
+                currentTab = "dm";
+                highlightTab(tabDirect, R.id.tvTabDirect);
+            } else if (id == R.id.tabGroups) {
+                currentTab = "group";
+                highlightTab(tabGroups, R.id.tvTabGroups);
+            } else if (id == R.id.tabChannels) {
+                currentTab = "channel";
+                highlightTab(tabChannels, R.id.tvTabChannels);
+            }
             filterChats();
         };
 
@@ -93,6 +124,25 @@ public class MainActivity extends AppCompatActivity {
         tabDirect.setOnClickListener(listener);
         tabGroups.setOnClickListener(listener);
         tabChannels.setOnClickListener(listener);
+    }
+
+    private void resetTabPills() {
+        int[] layoutIds = {R.id.tabAll, R.id.tabDirect, R.id.tabGroups, R.id.tabChannels};
+        int[] textIds = {R.id.tvTabAll, R.id.tvTabDirect, R.id.tvTabGroups, R.id.tvTabChannels};
+        for (int i = 0; i < layoutIds.length; i++) {
+            LinearLayout l = findViewById(layoutIds[i]);
+            TextView t = findViewById(textIds[i]);
+            l.setBackground(null);
+            t.setTextColor(getColor(R.color.text_secondary));
+            t.setTypeface(null, android.graphics.Typeface.NORMAL);
+        }
+    }
+
+    private void highlightTab(LinearLayout layout, int textId) {
+        layout.setBackgroundResource(R.drawable.bg_primary_button);
+        TextView t = layout.findViewById(textId);
+        t.setTextColor(Color.parseColor("#080C14"));
+        t.setTypeface(null, android.graphics.Typeface.BOLD);
     }
 
     private void setupSearch() {
@@ -116,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 User user = snapshot.getValue(User.class);
                 if (user != null) {
-                    btnProfileAvatar.setUser(user.getDisplayNameOrNick(), user.avatar, true);
+                    btnProfileAvatar.setUser(user.getDisplayNameOrNick(), user.getEffectiveAvatar(), true);
                 }
             }
             @Override
@@ -125,11 +175,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadChats() {
+        String myUid = FirebaseManager.getInstance().getCurrentUid();
+        if (myUid == null) {
+            swipeRefresh.setRefreshing(false);
+            return;
+        }
+
         FirebaseManager.getInstance().getChatsRef().addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 allChats.clear();
-                String myUid = FirebaseManager.getInstance().getCurrentUid();
+                Set<String> dmUidsToFetch = new HashSet<>();
+
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     Chat c = ds.getValue(Chat.class);
                     if (c != null) {
@@ -137,11 +194,29 @@ public class MainActivity extends AppCompatActivity {
                         List<String> members = c.getMemberList();
                         if (members.isEmpty() || members.contains(myUid)) {
                             allChats.add(c);
+                            if ("dm".equalsIgnoreCase(c.type)) {
+                                String otherUid = c.getOtherMemberUid(myUid);
+                                if (otherUid != null) dmUidsToFetch.add(otherUid);
+                            }
                         }
                     }
                 }
-                swipeRefresh.setRefreshing(false);
-                filterChats();
+
+                // Sort chats by most recent activity
+                Collections.sort(allChats, (a, b) -> Long.compare(b.getLastMessageTimestamp(), a.getLastMessageTimestamp()));
+
+                // Prefetch DM partners profiles before display
+                if (!dmUidsToFetch.isEmpty()) {
+                    FirebaseManager.getInstance().prefetchUsers(new ArrayList<>(dmUidsToFetch), () -> {
+                        runOnUiThread(() -> {
+                            swipeRefresh.setRefreshing(false);
+                            filterChats();
+                        });
+                    });
+                } else {
+                    swipeRefresh.setRefreshing(false);
+                    filterChats();
+                }
             }
 
             @Override
@@ -157,8 +232,14 @@ public class MainActivity extends AppCompatActivity {
         String myUid = FirebaseManager.getInstance().getCurrentUid();
 
         for (Chat c : allChats) {
-            boolean tabMatch = "all".equals(currentTab) || currentTab.equalsIgnoreCase(c.type);
-            boolean queryMatch = query.isEmpty() || c.getEffectiveTitle(myUid).toLowerCase().contains(query);
+            boolean tabMatch = "all".equals(currentTab);
+            if ("dm".equals(currentTab)) tabMatch = "dm".equalsIgnoreCase(c.type) || c.isFav();
+            else if ("group".equals(currentTab)) tabMatch = "group".equalsIgnoreCase(c.type);
+            else if ("channel".equals(currentTab)) tabMatch = "channel".equalsIgnoreCase(c.type);
+
+            String chatTitle = getResolvedChatTitle(c, myUid).toLowerCase();
+            boolean queryMatch = query.isEmpty() || chatTitle.contains(query);
+
             if (tabMatch && queryMatch) filtered.add(c);
         }
 
@@ -166,21 +247,49 @@ public class MainActivity extends AppCompatActivity {
         emptyStateView.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
+    public static String getResolvedChatTitle(Chat chat, String myUid) {
+        if (chat.isFav()) return "Избранное";
+        if ("dm".equalsIgnoreCase(chat.type)) {
+            String otherUid = chat.getOtherMemberUid(myUid);
+            if (otherUid != null) {
+                User partner = FirebaseManager.getInstance().getCachedUser(otherUid);
+                if (partner != null) return partner.getDisplayNameOrNick();
+            }
+            if (chat.title != null && !chat.title.trim().isEmpty()) return chat.title;
+            return "Личный диалог";
+        }
+        if (chat.title != null && !chat.title.trim().isEmpty()) return chat.title;
+        if (chat.name != null && !chat.name.trim().isEmpty()) return chat.name;
+        return "Групповой чат";
+    }
+
+    public static String getResolvedChatAvatar(Chat chat, String myUid) {
+        if ("dm".equalsIgnoreCase(chat.type)) {
+            String otherUid = chat.getOtherMemberUid(myUid);
+            if (otherUid != null) {
+                User partner = FirebaseManager.getInstance().getCachedUser(otherUid);
+                if (partner != null) return partner.getEffectiveAvatar();
+            }
+        }
+        return chat.avatar;
+    }
+
     private void showNewChatDialog() {
         final EditText input = new EditText(this);
-        input.setHint("Никнейм или название беседы");
+        input.setHint("Название группы или никнейм");
+        input.setPadding(32, 24, 32, 24);
         new AlertDialog.Builder(this)
             .setTitle(R.string.new_chat)
             .setView(input)
             .setPositiveButton("Создать", (dialog, which) -> {
                 String title = input.getText().toString().trim();
-                if (!title.isEmpty()) createChat(title);
+                if (!title.isEmpty()) createGroupChat(title);
             })
             .setNegativeButton("Отмена", null)
             .show();
     }
 
-    private void createChat(String title) {
+    private void createGroupChat(String title) {
         String myUid = FirebaseManager.getInstance().getCurrentUid();
         Chat chat = new Chat();
         chat.title = title;
@@ -203,9 +312,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showProfileDialog() {
+        String myUid = FirebaseManager.getInstance().getCurrentUid();
+        User me = FirebaseManager.getInstance().getCachedUser(myUid);
+        String name = me != null ? me.getDisplayNameOrNick() : myUid;
+
         new AlertDialog.Builder(this)
             .setTitle(R.string.settings)
-            .setMessage("Вы вошли как: " + FirebaseManager.getInstance().getCurrentUid())
+            .setMessage("Профиль: " + name + "\nUID: " + myUid)
+            .setIcon(R.drawable.ic_settings_gear)
             .setPositiveButton(R.string.logout, (dialog, which) -> {
                 FirebaseManager.getInstance().getAuth().signOut();
                 startActivity(new Intent(MainActivity.this, AuthActivity.class));
