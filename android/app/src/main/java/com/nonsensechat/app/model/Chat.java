@@ -1,7 +1,6 @@
 package com.nonsensechat.app.model;
 
 import com.google.firebase.database.IgnoreExtraProperties;
-import com.google.firebase.database.PropertyName;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,8 +31,18 @@ public class Chat implements Serializable {
         return "group".equalsIgnoreCase(type) || "channel".equalsIgnoreCase(type);
     }
 
+    public boolean isDirect() {
+        return "dm".equalsIgnoreCase(type) || (!isGroup() && !isFav());
+    }
+
     public boolean isFav() {
         return "fav".equalsIgnoreCase(type);
+    }
+
+    public boolean isMember(String uid) {
+        if (uid == null) return false;
+        if (isFav()) return id != null && id.contains(uid);
+        return getMemberList().contains(uid);
     }
 
     public List<String> getMemberList() {
@@ -70,6 +79,14 @@ public class Chat implements Serializable {
         Object at = lastMsgAt != null ? lastMsgAt : lastAt;
         if (at instanceof Long) return (Long) at;
         if (at instanceof Double) return ((Double) at).longValue();
+        return 0;
+    }
+
+    public long getLastActivityMillis() {
+        long ts = getLastMessageTimestamp();
+        if (ts > 0) return ts;
+        if (createdAt instanceof Long) return (Long) createdAt;
+        if (createdAt instanceof Double) return ((Double) createdAt).longValue();
         return 0;
     }
 }

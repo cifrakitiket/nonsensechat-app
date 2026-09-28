@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body {
+  background: #0e1621;
+  color: #fff;
+  font-family: sans-serif;
+  padding: 40px;
+}
+/* Telegram SVG Particle Dust Noise */
+:root {
+  --tg-spoiler-noise: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44NSIgbnVtT2N0YXZlcz0iMyIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIxIDAgMCAwIDEgIDAgMSAwIDAgMSAgMCAwIDEgMCAxICAwIDAgMCAxOSAtOCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNuKSIgb3BhY2l0eT0iMC43NSIvPjwvc3ZnPg==");
+}
+
+@keyframes tgDust1 {
+  0% { background-position: 0 0; }
+  100% { background-position: 120px 60px; }
+}
+@keyframes tgDust2 {
+  0% { background-position: 0 0; }
+  100% { background-position: -80px 100px; }
+}
+
+/* Telegram Text Spoiler */
+.tg-spoiler-text {
+  position: relative;
+  display: inline;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 2px 4px;
+  transition: color .25s ease, background-color .25s ease;
+}
+
+.tg-spoiler-text:not(.vis) {
+  color: transparent !important;
+  text-shadow: none !important;
+  background-color: rgba(255, 255, 255, 0.12);
+  background-image: var(--tg-spoiler-noise), var(--tg-spoiler-noise);
+  background-size: 80px 80px, 120px 120px;
+  background-blend-mode: screen;
+  animation: tgDust1 4s linear infinite, tgDust2 5s linear infinite;
+}
+
+.tg-spoiler-text.vis {
+  color: inherit !important;
+  background: transparent !important;
+}
+
+/* Telegram Media/Photo Spoiler */
+.tg-spoiler-media {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  border-radius: 14px;
+  cursor: pointer;
+  user-select: none;
+  background: #0b0e14;
+}
+
+.tg-spoiler-media:not(.vis) img {
+  filter: blur(40px) brightness(0.3) saturate(0.2) !important;
+  transform: scale(1.15);
+  pointer-events: none;
+  transition: filter .35s ease, transform .35s ease;
+}
+
+.tg-spoiler-media:not(.vis)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(10, 15, 25, 0.6);
+  background-image: var(--tg-spoiler-noise), var(--tg-spoiler-noise);
+  background-size: 90px 90px, 130px 130px;
+  background-blend-mode: screen;
+  animation: tgDust1 4s linear infinite, tgDust2 6s linear infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Telegram round center button */
+.tg-spoiler-media:not(.vis)::after {
+  content: '👁️‍🗨️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  z-index: 3;
+  pointer-events: none;
+  transition: transform .2s ease;
+}
+
+.tg-spoiler-media:hover:not(.vis)::after {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.tg-spoiler-media.vis img {
+  filter: none !important;
+  transform: scale(1);
+  transition: filter .35s ease, transform .35s ease;
+}
+.tg-spoiler-media.vis::before,
+.tg-spoiler-media.vis::after {
+  display: none;
+}
+</style>
+</head>
+<body>
+  <h2>Telegram Spoilers Preview</h2>
+  <p>Here is some normal text with a <span class="tg-spoiler-text" onclick="this.classList.toggle('vis')">secret spoiler text that is completely hidden</span> inside a sentence.</p>
+  <div class="tg-spoiler-media" onclick="this.classList.toggle('vis')">
+    <img src="https://picsum.photos/400/300" width="400" height="300" style="display:block">
+  </div>
+</body>
+</html>

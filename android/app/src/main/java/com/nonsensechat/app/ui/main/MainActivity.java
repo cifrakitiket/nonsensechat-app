@@ -6,7 +6,9 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -66,17 +68,15 @@ public class MainActivity extends AppCompatActivity {
         etSearchChats = findViewById(R.id.etSearchChats);
         btnProfileAvatar = findViewById(R.id.btnProfileAvatar);
 
-        // Precise Window Insets: Top pad for status bar, FAB & list pad for navigation bar
+        // Precise Window Insets
         ViewCompat.setOnApplyWindowInsetsListener(mainCoord, (v, insets) -> {
             Insets sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             appBar.setPadding(0, sysBars.top, 0, 0);
 
-            // Position FAB 16dp above system gesture bar
             CoordinatorLayout.LayoutParams fabLp = (CoordinatorLayout.LayoutParams) fabNewChat.getLayoutParams();
             fabLp.bottomMargin = sysBars.bottom + dpToPx(16);
             fabNewChat.setLayoutParams(fabLp);
 
-            // Padding for last chat item
             rvChats.setPadding(0, 0, 0, sysBars.bottom + dpToPx(88));
             return insets;
         });
@@ -98,11 +98,12 @@ public class MainActivity extends AppCompatActivity {
             boolean visible = searchContainer.getVisibility() == View.VISIBLE;
             searchContainer.setVisibility(visible ? View.GONE : View.VISIBLE);
             if (!visible) etSearchChats.requestFocus();
+            else etSearchChats.setText("");
         });
 
-        findViewById(R.id.btnSettings).setOnClickListener(v -> showProfileDialog());
-        findViewById(R.id.btnProfileAvatar).setOnClickListener(v -> showProfileDialog());
-        fabNewChat.setOnClickListener(v -> showNewChatDialog());
+        findViewById(R.id.btnSettings).setOnClickListener(v -> showSettingsDialog());
+        btnProfileAvatar.setOnClickListener(v -> showMyProfileDialog());
+        fabNewChat.setOnClickListener(v -> showNewChatMenu());
 
         swipeRefresh.setOnRefreshListener(this::loadChats);
     }
@@ -177,16 +178,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadCurrentUser() {
-        String uid = FirebaseManager.getInstance().getCurrentUid();
-        if (uid == null) return;
-        FirebaseManager.getInstance().getUserRef(uid).addValueEventListener(new ValueEventListener() {
+        String myUid = FirebaseManager.getInstance().getCurrentUid();
+        if (myUid == null) {
+            redirectToAuth();
+            return;
+        }
+
+        FirebaseManager.getInstance().getUserRef(myUid).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                User user = snapshot.getValue(User.class);
-                if (user != null) {
-                    btnProfileAvatar.setUser(user.getDisplayNameOrNick(), user.getEffectiveAvatar(), true);
+                User me = snapshot.getValue(User.class);
+                if (me != null) {
+                    me.uid = myUid;
+                    FirebaseManager.getInstance().putCachedUser(me);
+                    btnProfileAvatar.setUser(me.getDisplayNameOrNick(), me.getEffectiveAvatar(), me.online);
                 }
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
@@ -202,39 +210,42 @@ public class MainActivity extends AppCompatActivity {
         FirebaseManager.getInstance().getChatsRef().addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                swipeRefresh.setRefreshing(false);
                 allChats.clear();
-                Set<String> dmUidsToFetch = new HashSet<>();
+                Set<String> uidsToFetch = new HashSet<>();
 
                 for (DataSnapshot ds : snapshot.getChildren()) {
-                    Chat c = ds.getValue(Chat.class);
-                    if (c != null) {
-                        c.id = ds.getKey();
-                        List<String> members = c.getMemberList();
-                        if (members.isEmpty() || members.contains(myUid)) {
-                            allChats.add(c);
-                            if ("dm".equalsIgnoreCase(c.type)) {
-                                String otherUid = c.getOtherMemberUid(myUid);
-                                if (otherUid != null) dmUidsToFetch.add(otherUid);
-                            }
+                    Chat chat = ds.getValue(Chat.class);
+                    if (chat != null) {
+                        chat.id = ds.getKey();
+                        if (chat.isMember(myUid)) {
+                            allChats.add(chat);
+                            String partnerUid = chat.getOtherMemberUid(myUid);
+                            if (partnerUid != null) uidsToFetch.add(partnerUid);
                         }
                     }
                 }
 
-                // Sort chats by most recent activity
-                Collections.sort(allChats, (a, b) -> Long.compare(b.getLastMessageTimestamp(), a.getLastMessageTimestamp()));
-
-                // Prefetch DM partners profiles before display
-                if (!dmUidsToFetch.isEmpty()) {
-                    FirebaseManager.getInstance().prefetchUsers(new ArrayList<>(dmUidsToFetch), () -> {
-                        runOnUiThread(() -> {
-                            swipeRefresh.setRefreshing(false);
-                            filterChats();
-                        });
-                    });
-                } else {
-                    swipeRefresh.setRefreshing(false);
-                    filterChats();
+                // Make sure Saved Messages ("Избранное") is included
+                boolean hasFav = false;
+                for (Chat c : allChats) {
+                    if (c.isFav()) { hasFav = true; break; }
                 }
+                if (!hasFav) {
+                    Chat favChat = new Chat();
+                    favChat.id = "fav_" + myUid;
+                    favChat.type = "fav";
+                    favChat.name = "Избранное";
+                    favChat.lastMsg = "Ваши сохранённые сообщения";
+                    favChat.members = Collections.singletonList(myUid);
+                    allChats.add(favChat);
+                }
+
+                Collections.sort(allChats, (a, b) -> Long.compare(b.getLastActivityMillis(), a.getLastActivityMillis()));
+
+                FirebaseManager.getInstance().prefetchUsers(new ArrayList<>(uidsToFetch), () -> {
+                    filterChats();
+                });
             }
 
             @Override
@@ -246,19 +257,29 @@ public class MainActivity extends AppCompatActivity {
 
     private void filterChats() {
         String query = etSearchChats.getText().toString().trim().toLowerCase();
-        List<Chat> filtered = new ArrayList<>();
         String myUid = FirebaseManager.getInstance().getCurrentUid();
+        List<Chat> filtered = new ArrayList<>();
 
-        for (Chat c : allChats) {
-            boolean tabMatch = "all".equals(currentTab);
-            if ("dm".equals(currentTab)) tabMatch = "dm".equalsIgnoreCase(c.type) || c.isFav();
-            else if ("group".equals(currentTab)) tabMatch = "group".equalsIgnoreCase(c.type);
-            else if ("channel".equals(currentTab)) tabMatch = "channel".equalsIgnoreCase(c.type);
+        for (Chat chat : allChats) {
+            boolean matchesTab = false;
+            if ("all".equals(currentTab)) {
+                matchesTab = true;
+            } else if ("dm".equals(currentTab)) {
+                matchesTab = chat.isDirect() || chat.isFav();
+            } else if ("group".equals(currentTab)) {
+                matchesTab = chat.isGroup() && !"channel".equalsIgnoreCase(chat.type);
+            } else if ("channel".equals(currentTab)) {
+                matchesTab = "channel".equalsIgnoreCase(chat.type);
+            }
 
-            String chatTitle = getResolvedChatTitle(c, myUid).toLowerCase();
-            boolean queryMatch = query.isEmpty() || chatTitle.contains(query);
+            if (!matchesTab) continue;
 
-            if (tabMatch && queryMatch) filtered.add(c);
+            String title = getResolvedChatTitle(chat, myUid).toLowerCase();
+            String lastMsg = chat.lastMsg != null ? chat.lastMsg.toLowerCase() : "";
+
+            if (query.isEmpty() || title.contains(query) || lastMsg.contains(query)) {
+                filtered.add(chat);
+            }
         }
 
         adapter.submitList(filtered);
@@ -266,88 +287,190 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public static String getResolvedChatTitle(Chat chat, String myUid) {
+        if (chat == null) return "Чат";
         if (chat.isFav()) return "Избранное";
-        if ("dm".equalsIgnoreCase(chat.type)) {
-            String otherUid = chat.getOtherMemberUid(myUid);
-            if (otherUid != null) {
-                User partner = FirebaseManager.getInstance().getCachedUser(otherUid);
-                if (partner != null) return partner.getDisplayNameOrNick();
-            }
-            if (chat.title != null && !chat.title.trim().isEmpty()) return chat.title;
-            return "Личный диалог";
+        if (chat.isDirect()) {
+            String partnerUid = chat.getOtherMemberUid(myUid);
+            User partner = FirebaseManager.getInstance().getCachedUser(partnerUid);
+            if (partner != null) return partner.getDisplayNameOrNick();
+            return (chat.name != null && !chat.name.isEmpty()) ? chat.name : "Диалог";
         }
-        if (chat.title != null && !chat.title.trim().isEmpty()) return chat.title;
-        if (chat.name != null && !chat.name.trim().isEmpty()) return chat.name;
-        return "Групповой чат";
+        return (chat.name != null && !chat.name.isEmpty()) ? chat.name : "Группа";
     }
 
     public static String getResolvedChatAvatar(Chat chat, String myUid) {
-        if ("dm".equalsIgnoreCase(chat.type)) {
-            String otherUid = chat.getOtherMemberUid(myUid);
-            if (otherUid != null) {
-                User partner = FirebaseManager.getInstance().getCachedUser(otherUid);
-                if (partner != null) return partner.getEffectiveAvatar();
-            }
+        if (chat == null) return null;
+        if (chat.isFav()) return null;
+        if (chat.isDirect()) {
+            String partnerUid = chat.getOtherMemberUid(myUid);
+            User partner = FirebaseManager.getInstance().getCachedUser(partnerUid);
+            if (partner != null) return partner.getEffectiveAvatar();
         }
         return chat.avatar;
     }
 
-    private void showNewChatDialog() {
-        final EditText input = new EditText(this);
-        input.setHint("Название группы или никнейм");
-        input.setPadding(36, 28, 36, 28);
+    private void showNewChatMenu() {
+        String[] options = {"👥 Создать группу", "📢 Создать канал", "💬 Начать диалог / Найти пользователя"};
         new AlertDialog.Builder(this)
-            .setTitle(R.string.new_chat)
-            .setView(input)
+            .setTitle("Новое действие")
+            .setItems(options, (dialog, which) -> {
+                if (which == 0) showCreateGroupDialog(false);
+                else if (which == 1) showCreateGroupDialog(true);
+                else if (which == 2) showStartDirectChatDialog();
+            })
+            .show();
+    }
+
+    private void showCreateGroupDialog(boolean isChannel) {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_create_group, null);
+        TextView tvTitle = view.findViewById(R.id.tvCreateGroupTitle);
+        EditText etName = view.findViewById(R.id.etGroupName);
+        EditText etAvatar = view.findViewById(R.id.etGroupAvatar);
+        CheckBox cbChannel = view.findViewById(R.id.cbIsChannel);
+
+        tvTitle.setText(isChannel ? "Новый канал" : "Новая группа");
+        cbChannel.setChecked(isChannel);
+
+        new AlertDialog.Builder(this)
+            .setView(view)
             .setPositiveButton("Создать", (dialog, which) -> {
-                String title = input.getText().toString().trim();
-                if (!title.isEmpty()) createGroupChat(title);
+                String name = etName.getText().toString().trim();
+                String avatar = etAvatar.getText().toString().trim();
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                FirebaseManager.getInstance().createGroup(name, avatar, cbChannel.isChecked(), null, (error, ref) -> {
+                    if (error == null) {
+                        Toast.makeText(this, isChannel ? "Канал создан!" : "Группа создана!", Toast.LENGTH_SHORT).show();
+                        loadChats();
+                    } else {
+                        Toast.makeText(this, "Ошибка создания: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
             })
             .setNegativeButton("Отмена", null)
             .show();
     }
 
-    private void createGroupChat(String title) {
-        String myUid = FirebaseManager.getInstance().getCurrentUid();
-        Chat chat = new Chat();
-        chat.title = title;
-        chat.type = "group";
-        chat.creatorUid = myUid;
-        List<String> members = new ArrayList<>();
-        members.add(myUid);
-        chat.members = members;
-
-        String chatId = FirebaseManager.getInstance().getChatsRef().push().getKey();
-        if (chatId != null) {
-            chat.id = chatId;
-            FirebaseManager.getInstance().getChatRef(chatId).setValue(chat)
-                .addOnSuccessListener(aVoid -> {
-                    Intent intent = new Intent(MainActivity.this, ChatActivity.class);
-                    intent.putExtra("chat", chat);
-                    startActivity(intent);
-                });
-        }
-    }
-
-    private void showProfileDialog() {
-        String myUid = FirebaseManager.getInstance().getCurrentUid();
-        User me = FirebaseManager.getInstance().getCachedUser(myUid);
-        String name = me != null ? me.getDisplayNameOrNick() : myUid;
+    private void showStartDirectChatDialog() {
+        final EditText inputNick = new EditText(this);
+        inputNick.setHint("Никнейм собеседника...");
+        inputNick.setBackgroundResource(R.drawable.bg_input_field);
+        inputNick.setPadding(36, 28, 36, 28);
+        inputNick.setTextColor(Color.WHITE);
+        inputNick.setHintTextColor(Color.parseColor("#7E91A6"));
 
         new AlertDialog.Builder(this)
-            .setTitle(R.string.settings)
-            .setMessage("Профиль: " + name + "\nUID: " + myUid)
-            .setIcon(R.drawable.ic_settings_gear)
-            .setPositiveButton(R.string.logout, (dialog, which) -> {
-                FirebaseManager.getInstance().getAuth().signOut();
-                startActivity(new Intent(MainActivity.this, AuthActivity.class));
-                finish();
+            .setTitle("Начать диалог")
+            .setMessage("Введите точный никнейм пользователя:")
+            .setView(inputNick)
+            .setPositiveButton("Найти и открыть", (dialog, which) -> {
+                String nick = inputNick.getText().toString().trim();
+                if (nick.isEmpty()) return;
+
+                FirebaseManager.getInstance().getUsersRef().addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String foundUid = null;
+                        User foundUser = null;
+                        for (DataSnapshot ds : snapshot.getChildren()) {
+                            User u = ds.getValue(User.class);
+                            if (u != null && nick.equalsIgnoreCase(u.nick)) {
+                                foundUid = ds.getKey();
+                                foundUser = u;
+                                foundUser.uid = foundUid;
+                                break;
+                            }
+                        }
+
+                        if (foundUid != null) {
+                            final User u = foundUser;
+                            FirebaseManager.getInstance().createDirectChat(foundUid, chat -> {
+                                if (chat != null) {
+                                    Intent intent = new Intent(MainActivity.this, ChatActivity.class);
+                                    intent.putExtra("chat", chat);
+                                    startActivity(intent);
+                                }
+                            });
+                        } else {
+                            Toast.makeText(MainActivity.this, "Пользователь @" + nick + " не найден", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
             })
-            .setNegativeButton("Закрыть", null)
+            .setNegativeButton("Отмена", null)
             .show();
     }
 
+    private void showMyProfileDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_my_profile, null);
+        AvatarView av = view.findViewById(R.id.profileAvatarView);
+        TextView tvUid = view.findViewById(R.id.tvProfileUid);
+        EditText etNick = view.findViewById(R.id.etProfileNick);
+        EditText etBio = view.findViewById(R.id.etProfileBio);
+        EditText etAvatar = view.findViewById(R.id.etProfileAvatarUrl);
+
+        String myUid = FirebaseManager.getInstance().getCurrentUid();
+        User me = FirebaseManager.getInstance().getCachedUser(myUid);
+
+        if (me != null) {
+            av.setUser(me.getDisplayNameOrNick(), me.getEffectiveAvatar(), true);
+            tvUid.setText("UID: " + myUid);
+            etNick.setText(me.nick != null ? me.nick : "");
+            etBio.setText(me.bio != null ? me.bio : "");
+            etAvatar.setText(me.avatar != null ? me.avatar : "");
+        }
+
+        new AlertDialog.Builder(this)
+            .setView(view)
+            .setPositiveButton("Сохранить", (dialog, which) -> {
+                String newNick = etNick.getText().toString().trim();
+                String newBio = etBio.getText().toString().trim();
+                String newAvatar = etAvatar.getText().toString().trim();
+                FirebaseManager.getInstance().updateUserProfile(newNick, newBio, newAvatar, (error, ref) -> {
+                    if (error == null) {
+                        Toast.makeText(this, "Профиль обновлен", Toast.LENGTH_SHORT).show();
+                        loadCurrentUser();
+                    }
+                });
+            })
+            .setNegativeButton("Отмена", null)
+            .show();
+    }
+
+    private void showSettingsDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
+        view.findViewById(R.id.btnSettingProfile).setOnClickListener(v -> showMyProfileDialog());
+        view.findViewById(R.id.btnLogout).setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                .setTitle("Выйти?")
+                .setMessage("Вы уверены, что хотите выйти из аккаунта?")
+                .setPositiveButton("Выйти", (d, w) -> {
+                    FirebaseManager.getInstance().getAuth().signOut();
+                    redirectToAuth();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+        });
+
+        new AlertDialog.Builder(this)
+            .setView(view)
+            .setPositiveButton("Готово", null)
+            .show();
+    }
+
+    private void redirectToAuth() {
+        Intent intent = new Intent(MainActivity.this, AuthActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
     private int dpToPx(int dp) {
-        return Math.round(dp * getResources().getDisplayMetrics().density);
+        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
 }

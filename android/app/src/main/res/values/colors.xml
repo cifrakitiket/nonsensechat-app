@@ -4,6 +4,7 @@
     <color name="bg_main">#080C14</color>
     <color name="bg_surface">#0F172A</color>
     <color name="bg_card">#131D31</color>
+    <color name="bg_card_dark">#121D2C</color>
     <color name="bg_card_hover">#1A263E</color>
     <color name="bg_elevated">#1E293B</color>
 

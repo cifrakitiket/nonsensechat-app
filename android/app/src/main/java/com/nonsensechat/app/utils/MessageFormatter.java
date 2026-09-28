@@ -26,30 +26,31 @@ import java.util.regex.Pattern;
 
 public class MessageFormatter {
 
-    private static final Pattern BLOCKQUOTE_PATTERN = Pattern.compile("(?i)<blockquote>([\\s\\S]*?)</blockquote>");
-    private static final Pattern SPOILER_PATTERN = Pattern.compile("(?i)(?:<span\\s+class=['\"]spoiler['\"]>([\\s\\S]*?)</span>|\\|\\|([\\s\\S]*?)\\|\\|)");
+    // Matches <blockquote>, <blockqoute>, case-insensitive with any attributes or spaces
+    private static final Pattern BLOCKQUOTE_TAG_PATTERN = Pattern.compile("(?i)<(?:blockquote|blockqoute)[^>]*>([\\s\\S]*?)</(?:blockquote|blockqoute)>");
+    private static final Pattern SPOILER_PATTERN = Pattern.compile("(?i)(?:<span\\s+class=['\"]spoiler['\"][^>]*>([\\s\\S]*?)</span>|\\|\\|([\\s\\S]*?)\\|\\|)");
     private static final Pattern BR_PATTERN = Pattern.compile("(?i)<br\\s*/?>");
-    private static final Pattern P_PATTERN = Pattern.compile("(?i)</?p>");
+    private static final Pattern P_PATTERN = Pattern.compile("(?i)</?p[^>]*>");
 
     public static CharSequence formatMessage(Context context, String rawText, TextView targetView) {
         if (rawText == null || rawText.trim().isEmpty()) return "";
 
         String text = rawText;
-        // Clean line breaks
+        // Clean line breaks & paragraphs
         text = BR_PATTERN.matcher(text).replaceAll("\n");
         text = P_PATTERN.matcher(text).replaceAll("\n");
 
         SpannableStringBuilder ssb = new SpannableStringBuilder();
 
-        // 1. Process <blockquote>
-        Matcher bqMatcher = BLOCKQUOTE_PATTERN.matcher(text);
+        // 1. Process <blockquote> and <blockqoute>
+        Matcher bqMatcher = BLOCKQUOTE_TAG_PATTERN.matcher(text);
         int lastEnd = 0;
 
         while (bqMatcher.find()) {
             int start = bqMatcher.start();
             int end = bqMatcher.end();
 
-            // Append prefix text
+            // Append prefix text before quote
             if (start > lastEnd) {
                 appendFormattedChunk(context, ssb, text.substring(lastEnd, start), targetView);
             }
@@ -68,9 +69,9 @@ public class MessageFormatter {
 
                 int qEnd = ssb.length();
                 if (qEnd > qStart) {
-                    // Apply TelegramQuoteSpan
+                    // Telegram-style Quote Span (Cyan vertical stripe + dark tinted bubble background)
                     int stripeColor = Color.parseColor("#00D2FF");
-                    int bgColor = Color.parseColor("#142234");
+                    int bgColor = Color.parseColor("#152336");
                     ssb.setSpan(new TelegramQuoteSpan(stripeColor, bgColor, dpToPx(context, 3), dpToPx(context, 10)), qStart, qEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     ssb.setSpan(new StyleSpan(android.graphics.Typeface.ITALIC), qStart, qEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     ssb.append("\n");
@@ -84,6 +85,7 @@ public class MessageFormatter {
             appendFormattedChunk(context, ssb, text.substring(lastEnd), targetView);
         }
 
+        // Clean any leftover unclosed tags or stray html artifacts
         // Trim trailing newlines
         while (ssb.length() > 0 && ssb.charAt(ssb.length() - 1) == '\n') {
             ssb.delete(ssb.length() - 1, ssb.length());
@@ -127,11 +129,13 @@ public class MessageFormatter {
 
     private static void appendHtmlText(SpannableStringBuilder ssb, String text) {
         if (text == null || text.isEmpty()) return;
+        // Make sure orphan or weird HTML tags don't show up as raw code
+        String sanitized = text.replaceAll("(?i)<(?!/?(b|i|u|s|strike|strong|em|a|code|pre)\\b)[^>]*>", "");
         Spanned spanned;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            spanned = Html.fromHtml(text, Html.FROM_HTML_MODE_COMPACT);
+            spanned = Html.fromHtml(sanitized, Html.FROM_HTML_MODE_COMPACT);
         } else {
-            spanned = Html.fromHtml(text);
+            spanned = Html.fromHtml(sanitized);
         }
         ssb.append(spanned);
     }
@@ -139,7 +143,7 @@ public class MessageFormatter {
     public static String stripHtmlForPreview(String rawText) {
         if (rawText == null || rawText.trim().isEmpty()) return "Нет сообщений";
         String clean = rawText;
-        clean = BLOCKQUOTE_PATTERN.matcher(clean).replaceAll("$1");
+        clean = BLOCKQUOTE_TAG_PATTERN.matcher(clean).replaceAll("$1");
         clean = SPOILER_PATTERN.matcher(clean).replaceAll("$1$2");
         clean = BR_PATTERN.matcher(clean).replaceAll(" ");
         clean = clean.replaceAll("<[^>]*>", " ");
@@ -148,22 +152,25 @@ public class MessageFormatter {
     }
 
     private static int dpToPx(Context context, int dp) {
-        return Math.round(dp * context.getResources().getDisplayMetrics().density);
+        return (int) (dp * context.getResources().getDisplayMetrics().density + 0.5f);
     }
 
-    // ── Custom Telegram Quote Span ──
     public static class TelegramQuoteSpan implements LeadingMarginSpan, LineBackgroundSpan {
         private final int stripeColor;
-        private final int backgroundColor;
+        private final int bgColor;
         private final int stripeWidth;
         private final int gap;
+        private final Paint stripePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rectF = new RectF();
 
-        public TelegramQuoteSpan(int stripeColor, int backgroundColor, int stripeWidth, int gap) {
+        public TelegramQuoteSpan(int stripeColor, int bgColor, int stripeWidth, int gap) {
             this.stripeColor = stripeColor;
-            this.backgroundColor = backgroundColor;
+            this.bgColor = bgColor;
             this.stripeWidth = stripeWidth;
             this.gap = gap;
+            stripePaint.setStyle(Paint.Style.FILL);
+            bgPaint.setStyle(Paint.Style.FILL);
         }
 
         @Override
@@ -173,35 +180,25 @@ public class MessageFormatter {
 
         @Override
         public void drawLeadingMargin(Canvas c, Paint p, int x, int dir, int top, int baseline, int bottom,
-                                      CharSequence text, int start, int end, boolean first, Layout layout) {
-            Paint.Style style = p.getStyle();
-            int color = p.getColor();
-
-            p.setStyle(Paint.Style.FILL);
-            p.setColor(stripeColor);
-            rectF.set(x, top + 2, x + dir * stripeWidth, bottom - 2);
-            c.drawRoundRect(rectF, 4, 4, p);
-
-            p.setStyle(style);
-            p.setColor(color);
+                                     CharSequence text, int start, int end, boolean first, Layout layout) {
+            stripePaint.setColor(stripeColor);
+            rectF.set(x, top + 2, x + stripeWidth, bottom - 2);
+            c.drawRoundRect(rectF, 4, 4, stripePaint);
         }
 
         @Override
         public void drawBackground(Canvas c, Paint p, int left, int right, int top, int baseline, int bottom,
                                    CharSequence text, int start, int end, int lnum) {
-            int color = p.getColor();
-            p.setColor(backgroundColor);
-            rectF.set(left, top + 1, right, bottom - 1);
-            c.drawRoundRect(rectF, 6, 6, p);
-            p.setColor(color);
+            bgPaint.setColor(bgColor);
+            rectF.set(left + 2, top + 1, right - 2, bottom - 1);
+            c.drawRoundRect(rectF, 8, 8, bgPaint);
         }
     }
 
-    // ── Custom Telegram Clickable Text Spoiler Span ──
     public static class TelegramTextSpoilerSpan extends ClickableSpan {
-        private boolean isRevealed = false;
         private final Context context;
         private final TextView targetView;
+        private boolean revealed = false;
 
         public TelegramTextSpoilerSpan(Context context, TextView targetView) {
             this.context = context;
@@ -210,28 +207,40 @@ public class MessageFormatter {
 
         @Override
         public void onClick(@NonNull View widget) {
-            if (!isRevealed) {
-                isRevealed = true;
-                try {
-                    Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-                    if (vibrator != null && vibrator.hasVibrator()) {
-                        vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
-                    }
-                } catch (Exception ignored) {}
-                if (targetView != null) targetView.invalidate();
+            if (!revealed) {
+                revealed = true;
+                vibrate(context);
+                if (targetView != null) {
+                    targetView.invalidate();
+                } else {
+                    widget.invalidate();
+                }
             }
         }
 
         @Override
         public void updateDrawState(@NonNull TextPaint ds) {
-            if (!isRevealed) {
-                ds.bgColor = Color.parseColor("#384B66");
+            if (!revealed) {
+                ds.bgColor = Color.parseColor("#334155");
                 ds.setColor(Color.TRANSPARENT);
             } else {
                 ds.bgColor = Color.TRANSPARENT;
-                ds.setColor(Color.parseColor("#F8FAFC"));
+                ds.setColor(Color.WHITE);
             }
             ds.setUnderlineText(false);
+        }
+
+        private void vibrate(Context ctx) {
+            try {
+                Vibrator v = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null && v.hasVibrator()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE));
+                    } else {
+                        v.vibrate(20);
+                    }
+                }
+            } catch (Exception ignored) {}
         }
     }
 }
