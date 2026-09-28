@@ -9905,22 +9905,31 @@
        ════════════════════════════════════════════════════════════════════════ */
 
     const firebaseConfig = {
-      apiKey: "__FIREBASE_API_KEY__",
-      authDomain: "__FIREBASE_AUTH_DOMAIN__",
-      databaseURL: "__FIREBASE_DATABASE_URL__",
-      projectId: "__FIREBASE_PROJECT_ID__",
-      storageBucket: "__FIREBASE_STORAGE_BUCKET__",
-      messagingSenderId: "__FIREBASE_SENDER_ID__",
-      appId: "__FIREBASE_APP_ID__",
-      measurementId: "__FIREBASE_MEASUREMENT_ID__"
+      apiKey: "AIzaSyCVH8_UhxO5hAj0ZBlA_lRw3B0hnN1zEOc",
+      authDomain: "nonsensechattm-e5d18.firebaseapp.com",
+      databaseURL: "https://nonsensechattm-e5d18-default-rtdb.firebaseio.com",
+      projectId: "nonsensechattm-e5d18",
+      storageBucket: "nonsensechattm-e5d18.firebasestorage.app",
+      messagingSenderId: "497380539024",
+      appId: "1:497380539024:web:cace5570f62f9e073af615",
+      measurementId: "G-NC89Y47FVD"
     };
 
     // Инициализация Firebase
+    const cleanFirebaseConfig = { ...firebaseConfig };
+    if (!cleanFirebaseConfig.databaseURL || !cleanFirebaseConfig.databaseURL.startsWith('http')) {
+      cleanFirebaseConfig.databaseURL = "https://nonsensechattm-e5d18-default-rtdb.firebaseio.com";
+    }
     if (!window.firebase || !window.firebase.apps || !window.firebase.apps.length) {
-      window.firebase.initializeApp(firebaseConfig);
+      window.firebase.initializeApp(cleanFirebaseConfig);
     }
     const _fbAuth = window.firebase.auth();
-    const _fbDb = window.firebase.database();
+    let _fbDb = null;
+    try {
+      _fbDb = window.firebase.database();
+    } catch (dbErr) {
+      console.warn('Firebase RTDB init error:', dbErr);
+    }
 
     /* VK Cloud backend — presigned URL для загрузки в S3 */
     const VKC_URL = (() => {
@@ -10318,6 +10327,7 @@
     // Замените на свой реальный Firebase UID после первого входа
     const CREATOR_UID = 'JBe6nbSfgWOOEa9puh62dY5BuaY2';
 
+    window.activeId = null;
     let me = null, activeId = null, activeChat = null, curTab = 'all';
     function defaultNickForUser(user) {
       const fromEmail = String((user && user.email) || '').split('@')[0].trim();
@@ -12950,7 +12960,7 @@
       if (typeof stopTyping === 'function' && isTyping && activeId && activeId !== id) {
         stopTyping(activeId);
       }
-      activeId = id; activeChat = data;
+      activeId = id; window.activeId = id; activeChat = data;
       clearUnread(id);
       hideCalcBubble();
       // DO NOT call cleanupCallSession here — that would kill active calls
@@ -19527,7 +19537,14 @@ registerProcessor('spectral-gate', SpectralGate);
 
       // ═══ GENERATE CALL LINK ═══
       function generateCallLink() {
-        const chatId = (typeof myCallChatId !== 'undefined' ? myCallChatId : (window.myCallChatId || null)) || (typeof activeId !== 'undefined' ? activeId : null);
+        let currentChatId = null;
+        try { if (typeof myCallChatId !== 'undefined') currentChatId = myCallChatId; } catch (_) {}
+        if (!currentChatId && window.myCallChatId) currentChatId = window.myCallChatId;
+        if (!currentChatId) {
+          try { if (typeof activeId !== 'undefined') currentChatId = activeId; } catch (_) {}
+        }
+        if (!currentChatId && window.activeId) currentChatId = window.activeId;
+        const chatId = currentChatId || null;
         const baseUrl = window.location.origin + window.location.pathname;
         const fullLink = chatId ? `${baseUrl}?join=${encodeURIComponent(chatId)}` : baseUrl;
         const input = document.getElementById('callLinkInput');
