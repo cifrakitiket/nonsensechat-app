@@ -238,8 +238,13 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     private void bindImageMe(ImageViewHolder vh, Message m, String timeStr, String myUid) {
         vh.tvMediaTime.setText(timeStr);
         String url = m.getEffectiveMediaUrl();
-        if (url != null) {
-            Glide.with(context).load(url).centerCrop().into(vh.ivMessageMedia);
+        if (url != null && !url.trim().isEmpty()) {
+            try {
+                if (context instanceof android.app.Activity && ((android.app.Activity) context).isDestroyed()) {
+                    return;
+                }
+                Glide.with(context).load(url).centerCrop().into(vh.ivMessageMedia);
+            } catch (Exception ignored) {}
         }
 
         if (m.caption != null && !m.caption.trim().isEmpty()) {
@@ -285,19 +290,34 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .build());
 
-            if (url.startsWith("http://") || url.startsWith("https://")) {
+            if (url.startsWith("data:")) {
+                int comma = url.indexOf(',');
+                String b64 = comma != -1 ? url.substring(comma + 1) : url;
+                byte[] decoded = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                File tempAudio = File.createTempFile("play_", ".m4a", context.getCacheDir());
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(tempAudio);
+                fos.write(decoded);
+                fos.close();
+                mediaPlayer.setDataSource(tempAudio.getAbsolutePath());
+            } else if (url.startsWith("http://") || url.startsWith("https://")) {
                 mediaPlayer.setDataSource(context, Uri.parse(url));
             } else {
                 mediaPlayer.setDataSource(url);
             }
 
             mediaPlayer.setOnPreparedListener(mp -> {
-                mp.start();
-                currentlyPlayingMsgId = m.id;
-                notifyDataSetChanged();
+                try {
+                    mp.start();
+                    currentlyPlayingMsgId = m.id;
+                    notifyDataSetChanged();
+                } catch (Exception ignored) {}
             });
 
             mediaPlayer.setOnCompletionListener(mp -> stopAudioPlayback());
+            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                stopAudioPlayback();
+                return true;
+            });
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
             stopAudioPlayback();

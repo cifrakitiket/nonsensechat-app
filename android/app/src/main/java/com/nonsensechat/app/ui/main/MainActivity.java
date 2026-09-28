@@ -148,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
             LinearLayout l = findViewById(layoutIds[i]);
             TextView t = findViewById(textIds[i]);
             ImageView iv = findViewById(iconIds[i]);
-            l.setBackground(null);
+            l.setBackgroundResource(R.drawable.bg_tab_inactive);
             t.setTextColor(getColor(R.color.text_secondary));
             t.setTypeface(null, android.graphics.Typeface.NORMAL);
             iv.setColorFilter(getColor(R.color.text_secondary));
@@ -187,12 +187,14 @@ public class MainActivity extends AppCompatActivity {
         FirebaseManager.getInstance().getUserRef(myUid).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                User me = snapshot.getValue(User.class);
-                if (me != null) {
-                    me.uid = myUid;
-                    FirebaseManager.getInstance().putCachedUser(me);
-                    btnProfileAvatar.setUser(me.getDisplayNameOrNick(), me.getEffectiveAvatar(), me.online);
-                }
+                try {
+                    User me = User.fromSnapshot(snapshot);
+                    if (me != null) {
+                        me.uid = myUid;
+                        FirebaseManager.getInstance().putCachedUser(me);
+                        btnProfileAvatar.setUser(me.getDisplayNameOrNick(), me.getEffectiveAvatar(), me.online);
+                    }
+                } catch (Exception ignored) {}
             }
 
             @Override
@@ -210,42 +212,44 @@ public class MainActivity extends AppCompatActivity {
         FirebaseManager.getInstance().getChatsRef().addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                swipeRefresh.setRefreshing(false);
-                allChats.clear();
-                Set<String> uidsToFetch = new HashSet<>();
+                try {
+                    swipeRefresh.setRefreshing(false);
+                    allChats.clear();
+                    Set<String> uidsToFetch = new HashSet<>();
 
-                for (DataSnapshot ds : snapshot.getChildren()) {
-                    Chat chat = ds.getValue(Chat.class);
-                    if (chat != null) {
-                        chat.id = ds.getKey();
-                        if (chat.isMember(myUid)) {
-                            allChats.add(chat);
-                            String partnerUid = chat.getOtherMemberUid(myUid);
-                            if (partnerUid != null) uidsToFetch.add(partnerUid);
+                    for (DataSnapshot ds : snapshot.getChildren()) {
+                        Chat chat = Chat.fromSnapshot(ds);
+                        if (chat != null) {
+                            chat.id = ds.getKey();
+                            if (chat.isMember(myUid)) {
+                                allChats.add(chat);
+                                String partnerUid = chat.getOtherMemberUid(myUid);
+                                if (partnerUid != null) uidsToFetch.add(partnerUid);
+                            }
                         }
                     }
-                }
 
-                // Make sure Saved Messages ("Избранное") is included
-                boolean hasFav = false;
-                for (Chat c : allChats) {
-                    if (c.isFav()) { hasFav = true; break; }
-                }
-                if (!hasFav) {
-                    Chat favChat = new Chat();
-                    favChat.id = "fav_" + myUid;
-                    favChat.type = "fav";
-                    favChat.name = "Избранное";
-                    favChat.lastMsg = "Ваши сохранённые сообщения";
-                    favChat.members = Collections.singletonList(myUid);
-                    allChats.add(favChat);
-                }
+                    // Make sure Saved Messages ("Избранное") is included
+                    boolean hasFav = false;
+                    for (Chat c : allChats) {
+                        if (c.isFav()) { hasFav = true; break; }
+                    }
+                    if (!hasFav) {
+                        Chat favChat = new Chat();
+                        favChat.id = "fav_" + myUid;
+                        favChat.type = "fav";
+                        favChat.name = "Избранное";
+                        favChat.lastMsg = "Ваши сохранённые сообщения";
+                        favChat.members = Collections.singletonList(myUid);
+                        allChats.add(favChat);
+                    }
 
-                Collections.sort(allChats, (a, b) -> Long.compare(b.getLastActivityMillis(), a.getLastActivityMillis()));
+                    Collections.sort(allChats, (a, b) -> Long.compare(b.getLastActivityMillis(), a.getLastActivityMillis()));
 
-                FirebaseManager.getInstance().prefetchUsers(new ArrayList<>(uidsToFetch), () -> {
-                    filterChats();
-                });
+                    FirebaseManager.getInstance().prefetchUsers(new ArrayList<>(uidsToFetch), () -> {
+                        filterChats();
+                    });
+                } catch (Exception ignored) {}
             }
 
             @Override
@@ -372,30 +376,32 @@ public class MainActivity extends AppCompatActivity {
                 FirebaseManager.getInstance().getUsersRef().addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        String foundUid = null;
-                        User foundUser = null;
-                        for (DataSnapshot ds : snapshot.getChildren()) {
-                            User u = ds.getValue(User.class);
-                            if (u != null && nick.equalsIgnoreCase(u.nick)) {
-                                foundUid = ds.getKey();
-                                foundUser = u;
-                                foundUser.uid = foundUid;
-                                break;
-                            }
-                        }
-
-                        if (foundUid != null) {
-                            final User u = foundUser;
-                            FirebaseManager.getInstance().createDirectChat(foundUid, chat -> {
-                                if (chat != null) {
-                                    Intent intent = new Intent(MainActivity.this, ChatActivity.class);
-                                    intent.putExtra("chat", chat);
-                                    startActivity(intent);
+                        try {
+                            String foundUid = null;
+                            User foundUser = null;
+                            for (DataSnapshot ds : snapshot.getChildren()) {
+                                User u = User.fromSnapshot(ds);
+                                if (u != null && nick.equalsIgnoreCase(u.nick)) {
+                                    foundUid = ds.getKey();
+                                    foundUser = u;
+                                    foundUser.uid = foundUid;
+                                    break;
                                 }
-                            });
-                        } else {
-                            Toast.makeText(MainActivity.this, "Пользователь @" + nick + " не найден", Toast.LENGTH_SHORT).show();
-                        }
+                            }
+
+                            if (foundUid != null) {
+                                final User u = foundUser;
+                                FirebaseManager.getInstance().createDirectChat(foundUid, chat -> {
+                                    if (chat != null) {
+                                        Intent intent = new Intent(MainActivity.this, ChatActivity.class);
+                                        intent.putExtra("chat", chat);
+                                        startActivity(intent);
+                                    }
+                                });
+                            } else {
+                                Toast.makeText(MainActivity.this, "Пользователь @" + nick + " не найден", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (Exception ignored) {}
                     }
 
                     @Override

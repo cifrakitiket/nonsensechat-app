@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Backgrounds (Deep Space Dark / Obsidian) -->
+    <!-- Backgrounds (Liquid Space Dark & Translucent Glass) -->
     <color name="bg_main">#080C14</color>
     <color name="bg_surface">#0F172A</color>
     <color name="bg_card">#131D31</color>
@@ -8,16 +8,24 @@
     <color name="bg_card_hover">#1A263E</color>
     <color name="bg_elevated">#1E293B</color>
 
-    <!-- Bubbles -->
-    <color name="bubble_outgoing">#102E42</color>
-    <color name="bubble_outgoing_border">#1D4A66</color>
-    <color name="bubble_incoming">#152033</color>
-    <color name="bubble_incoming_border">#22324D</color>
+    <!-- Liquid Glass Tokens -->
+    <color name="glass_bg_translucent">#1A162438</color>
+    <color name="glass_card_bg">#26152336</color>
+    <color name="glass_border">#2EFFFFFF</color>
+    <color name="glass_border_glow">#4D00D2FF</color>
+    <color name="glass_input_bg">#2B1A2C42</color>
+
+    <!-- Bubbles (Liquid Glass) -->
+    <color name="bubble_outgoing">#F0103A50</color>
+    <color name="bubble_outgoing_border">#3D00D2FF</color>
+    <color name="bubble_incoming">#F016253B</color>
+    <color name="bubble_incoming_border">#24FFFFFF</color>
 
     <!-- Accents & Highlights -->
     <color name="accent_green">#00FF88</color>
     <color name="accent_green_glow">#3300FF88</color>
     <color name="accent_cyan">#00D2FF</color>
+    <color name="accent_cyan_glow">#3300D2FF</color>
     <color name="accent_purple">#8B5CF6</color>
     <color name="accent_indigo">#6366F1</color>
 
@@ -34,9 +42,9 @@
     <color name="warning_orange">#F59E0B</color>
 
     <!-- Borders & Dividers -->
-    <color name="border_subtle">#1E293B</color>
+    <color name="border_subtle">#1F2B3E</color>
     <color name="border_focus">#00FF88</color>
-    <color name="border_glass">#1AFFFFFF</color>
+    <color name="border_glass">#26FFFFFF</color>
 
     <!-- Overlay & Spoilers -->
     <color name="spoiler_dust_tint">#0D1626</color>

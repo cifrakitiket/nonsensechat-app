@@ -327,8 +327,9 @@
 
             <EditText
                 android:id="@+id/etMessage"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:background="@null"
                 android:hint="Сообщение..."
                 android:maxLines="5"
@@ -336,6 +337,16 @@
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/text_tertiary"
                 android:textSize="15sp" />
+
+            <ImageView
+                android:id="@+id/btnEmojiPicker"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:src="@drawable/ic_emoji_smile"
+                app:tint="@color/text_secondary" />
 
         </LinearLayout>
 

@@ -1,7 +1,7 @@
 package com.nonsensechat.app.model;
 
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.IgnoreExtraProperties;
-import com.google.firebase.database.PropertyName;
 import java.io.Serializable;
 
 @IgnoreExtraProperties
@@ -28,6 +28,37 @@ public class User implements Serializable {
         this.displayName = nick;
         this.email = email;
         this.online = true;
+    }
+
+    public static User fromSnapshot(DataSnapshot ds) {
+        if (ds == null || !ds.exists()) return null;
+        User u = new User();
+        u.uid = ds.getKey();
+        try {
+            User direct = ds.getValue(User.class);
+            if (direct != null) {
+                direct.uid = ds.getKey();
+                return direct;
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            u.nick = ds.child("nick").getValue(String.class);
+            u.displayName = ds.child("displayName").getValue(String.class);
+            u.email = ds.child("email").getValue(String.class);
+            u.avatar = ds.child("avatar").getValue(String.class);
+            u.photoURL = ds.child("photoURL").getValue(String.class);
+            u.bio = ds.child("bio").getValue(String.class);
+            u.customStatus = ds.child("customStatus").getValue(String.class);
+            Boolean onl = ds.child("online").getValue(Boolean.class);
+            u.online = Boolean.TRUE.equals(onl);
+            Boolean ver = ds.child("verified").getValue(Boolean.class);
+            u.verified = Boolean.TRUE.equals(ver);
+            u.lastSeen = ds.child("lastSeen").getValue();
+            u.typingIn = ds.child("typingIn").getValue(String.class);
+            u.typingAt = ds.child("typingAt").getValue();
+        } catch (Exception ignored) {}
+        return u;
     }
 
     public String getDisplayNameOrNick() {

@@ -1,5 +1,6 @@
 package com.nonsensechat.app.model;
 
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.IgnoreExtraProperties;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -26,6 +27,37 @@ public class Chat implements Serializable {
     public Map<String, Object> typing; // uid -> timestamp
 
     public Chat() {}
+
+    public static Chat fromSnapshot(DataSnapshot ds) {
+        if (ds == null || !ds.exists()) return null;
+        Chat c = new Chat();
+        c.id = ds.getKey();
+        try {
+            Chat direct = ds.getValue(Chat.class);
+            if (direct != null) {
+                direct.id = ds.getKey();
+                return direct;
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            c.title = ds.child("title").getValue(String.class);
+            c.name = ds.child("name").getValue(String.class);
+            c.type = ds.child("type").getValue(String.class);
+            c.avatar = ds.child("avatar").getValue(String.class);
+            c.lastMsg = ds.child("lastMsg").getValue(String.class);
+            c.lastMessage = ds.child("lastMessage").getValue(String.class);
+            c.lastMsgAt = ds.child("lastMsgAt").getValue();
+            c.lastAt = ds.child("lastAt").getValue();
+            c.lastMsgUid = ds.child("lastMsgUid").getValue(String.class);
+            c.createdAt = ds.child("createdAt").getValue();
+            c.creatorUid = ds.child("creatorUid").getValue(String.class);
+            c.members = ds.child("members").getValue();
+            Boolean pin = ds.child("pinned").getValue(Boolean.class);
+            c.pinned = Boolean.TRUE.equals(pin);
+        } catch (Exception ignored) {}
+        return c;
+    }
 
     public boolean isGroup() {
         return "group".equalsIgnoreCase(type) || "channel".equalsIgnoreCase(type);

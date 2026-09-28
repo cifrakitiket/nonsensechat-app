@@ -63,7 +63,7 @@ public class ChatActivity extends AppCompatActivity {
     private RecyclerView rvMessages;
     private MessageAdapter adapter;
     private EditText etMessage, etChatSearch;
-    private ImageView btnSendOrVoice, btnAttach, btnChatSearch;
+    private ImageView btnSendOrVoice, btnAttach, btnChatSearch, btnEmojiPicker;
     private TextView tvHeaderTitle, tvHeaderSubtitle;
     private AvatarView headerAvatar;
     private View pinnedBar, replyEditBar, chatSearchContainer, audioRecordOverlay;
@@ -147,6 +147,7 @@ public class ChatActivity extends AppCompatActivity {
         btnSendOrVoice = findViewById(R.id.btnSendOrVoice);
         btnAttach = findViewById(R.id.btnAttach);
         btnChatSearch = findViewById(R.id.btnChatSearch);
+        btnEmojiPicker = findViewById(R.id.btnEmojiPicker);
         tvHeaderTitle = findViewById(R.id.tvHeaderTitle);
         tvHeaderSubtitle = findViewById(R.id.tvHeaderSubtitle);
         headerAvatar = findViewById(R.id.headerAvatar);
@@ -209,6 +210,9 @@ public class ChatActivity extends AppCompatActivity {
         findViewById(R.id.btnCall).setOnClickListener(v -> showCallDialog());
         findViewById(R.id.btnChatMenu).setOnClickListener(v -> showChatMenu());
         btnAttach.setOnClickListener(v -> showAttachMenu());
+        if (btnEmojiPicker != null) {
+            btnEmojiPicker.setOnClickListener(v -> showEmojiPicker());
+        }
 
         btnChatSearch.setOnClickListener(v -> {
             boolean visible = chatSearchContainer.getVisibility() == View.VISIBLE;
@@ -231,7 +235,6 @@ public class ChatActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.pinnedContent).setOnClickListener(v -> {
-            // Jump to the last pinned message
             if (!allMessages.isEmpty()) {
                 rvMessages.smoothScrollToPosition(0);
             }
@@ -345,50 +348,138 @@ public class ChatActivity extends AppCompatActivity {
         adapter.submitList(filtered);
     }
 
-    // Message Context Menu (Long press / Tap)
+    // Liquid Glass Message Context Menu
     private void showMessageContextMenu(Message m) {
-        // Build items
-        String[] options;
+        if (m == null) return;
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_message_menu, null);
+
+        LinearLayout reactionsRow = view.findViewById(R.id.reactionsQuickRow);
+        String[] quickEmojis = {"👍", "❤️", "🔥", "😂", "😮", "😢", "💩", "👏", "🎉", "💯"};
+
+        for (String emoji : quickEmojis) {
+            TextView chip = new TextView(this);
+            chip.setText(emoji);
+            chip.setTextSize(22);
+            chip.setPadding(20, 10, 20, 10);
+            chip.setBackgroundResource(R.drawable.bg_reaction_chip);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.setMargins(0, 0, 12, 0);
+            chip.setLayoutParams(lp);
+
+            chip.setOnClickListener(v -> {
+                FirebaseManager.getInstance().toggleReaction(chat.id, m.id, emoji);
+                dialog.dismiss();
+            });
+            reactionsRow.addView(chip);
+        }
+
         String myUid = FirebaseManager.getInstance().getCurrentUid();
         boolean isMine = m.isOutgoing(myUid);
 
+        View actionReply = view.findViewById(R.id.menuActionReply);
+        View actionCopy = view.findViewById(R.id.menuActionCopy);
+        View actionEdit = view.findViewById(R.id.menuActionEdit);
+        View actionPin = view.findViewById(R.id.menuActionPin);
+        View actionForward = view.findViewById(R.id.menuActionForward);
+        View actionDelete = view.findViewById(R.id.menuActionDelete);
+
         if (isMine) {
-            options = new String[]{"👍 Реакция", "↩ Ответить", "📋 Копировать", "✏ Редактировать", "📌 Закрепить", "🗑 Удалить"};
-        } else {
-            options = new String[]{"👍 Реакция", "↩ Ответить", "📋 Копировать", "📌 Закрепить", "↗ Переслать"};
+            actionEdit.setVisibility(View.VISIBLE);
+            actionDelete.setVisibility(View.VISIBLE);
         }
 
-        new AlertDialog.Builder(this)
-            .setTitle(m.getSenderDisplayName())
-            .setItems(options, (d, which) -> {
-                String choice = options[which];
-                if (choice.contains("Реакция")) {
-                    showQuickReactionPicker(m);
-                } else if (choice.contains("Ответить")) {
-                    startReply(m);
-                } else if (choice.contains("Копировать")) {
-                    copyToClipboard(m.text != null ? m.text : "");
-                } else if (choice.contains("Редактировать")) {
-                    startEdit(m);
-                } else if (choice.contains("Закрепить")) {
-                    FirebaseManager.getInstance().pinMessage(chat.id, m.id, m.text, m.getSenderDisplayName());
-                    Toast.makeText(this, "Сообщение закреплено", Toast.LENGTH_SHORT).show();
-                } else if (choice.contains("Удалить")) {
-                    FirebaseManager.getInstance().deleteMessage(chat.id, m.id);
-                    Toast.makeText(this, "Сообщение удалено", Toast.LENGTH_SHORT).show();
-                }
-            })
-            .show();
+        actionReply.setOnClickListener(v -> {
+            dialog.dismiss();
+            startReply(m);
+        });
+
+        actionCopy.setOnClickListener(v -> {
+            dialog.dismiss();
+            copyToClipboard(m.text != null ? m.text : "");
+        });
+
+        actionEdit.setOnClickListener(v -> {
+            dialog.dismiss();
+            startEdit(m);
+        });
+
+        actionPin.setOnClickListener(v -> {
+            dialog.dismiss();
+            FirebaseManager.getInstance().pinMessage(chat.id, m.id, m.text, m.getSenderDisplayName());
+            Toast.makeText(this, "Сообщение закреплено", Toast.LENGTH_SHORT).show();
+        });
+
+        actionForward.setOnClickListener(v -> {
+            dialog.dismiss();
+            Toast.makeText(this, "Пересылка сообщения", Toast.LENGTH_SHORT).show();
+        });
+
+        actionDelete.setOnClickListener(v -> {
+            dialog.dismiss();
+            FirebaseManager.getInstance().deleteMessage(chat.id, m.id);
+            Toast.makeText(this, "Сообщение удалено", Toast.LENGTH_SHORT).show();
+        });
+
+        dialog.setContentView(view);
+        dialog.show();
     }
 
-    private void showQuickReactionPicker(Message m) {
-        String[] emojis = {"👍", "❤️", "🔥", "😂", "😮", "😢", "💩", "👏"};
-        new AlertDialog.Builder(this)
-            .setTitle("Выберите реакцию")
-            .setItems(emojis, (dialog, which) -> {
-                FirebaseManager.getInstance().toggleReaction(chat.id, m.id, emojis[which]);
-            })
-            .show();
+    private void showEmojiPicker() {
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundResource(R.drawable.bg_card_dark);
+        root.setPadding(24, 20, 24, 24);
+
+        TextView title = new TextView(this);
+        title.setText("Эмодзи");
+        title.setTextColor(Color.WHITE);
+        title.setTextSize(16);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        root.addView(title);
+
+        String[] emojis = {
+            "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
+            "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚",
+            "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩",
+            "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣",
+            "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉",
+            "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔",
+            "🔥", "✨", "🎉", "🎊", "💯", "💩", "🚀", "⚡", "⭐", "🌟"
+        };
+
+        // Grid of emojis
+        LinearLayout row = null;
+        for (int i = 0; i < emojis.length; i++) {
+            if (i % 8 == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(android.view.Gravity.CENTER);
+                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                rlp.setMargins(0, 10, 0, 0);
+                row.setLayoutParams(rlp);
+                root.addView(row);
+            }
+            final String em = emojis[i];
+            TextView tv = new TextView(this);
+            tv.setText(em);
+            tv.setTextSize(24);
+            tv.setPadding(8, 8, 8, 8);
+            tv.setBackgroundResource(R.drawable.bg_tab_inactive);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            lp.setMargins(4, 0, 4, 0);
+            tv.setLayoutParams(lp);
+            tv.setGravity(android.view.Gravity.CENTER);
+            tv.setOnClickListener(v -> {
+                etMessage.append(em);
+                dialog.dismiss();
+            });
+            row.addView(tv);
+        }
+
+        dialog.setContentView(root);
+        dialog.show();
     }
 
     private void startReply(Message m) {
@@ -420,33 +511,45 @@ public class ChatActivity extends AppCompatActivity {
         }
     }
 
-    // Attach Menu
+    // Liquid Glass Attach Menu
     private void showAttachMenu() {
-        String[] options = {"🖼 Фото из галереи", "📊 Создать опрос", "📁 Документ / Файл"};
-        new AlertDialog.Builder(this)
-            .setTitle("Прикрепить")
-            .setItems(options, (dialog, which) -> {
-                if (which == 0) {
-                    imagePickerLauncher.launch("image/*");
-                } else if (which == 1) {
-                    showCreatePollDialog();
-                } else if (which == 2) {
-                    filePickerLauncher.launch("*/*");
-                }
-            })
-            .show();
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_attach_menu, null);
+
+        view.findViewById(R.id.btnAttachPhoto).setOnClickListener(v -> {
+            dialog.dismiss();
+            imagePickerLauncher.launch("image/*");
+        });
+
+        view.findViewById(R.id.btnAttachPoll).setOnClickListener(v -> {
+            dialog.dismiss();
+            showCreatePollDialog();
+        });
+
+        view.findViewById(R.id.btnAttachFile).setOnClickListener(v -> {
+            dialog.dismiss();
+            filePickerLauncher.launch("*/*");
+        });
+
+        dialog.setContentView(view);
+        dialog.show();
     }
 
     private void showSendPhotoDialog(Uri uri) {
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_create_poll, null); // custom layout view
         final EditText etCaption = new EditText(this);
         etCaption.setHint("Подпись к фото...");
+        etCaption.setBackgroundResource(R.drawable.bg_input_field);
+        etCaption.setPadding(32, 24, 32, 24);
+        etCaption.setTextColor(Color.WHITE);
+        etCaption.setHintTextColor(Color.parseColor("#7E91A6"));
+
         final CheckBox cbSpoiler = new CheckBox(this);
         cbSpoiler.setText("Скрыть под спойлер");
+        cbSpoiler.setTextColor(Color.WHITE);
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(36, 20, 36, 10);
+        layout.setPadding(40, 24, 40, 16);
         layout.addView(etCaption);
         layout.addView(cbSpoiler);
 
@@ -558,7 +661,6 @@ public class ChatActivity extends AppCompatActivity {
 
             long durationSec = Math.max(1, (System.currentTimeMillis() - recordStartTime) / 1000);
 
-            // Read bytes and encode base64
             byte[] fileBytes = new byte[(int) audioRecordFile.length()];
             FileInputStream fis = new FileInputStream(audioRecordFile);
             fis.read(fileBytes);
@@ -620,7 +722,6 @@ public class ChatActivity extends AppCompatActivity {
             optInputs.add(opt);
         };
 
-        // Add 2 initial options
         addOptionInput.run();
         addOptionInput.run();
 
@@ -659,19 +760,21 @@ public class ChatActivity extends AppCompatActivity {
         FirebaseManager.getInstance().getChatRef(chat.id).child("pinnedMsgs").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.hasChildren()) {
-                    DataSnapshot lastChild = null;
-                    for (DataSnapshot ds : snapshot.getChildren()) {
-                        lastChild = ds;
+                try {
+                    if (snapshot.hasChildren()) {
+                        DataSnapshot lastChild = null;
+                        for (DataSnapshot ds : snapshot.getChildren()) {
+                            lastChild = ds;
+                        }
+                        if (lastChild != null) {
+                            String text = lastChild.child("text").getValue(String.class);
+                            pinnedBar.setVisibility(View.VISIBLE);
+                            tvPinnedPreview.setText(text != null ? text : "Закреплено");
+                            return;
+                        }
                     }
-                    if (lastChild != null) {
-                        String text = lastChild.child("text").getValue(String.class);
-                        pinnedBar.setVisibility(View.VISIBLE);
-                        tvPinnedPreview.setText(text != null ? text : "Закреплено");
-                        return;
-                    }
-                }
-                pinnedBar.setVisibility(View.GONE);
+                    pinnedBar.setVisibility(View.GONE);
+                } catch (Exception ignored) {}
             }
 
             @Override
@@ -683,19 +786,20 @@ public class ChatActivity extends AppCompatActivity {
         FirebaseManager.getInstance().getMessagesRef(chat.id).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                allMessages.clear();
-                for (DataSnapshot ds : snapshot.getChildren()) {
-                    Message m = ds.getValue(Message.class);
-                    if (m != null && !m._deleted) {
-                        m.id = ds.getKey();
-                        allMessages.add(m);
+                try {
+                    allMessages.clear();
+                    for (DataSnapshot ds : snapshot.getChildren()) {
+                        Message m = Message.fromSnapshot(ds);
+                        if (m != null && !m._deleted) {
+                            allMessages.add(m);
+                        }
                     }
-                }
-                Collections.sort(allMessages, (a, b) -> Long.compare(a.getTimestampMillis(), b.getTimestampMillis()));
-                adapter.submitList(allMessages);
-                if (!allMessages.isEmpty()) {
-                    rvMessages.scrollToPosition(allMessages.size() - 1);
-                }
+                    Collections.sort(allMessages, (a, b) -> Long.compare(a.getTimestampMillis(), b.getTimestampMillis()));
+                    adapter.submitList(allMessages);
+                    if (!allMessages.isEmpty()) {
+                        rvMessages.scrollToPosition(allMessages.size() - 1);
+                    }
+                } catch (Exception ignored) {}
                 listenRealtimeMessages();
             }
 
@@ -710,48 +814,52 @@ public class ChatActivity extends AppCompatActivity {
         FirebaseManager.getInstance().getMessagesRef(chat.id).addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
-                String key = snapshot.getKey();
-                for (Message m : allMessages) {
-                    if (m.id != null && m.id.equals(key)) return;
-                }
-                Message m = snapshot.getValue(Message.class);
-                if (m != null && !m._deleted) {
-                    m.id = key;
-                    allMessages.add(m);
-                    adapter.submitList(allMessages);
-                    rvMessages.smoothScrollToPosition(allMessages.size() - 1);
-                }
+                try {
+                    String key = snapshot.getKey();
+                    for (Message m : allMessages) {
+                        if (m.id != null && m.id.equals(key)) return;
+                    }
+                    Message m = Message.fromSnapshot(snapshot);
+                    if (m != null && !m._deleted) {
+                        allMessages.add(m);
+                        adapter.submitList(allMessages);
+                        rvMessages.smoothScrollToPosition(allMessages.size() - 1);
+                    }
+                } catch (Exception ignored) {}
             }
 
             @Override
             public void onChildChanged(@NonNull DataSnapshot snapshot, String previousChildName) {
-                Message updated = snapshot.getValue(Message.class);
-                if (updated != null) {
-                    updated.id = snapshot.getKey();
-                    for (int i = 0; i < allMessages.size(); i++) {
-                        if (allMessages.get(i).id.equals(updated.id)) {
-                            if (updated._deleted) {
-                                allMessages.remove(i);
-                            } else {
-                                allMessages.set(i, updated);
+                try {
+                    Message updated = Message.fromSnapshot(snapshot);
+                    if (updated != null) {
+                        for (int i = 0; i < allMessages.size(); i++) {
+                            if (allMessages.get(i).id.equals(updated.id)) {
+                                if (updated._deleted) {
+                                    allMessages.remove(i);
+                                } else {
+                                    allMessages.set(i, updated);
+                                }
+                                adapter.submitList(allMessages);
+                                break;
                             }
-                            adapter.submitList(allMessages);
-                            break;
                         }
                     }
-                }
+                } catch (Exception ignored) {}
             }
 
             @Override
             public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-                String key = snapshot.getKey();
-                for (int i = 0; i < allMessages.size(); i++) {
-                    if (allMessages.get(i).id.equals(key)) {
-                        allMessages.remove(i);
-                        adapter.submitList(allMessages);
-                        break;
+                try {
+                    String key = snapshot.getKey();
+                    for (int i = 0; i < allMessages.size(); i++) {
+                        if (allMessages.get(i).id.equals(key)) {
+                            allMessages.remove(i);
+                            adapter.submitList(allMessages);
+                            break;
+                        }
                     }
-                }
+                } catch (Exception ignored) {}
             }
 
             @Override
@@ -782,7 +890,9 @@ public class ChatActivity extends AppCompatActivity {
         FirebaseManager.getInstance().getChatRef(chat.id).child("typing").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                updateGroupTypingStatus(snapshot);
+                try {
+                    updateGroupTypingStatus(snapshot);
+                } catch (Exception ignored) {}
             }
 
             @Override
@@ -827,12 +937,13 @@ public class ChatActivity extends AppCompatActivity {
         FirebaseManager.getInstance().getUserRef(dmPartnerUid).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                dmPartnerUser = snapshot.getValue(User.class);
-                if (dmPartnerUser != null) {
-                    dmPartnerUser.uid = snapshot.getKey();
-                    headerAvatar.setUser(dmPartnerUser.getDisplayNameOrNick(), dmPartnerUser.getEffectiveAvatar(), dmPartnerUser.online);
-                }
-                updateSubtitleStatus();
+                try {
+                    dmPartnerUser = User.fromSnapshot(snapshot);
+                    if (dmPartnerUser != null) {
+                        headerAvatar.setUser(dmPartnerUser.getDisplayNameOrNick(), dmPartnerUser.getEffectiveAvatar(), dmPartnerUser.online);
+                    }
+                    updateSubtitleStatus();
+                } catch (Exception ignored) {}
             }
 
             @Override
@@ -907,9 +1018,11 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        adapter.stopAudioPlayback();
-        cancelAudioRecording();
-        tickerHandler.removeCallbacks(tickerRunnable);
-        FirebaseManager.getInstance().setTyping(chat.id, chat.isGroup(), false);
+        try {
+            adapter.stopAudioPlayback();
+            cancelAudioRecording();
+            tickerHandler.removeCallbacks(tickerRunnable);
+            FirebaseManager.getInstance().setTyping(chat.id, chat.isGroup(), false);
+        } catch (Exception ignored) {}
     }
 }
