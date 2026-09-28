@@ -11,6 +11,7 @@ import com.nonsensechat.app.data.FirebaseManager;
 import com.nonsensechat.app.model.Chat;
 import com.nonsensechat.app.model.User;
 import com.nonsensechat.app.ui.custom.AvatarView;
+import com.nonsensechat.app.utils.MessageFormatter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -53,19 +54,26 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatVi
         String avatar = MainActivity.getResolvedChatAvatar(chat, myUid);
         boolean isOnline = false;
 
-        if ("dm".equalsIgnoreCase(chat.type)) {
+        if (chat.isFav()) {
+            holder.chatAvatar.setFavMode();
+        } else if ("dm".equalsIgnoreCase(chat.type)) {
             String otherUid = chat.getOtherMemberUid(myUid);
             User partner = FirebaseManager.getInstance().getCachedUser(otherUid);
             if (partner != null) isOnline = partner.online;
+            holder.chatAvatar.setUser(title, avatar, isOnline);
+        } else {
+            holder.chatAvatar.setUser(title, avatar, false);
         }
 
         holder.tvChatTitle.setText(title);
         
-        String lastMsg = chat.getLastMessageText();
+        String rawLastMsg = chat.getLastMessageText();
+        String cleanLastMsg = MessageFormatter.stripHtmlForPreview(rawLastMsg);
+
         if (chat.lastMsgUid != null && chat.lastMsgUid.equals(myUid)) {
-            holder.tvLastMessage.setText("Вы: " + lastMsg);
+            holder.tvLastMessage.setText("Вы: " + cleanLastMsg);
         } else {
-            holder.tvLastMessage.setText(lastMsg);
+            holder.tvLastMessage.setText(cleanLastMsg);
         }
 
         long time = chat.getLastMessageTimestamp();
@@ -75,7 +83,6 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatVi
             holder.tvChatTime.setText("");
         }
 
-        holder.chatAvatar.setUser(title, avatar, isOnline);
         holder.itemView.setOnClickListener(v -> listener.onChatClick(chat));
     }
 

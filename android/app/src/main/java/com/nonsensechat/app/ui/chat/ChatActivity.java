@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -54,6 +55,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_chat);
 
         chat = (Chat) getIntent().getSerializableExtra("chat");
@@ -65,7 +67,7 @@ public class ChatActivity extends AppCompatActivity {
         String myUid = FirebaseManager.getInstance().getCurrentUid();
         dmPartnerUid = chat.getOtherMemberUid(myUid);
 
-        // Window Insets Handling (Status bar top padding & Navigation bar bottom padding)
+        // Window Insets: Top pad for status bar, bottom pad for gesture bar / keyboard IME
         View chatRoot = findViewById(R.id.chatRoot);
         View chatHeader = findViewById(R.id.chatHeader);
         View bottomBar = findViewById(R.id.bottomBar);
@@ -98,13 +100,17 @@ public class ChatActivity extends AppCompatActivity {
         String avatar = MainActivity.getResolvedChatAvatar(chat, myUid);
 
         tvHeaderTitle.setText(title);
-        headerAvatar.setUser(title, avatar, false);
+        if (chat.isFav()) {
+            headerAvatar.setFavMode();
+        } else {
+            headerAvatar.setUser(title, avatar, false);
+        }
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         rvMessages.setLayoutManager(layoutManager);
 
-        adapter = new MessageAdapter(this, (message, optionIndex) -> {
+        adapter = new MessageAdapter(this, chat, (message, optionIndex) -> {
             FirebaseManager.getInstance().votePoll(chat.id, message.id, optionIndex, message.poll != null && message.poll.multiple);
         });
         rvMessages.setAdapter(adapter);
@@ -156,7 +162,6 @@ public class ChatActivity extends AppCompatActivity {
         FirebaseManager.getInstance().sendMessage(chat.id, msg, null);
     }
 
-    // ⚠️ CRITICAL FIX: Load from /messages/{chatId} with initial population & realtime updates
     private void loadMessages() {
         FirebaseManager.getInstance().getMessagesRef(chat.id).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -190,7 +195,7 @@ public class ChatActivity extends AppCompatActivity {
             public void onChildAdded(@NonNull DataSnapshot snapshot, String previousChildName) {
                 String key = snapshot.getKey();
                 for (Message m : messages) {
-                    if (m.id != null && m.id.equals(key)) return; // already added
+                    if (m.id != null && m.id.equals(key)) return;
                 }
                 Message m = snapshot.getValue(Message.class);
                 if (m != null) {
@@ -225,15 +230,15 @@ public class ChatActivity extends AppCompatActivity {
         });
     }
 
-    // ⚠️ CRITICAL FIX: Ghost Typing Fix with 4.5s TTL & Ticker
     private void setupTypingAndPresence() {
         if (chat.isGroup()) {
             listenGroupTyping();
         } else if (dmPartnerUid != null) {
             listenDmPartnerPresence();
+        } else {
+            tvHeaderSubtitle.setText(chat.isFav() ? "сохранённые сообщения" : "в сети");
         }
 
-        // Periodic ticker every 2.5s to clear expired typing indicators
         tickerRunnable = new Runnable() {
             @Override
             public void run() {
@@ -307,7 +312,7 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void updateSubtitleStatus() {
-        if (chat.isGroup()) return; // handled by group listener
+        if (chat.isGroup() || chat.isFav()) return;
 
         if (dmPartnerUser == null) {
             tvHeaderSubtitle.setText("в сети");
@@ -355,7 +360,7 @@ public class ChatActivity extends AppCompatActivity {
     private void createPollDialog() {
         final EditText inputQuestion = new EditText(this);
         inputQuestion.setHint("Вопрос опроса");
-        inputQuestion.setPadding(32, 24, 32, 24);
+        inputQuestion.setPadding(36, 28, 36, 28);
         new AlertDialog.Builder(this)
             .setTitle(R.string.create_poll_title)
             .setView(inputQuestion)

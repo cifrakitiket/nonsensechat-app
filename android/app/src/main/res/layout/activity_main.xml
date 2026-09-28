@@ -13,7 +13,7 @@
         android:background="@color/bg_main"
         app:elevation="0dp">
 
-        <!-- Top Header Bar (padded for status bar dynamically) -->
+        <!-- Top Header Bar -->
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/mainToolbar"
             android:layout_width="match_parent"
@@ -26,7 +26,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
-                <!-- Avatar with online dot -->
+                <!-- Profile Avatar -->
                 <com.nonsensechat.app.ui.custom.AvatarView
                     android:id="@+id/btnProfileAvatar"
                     android:layout_width="38dp"
@@ -35,7 +35,7 @@
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent" />
 
-                <!-- Logo / App Name -->
+                <!-- Logo / App Name: Full Width, No Truncation -->
                 <TextView
                     android:id="@+id/mainTitle"
                     android:layout_width="0dp"
@@ -44,7 +44,7 @@
                     android:layout_marginEnd="8dp"
                     android:text="@string/app_name"
                     android:textColor="@color/text_primary"
-                    android:textSize="19sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
                     android:ellipsize="end"
                     android:maxLines="1"
@@ -71,22 +71,9 @@
                     android:layout_height="36dp"
                     android:layout_marginStart="4dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:padding="7dp"
+                    android:padding="6dp"
                     android:src="@drawable/ic_settings_gear"
                     app:tint="@color/text_secondary"
-                    app:layout_constraintEnd_toStartOf="@+id/btnNewChat"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent" />
-
-                <ImageView
-                    android:id="@+id/btnNewChat"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_marginStart="4dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:padding="6dp"
-                    android:src="@drawable/ic_add"
-                    app:tint="@color/accent_green"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent" />
@@ -116,11 +103,12 @@
 
         </FrameLayout>
 
-        <!-- Folders Tab Strip -->
+        <!-- Folders Tab Strip (Optimized & Non-clipping) -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="46dp"
             android:paddingHorizontal="12dp"
+            android:overScrollMode="never"
             android:scrollbars="none">
 
             <LinearLayout
@@ -140,6 +128,7 @@
                     android:paddingHorizontal="14dp">
 
                     <ImageView
+                        android:id="@+id/ivTabAll"
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:layout_marginEnd="6dp"
@@ -167,6 +156,7 @@
                     android:paddingHorizontal="14dp">
 
                     <ImageView
+                        android:id="@+id/ivTabDirect"
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:layout_marginEnd="6dp"
@@ -193,6 +183,7 @@
                     android:paddingHorizontal="14dp">
 
                     <ImageView
+                        android:id="@+id/ivTabGroups"
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:layout_marginEnd="6dp"
@@ -219,6 +210,7 @@
                     android:paddingHorizontal="14dp">
 
                     <ImageView
+                        android:id="@+id/ivTabChannels"
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:layout_marginEnd="6dp"
@@ -261,7 +253,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingBottom="80dp" />
+                android:paddingBottom="96dp" />
 
             <!-- Empty State -->
             <LinearLayout
@@ -304,15 +296,18 @@
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- FAB for quick new chat -->
+    <!-- Floating Action Button (Clean Elevation & Inset) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabNewChat"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="24dp"
-        android:backgroundTint="@color/accent_green"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        app:backgroundTint="@color/accent_green"
+        app:fabSize="normal"
+        app:elevation="6dp"
+        app:borderWidth="0dp"
         android:src="@drawable/ic_add"
         app:tint="#080C14" />
 

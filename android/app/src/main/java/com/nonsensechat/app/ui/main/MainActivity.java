@@ -14,12 +14,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.ValueEventListener;
@@ -43,30 +46,40 @@ public class MainActivity extends AppCompatActivity {
     private View emptyStateView, searchContainer;
     private EditText etSearchChats;
     private AvatarView btnProfileAvatar;
+    private FloatingActionButton fabNewChat;
     private final List<Chat> allChats = new ArrayList<>();
     private String currentTab = "all";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
 
-        // Responsive Window Insets (Status bar & Navigation bar)
         View mainCoord = findViewById(R.id.mainCoordinator);
         View appBar = findViewById(R.id.appBarLayout);
-        ViewCompat.setOnApplyWindowInsetsListener(mainCoord, (v, insets) -> {
-            Insets sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            appBar.setPadding(0, sysBars.top, 0, 0);
-            v.setPadding(sysBars.left, 0, sysBars.right, 0);
-            return insets;
-        });
-
+        fabNewChat = findViewById(R.id.fabNewChat);
         rvChats = findViewById(R.id.rvChats);
         swipeRefresh = findViewById(R.id.swipeRefresh);
         emptyStateView = findViewById(R.id.emptyStateView);
         searchContainer = findViewById(R.id.searchContainer);
         etSearchChats = findViewById(R.id.etSearchChats);
         btnProfileAvatar = findViewById(R.id.btnProfileAvatar);
+
+        // Precise Window Insets: Top pad for status bar, FAB & list pad for navigation bar
+        ViewCompat.setOnApplyWindowInsetsListener(mainCoord, (v, insets) -> {
+            Insets sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            appBar.setPadding(0, sysBars.top, 0, 0);
+
+            // Position FAB 16dp above system gesture bar
+            CoordinatorLayout.LayoutParams fabLp = (CoordinatorLayout.LayoutParams) fabNewChat.getLayoutParams();
+            fabLp.bottomMargin = sysBars.bottom + dpToPx(16);
+            fabNewChat.setLayoutParams(fabLp);
+
+            // Padding for last chat item
+            rvChats.setPadding(0, 0, 0, sysBars.bottom + dpToPx(88));
+            return insets;
+        });
 
         rvChats.setLayoutManager(new LinearLayoutManager(this));
         adapter = new ChatListAdapter(chat -> {
@@ -88,9 +101,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.btnSettings).setOnClickListener(v -> showProfileDialog());
-        findViewById(R.id.btnNewChat).setOnClickListener(v -> showNewChatDialog());
-        findViewById(R.id.fabNewChat).setOnClickListener(v -> showNewChatDialog());
-        btnProfileAvatar.setOnClickListener(v -> showProfileDialog());
+        findViewById(R.id.btnProfileAvatar).setOnClickListener(v -> showProfileDialog());
+        fabNewChat.setOnClickListener(v -> showNewChatDialog());
 
         swipeRefresh.setOnRefreshListener(this::loadChats);
     }
@@ -106,16 +118,16 @@ public class MainActivity extends AppCompatActivity {
             resetTabPills();
             if (id == R.id.tabAll) {
                 currentTab = "all";
-                highlightTab(tabAll, R.id.tvTabAll);
+                highlightTab(tabAll, R.id.tvTabAll, R.id.ivTabAll);
             } else if (id == R.id.tabDirect) {
                 currentTab = "dm";
-                highlightTab(tabDirect, R.id.tvTabDirect);
+                highlightTab(tabDirect, R.id.tvTabDirect, R.id.ivTabDirect);
             } else if (id == R.id.tabGroups) {
                 currentTab = "group";
-                highlightTab(tabGroups, R.id.tvTabGroups);
+                highlightTab(tabGroups, R.id.tvTabGroups, R.id.ivTabGroups);
             } else if (id == R.id.tabChannels) {
                 currentTab = "channel";
-                highlightTab(tabChannels, R.id.tvTabChannels);
+                highlightTab(tabChannels, R.id.tvTabChannels, R.id.ivTabChannels);
             }
             filterChats();
         };
@@ -129,20 +141,26 @@ public class MainActivity extends AppCompatActivity {
     private void resetTabPills() {
         int[] layoutIds = {R.id.tabAll, R.id.tabDirect, R.id.tabGroups, R.id.tabChannels};
         int[] textIds = {R.id.tvTabAll, R.id.tvTabDirect, R.id.tvTabGroups, R.id.tvTabChannels};
+        int[] iconIds = {R.id.ivTabAll, R.id.ivTabDirect, R.id.ivTabGroups, R.id.ivTabChannels};
+
         for (int i = 0; i < layoutIds.length; i++) {
             LinearLayout l = findViewById(layoutIds[i]);
             TextView t = findViewById(textIds[i]);
+            ImageView iv = findViewById(iconIds[i]);
             l.setBackground(null);
             t.setTextColor(getColor(R.color.text_secondary));
             t.setTypeface(null, android.graphics.Typeface.NORMAL);
+            iv.setColorFilter(getColor(R.color.text_secondary));
         }
     }
 
-    private void highlightTab(LinearLayout layout, int textId) {
+    private void highlightTab(LinearLayout layout, int textId, int iconId) {
         layout.setBackgroundResource(R.drawable.bg_primary_button);
         TextView t = layout.findViewById(textId);
         t.setTextColor(Color.parseColor("#080C14"));
         t.setTypeface(null, android.graphics.Typeface.BOLD);
+        ImageView iv = layout.findViewById(iconId);
+        iv.setColorFilter(Color.parseColor("#080C14"));
     }
 
     private void setupSearch() {
@@ -277,7 +295,7 @@ public class MainActivity extends AppCompatActivity {
     private void showNewChatDialog() {
         final EditText input = new EditText(this);
         input.setHint("Название группы или никнейм");
-        input.setPadding(32, 24, 32, 24);
+        input.setPadding(36, 28, 36, 28);
         new AlertDialog.Builder(this)
             .setTitle(R.string.new_chat)
             .setView(input)
@@ -327,5 +345,9 @@ public class MainActivity extends AppCompatActivity {
             })
             .setNegativeButton("Закрыть", null)
             .show();
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 }
