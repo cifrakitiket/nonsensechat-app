@@ -617,7 +617,7 @@ ipcMain.handle('get-desktop-sources', async (_event, types) => {
 ipcMain.on('show-notification', (_event, data) => {
   if (!Notification.isSupported() || notificationMuted) return;
 
-  const title = typeof data === 'string' ? data : (data.title || 'Беспонтовый Чат');
+  const title = typeof data === 'string' ? data : (data.title || 'NonsenseChat');
   const body = typeof data === 'object' ? (data.body || '') : '';
   const chatId = typeof data === 'object' ? data.chatId : null;
   const silent = typeof data === 'object' ? Boolean(data.silent) : false;
@@ -675,7 +675,7 @@ ipcMain.on('flash-window', (_event, flag) => {
 ipcMain.on('set-unread-count', (_event, count) => {
   const n = Number(count) || 0;
   if (tray) {
-    tray.setToolTip(n > 0 ? `Беспонтовый Чат (${n} непрочитанных)` : 'Беспонтовый Чат');
+    tray.setToolTip(n > 0 ? `NonsenseChat (${n} непрочитанных)` : 'NonsenseChat');
   }
   if (mainWindow && process.platform === 'win32') {
     if (n > 0) {

@@ -2,7 +2,7 @@
 
   <img src="public/logo.png" alt="Nonsense Chat Logo" width="120" height="120" />
 
-  # Nonsense Chat (Беспонтовый Чат ™)
+  # Nonsense Chat (NonsenseChat ™)
 
   **Современный, быструщий и кроссплатформенный десктопный мессенджер**
 

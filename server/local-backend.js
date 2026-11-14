@@ -390,7 +390,7 @@ function createLocalBackend(options = {}) {
                 return_url: fallbackConfirmationUrl
               },
               capture: true,
-              description: description || ('Пополнение баланса (' + (pirozhki || 100) + ' пирожков) в Беспонтовом Чате'),
+              description: description || ('Пополнение баланса (' + (pirozhki || 100) + ' пирожков) в NonsenseChat'),
               metadata: { orderId, uid: uid || '', pirozhki: pirozhki || 100 }
             };
             const ykRes = await fetch('https://api.yookassa.ru/v3/payments', {

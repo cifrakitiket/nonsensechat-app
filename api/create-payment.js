@@ -38,7 +38,7 @@ module.exports = async function handler(req, res) {
         return_url: finalReturnUrl
       },
       capture: true,
-      description: description || ('Пополнение баланса (' + count + ' пирожков) в Беспонтовом Чате'),
+      description: description || ('Пополнение баланса (' + count + ' пирожков) в NonsenseChat'),
       metadata: {
         orderId,
         uid: uid || 'guest',

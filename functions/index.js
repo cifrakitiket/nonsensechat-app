@@ -89,7 +89,7 @@ exports.sendVerificationEmail = functions.https.onCall(async (data, context) => 
     const smtpUser = process.env.SMTP_USER || (functions.config().smtp && functions.config().smtp.user);
     const smtpPass = process.env.SMTP_PASS || (functions.config().smtp && functions.config().smtp.pass);
     const smtpPort = parseInt(process.env.SMTP_PORT || (functions.config().smtp && functions.config().smtp.port) || '465', 10);
-    const smtpFrom = process.env.SMTP_FROM || (functions.config().smtp && functions.config().smtp.from) || '"Беспонтовый Чат" <noreply@nonsensechat.ru>';
+    const smtpFrom = process.env.SMTP_FROM || (functions.config().smtp && functions.config().smtp.from) || '"NonsenseChat" <noreply@nonsensechat.ru>';
 
     if (smtpHost && smtpUser && smtpPass && nodemailer) {
       const transporter = nodemailer.createTransport({
@@ -106,13 +106,13 @@ exports.sendVerificationEmail = functions.https.onCall(async (data, context) => 
         html = fs.readFileSync(path.join(__dirname, 'email-verification-template.html'), 'utf8');
         html = html.replace(/%LINK%/g, link).replace(/%EMAIL%/g, email);
       } catch (fErr) {
-        html = `<p>Подтвердите ваш email в Беспонтовом Чате, перейдя по ссылке: <a href="${link}">${link}</a></p>`;
+        html = `<p>Подтвердите ваш email в NonsenseChat, перейдя по ссылке: <a href="${link}">${link}</a></p>`;
       }
 
       await transporter.sendMail({
         from: smtpFrom,
         to: email,
-        subject: '✨ Подтвердите адрес электронной почты | Беспонтовый Чат',
+        subject: '✨ Подтвердите адрес электронной почты | NonsenseChat',
         html: html
       });
 
@@ -179,7 +179,7 @@ exports.sendLoginOtp = functions.https.onCall(async (data, context) => {
     const smtpUser = process.env.SMTP_USER || (functions.config().smtp && functions.config().smtp.user);
     const smtpPass = process.env.SMTP_PASS || (functions.config().smtp && functions.config().smtp.pass);
     const smtpPort = parseInt(process.env.SMTP_PORT || (functions.config().smtp && functions.config().smtp.port) || '465', 10);
-    const smtpFrom = process.env.SMTP_FROM || (functions.config().smtp && functions.config().smtp.from) || '"Беспонтовый Чат" <noreply@nonsensechat.ru>';
+    const smtpFrom = process.env.SMTP_FROM || (functions.config().smtp && functions.config().smtp.from) || '"NonsenseChat" <noreply@nonsensechat.ru>';
 
     if (smtpHost && smtpUser && smtpPass && nodemailer) {
       const transporter = nodemailer.createTransport({
@@ -192,12 +192,12 @@ exports.sendLoginOtp = functions.https.onCall(async (data, context) => {
       await transporter.sendMail({
         from: smtpFrom,
         to: email,
-        subject: `🔐 Ваш одноразовый код для входа: ${code} | Беспонтовый Чат`,
+        subject: `🔐 Ваш одноразовый код для входа: ${code} | NonsenseChat`,
         html: `
           <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f1923;color:#e8f0f9;border-radius:16px;">
             <h2 style="margin:0 0 12px;color:#fff;font-size:22px;">Одноразовый код для входа</h2>
             <p style="font-size:14px;color:#8aabb8;line-height:1.5;margin-bottom:20px;">
-              Вы запросили вход в <b>Беспонтовый Чат</b> без пароля. Введите этот 6-значный код в окне приложения:
+              Вы запросили вход в <b>NonsenseChat</b> без пароля. Введите этот 6-значный код в окне приложения:
             </p>
             <div style="background:#1b2838;border:2px dashed #3b82f6;border-radius:12px;padding:16px;text-align:center;margin-bottom:20px;">
               <span style="font-size:32px;letter-spacing:6px;font-weight:700;color:#60a5fa;font-family:monospace;">${code}</span>
@@ -287,7 +287,7 @@ exports.sendPushOnMessage = functions.firestore
       if (!recipients.length) return;
 
       // 2. Load Sender profile
-      let senderName = msg.senderNick || 'Беспонтовый Чат';
+      let senderName = msg.senderNick || 'NonsenseChat';
       if (senderId) {
         try {
           const senderDoc = await admin.firestore().collection('users').doc(senderId).get();
@@ -414,7 +414,7 @@ exports.sendFcmNotification = functions.https.onCall(async (data, context) => {
     const recipients = members.filter(uid => uid && uid !== senderId);
     if (!recipients.length) return { success: true, count: 0 };
 
-    let senderName = 'Беспонтовый Чат';
+    let senderName = 'NonsenseChat';
     const senderDoc = await admin.firestore().collection('users').doc(senderId).get();
     if (senderDoc.exists) {
       const u = senderDoc.data();
@@ -479,7 +479,7 @@ exports.createYooKassaPayment = functions.https.onCall(async (data, context) => 
           return_url: fallbackConfirmationUrl
         },
         capture: true,
-        description: description || ('Пополнение баланса (' + (pirozhki || 100) + ' пирожков) в Беспонтовом Чате'),
+        description: description || ('Пополнение баланса (' + (pirozhki || 100) + ' пирожков) в NonsenseChat'),
         metadata: { orderId, uid, pirozhki: pirozhki || 100 }
       };
 

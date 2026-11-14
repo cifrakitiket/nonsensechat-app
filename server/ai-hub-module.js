@@ -1,4 +1,4 @@
-// AI Hub Module - CSS, HTML and JS logic for Беспонтовый Чат
+// AI Hub Module - CSS, HTML and JS logic for NonsenseChat
 const fs = require('fs');
 
 const AI_HUB_CSS = `
@@ -328,7 +328,7 @@ const AI_HUB_JS = `
         customUrl: 'http://localhost:11434/v1',
         customModel: 'llama3',
         customKey: '',
-        systemPrompt: 'Ты дружелюбный, умный и лаконичный ИИ-ассистент в Беспонтовом Чате. Отвечай структурированно, понятно и по делу.',
+        systemPrompt: 'Ты дружелюбный, умный и лаконичный ИИ-ассистент в NonsenseChat. Отвечай структурированно, понятно и по делу.',
         temperature: 0.7,
         historyLimit: 10
       };
@@ -722,7 +722,7 @@ const AI_HUB_JS = `
           messages = [{ role: 'user', content: userText }];
         }
 
-        const sysPrompt = s.systemPrompt || 'Ты полезный, умный и лаконичный ИИ-ассистент в Беспонтовом Чате.';
+        const sysPrompt = s.systemPrompt || 'Ты полезный, умный и лаконичный ИИ-ассистент в NonsenseChat.';
 
         let replyText = '';
         if (p === 'gemini') {
@@ -844,10 +844,10 @@ const AI_HUB_JS = `
           field.value = 'Отвечай строго по делу, кратко и максимально емко (1-3 предложения), без лишних вводных слов и воды.';
           break;
         case 'mate':
-          field.value = 'Ты забавный и остроумный собеседник Беспонтового Чата. Общайся легко, с юмором, дружелюбно и современно.';
+          field.value = 'Ты забавный и остроумный собеседник NonsenseChat. Общайся легко, с юмором, дружелюбно и современно.';
           break;
         default:
-          field.value = 'Ты дружелюбный, умный и лаконичный ИИ-ассистент в Беспонтовом Чате. Отвечай структурированно, понятно и по делу.';
+          field.value = 'Ты дружелюбный, умный и лаконичный ИИ-ассистент в NonsenseChat. Отвечай структурированно, понятно и по делу.';
           break;
       }
     }

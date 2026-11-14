@@ -13,7 +13,7 @@ self.addEventListener('activate', (event) => {
 
 /* ── Входящий официальный Web Push / FCM (в фоновом или закрытом браузере) ── */
 self.addEventListener('push', (event) => {
-  let title = 'Беспонтовый Чат';
+  let title = 'NonsenseChat';
   let body = 'Новое сообщение';
   let clickUrl = '/';
   let chatId = '';
@@ -102,7 +102,7 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('message', (event) => {
   if (!event.data) return;
   if (event.data.type === 'show-notification') {
-    const title = event.data.title || 'Беспонтовый Чат';
+    const title = event.data.title || 'NonsenseChat';
     const opts = event.data.options || {};
     self.registration.showNotification(title, opts).catch(() => {});
   }
