@@ -473,7 +473,7 @@ exports.createYooKassaPayment = functions.https.onCall(async (data, context) => 
   if (shopId && secretKey) {
     try {
       const ykPayload = {
-        amount: { value: parseFloat(amount || 40).toFixed(2), currency: 'RUB' },
+        amount: { value: parseFloat(amount || 42).toFixed(2), currency: 'RUB' },
         confirmation: {
           type: 'redirect',
           return_url: fallbackConfirmationUrl

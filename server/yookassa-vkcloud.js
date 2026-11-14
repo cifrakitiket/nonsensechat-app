@@ -28,7 +28,7 @@ async function handleCreatePayment(body) {
   const { amount, pirozhki, uid, returnUrl, description } = body || {};
   const orderId = 'bch_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex');
   const count = parseInt(pirozhki, 10) || 100;
-  const valRub = parseFloat(amount || (count * 0.4)).toFixed(2);
+  const valRub = parseFloat(amount || (count * 0.42)).toFixed(2);
 
   const baseReturn = returnUrl || 'https://nonsensechat.ru';
   const sep = baseReturn.includes('?') ? '&' : '?';

@@ -34508,7 +34508,7 @@ document.addEventListener('click', function(e) {
         2.3. Пирожки не подлежат обналичиванию или обратному выводу в фиатные средства.</p>
 
         <p><b>3. ТАРИФЫ И СТОИМОСТЬ</b><br>
-        3.1. <b>Базовый курс: 1 (один) Пирожок = 0.40 рубля РФ (40 копеек).</b><br>
+        3.1. <b>Базовый курс: 1 (один) Пирожок = 0.42 рубля РФ (42 копейки).</b><br>
         3.2. Доступные пакеты (все цены в рублях РФ):<br>
         • <b>Мини</b> (50 пирожков) — <b>20.00 ₽</b><br>
         • <b>Стандарт</b> (100 пирожков) — <b>40.00 ₽</b> (Хит)<br>
@@ -34516,7 +34516,7 @@ document.addEventListener('click', function(e) {
         • <b>Плюс</b> (500 пирожков + 25 бонус) — <b>200.00 ₽</b><br>
         • <b>Макс</b> (1000 пирожков + 100 бонус) — <b>400.00 ₽</b><br>
         • <b>Ультра</b> (2500 пирожков + 350 бонус) — <b>1 000.00 ₽</b><br>
-        • Произвольное количество: от 25 шт. (10.00 ₽) с расчетом по курсу 1 шт. = 0.40 ₽.</p>
+        • Произвольное количество: от 25 шт. (10.00 ₽) с расчетом по курсу 1 шт. = 0.42 ₽.</p>
 
         <p><b>4. ОПЛАТА И МОМЕНТАЛЬНАЯ ДОСТАВКА</b><br>
         4.1. Оплата производится безналичным расчетом через платежный сервис <b>ЮKassa (ООО НКО «ЮМани»)</b> картами <b>МИР, Visa, MasterCard</b>, через <b>СБП</b>, SberPay, T-Pay и электронный кошелек ЮMoney.<br>
@@ -34721,11 +34721,11 @@ document.addEventListener('click', function(e) {
       const storeBalEl = document.getElementById('storeModalBalance');
       if (storeBalEl) storeBalEl.textContent = c.toLocaleString('ru-RU');
       const storeRubEl = document.getElementById('storeModalRubEquivalent');
-      if (storeRubEl) storeRubEl.textContent = (c * 0.4).toFixed(2);
+      if (storeRubEl) storeRubEl.textContent = (c * 0.42).toFixed(2);
       const setBalEl = document.getElementById('settingsPirozhkiBalance');
       if (setBalEl) setBalEl.textContent = c.toLocaleString('ru-RU');
       const setRubEl = document.getElementById('settingsPirozhkiRub');
-      if (setRubEl) setRubEl.textContent = (c * 0.4).toFixed(2);
+      if (setRubEl) setRubEl.textContent = (c * 0.42).toFixed(2);
     }
     window.updateUserPirozhkiUI = updateUserPirozhkiUI;
 
@@ -34752,7 +34752,7 @@ document.addEventListener('click', function(e) {
       if (!input) return;
       let val = parseInt(input.value, 10) || 0;
       if (val < 0) val = 0;
-      const price = parseFloat((val * 0.4).toFixed(2));
+      const price = parseFloat((val * 0.42).toFixed(2));
       _selectedPirozhkiPack = { count: val, priceRub: price };
       document.querySelectorAll('.pirozhki-pack-card').forEach(c => {
         c.classList.toggle('active', parseInt(c.dataset.count, 10) === val);
@@ -35249,7 +35249,7 @@ document.addEventListener('click', function(e) {
           </div>
           <div>
             <div style="font-size:17px;font-weight:800;color:var(--text,#fff);">Магазин Пирожков</div>
-            <div style="font-size:12px;color:var(--text2,#94a3b8);">Внутренняя валюта • <b>1 пирожок = 0.40 ₽</b></div>
+            <div style="font-size:12px;color:var(--text2,#94a3b8);">Внутренняя валюта • <b>1 пирожок = 0.42 ₽</b></div>
           </div>
         </div>
         <button type="button" class="notif-btn secondary" style="width:34px;height:34px;padding:0;min-width:unset;border-radius:50%;display:flex;align-items:center;justify-content:center;" onclick="closeModal('modal-pirozhki-store')">✕</button>
@@ -35273,53 +35273,53 @@ document.addEventListener('click', function(e) {
       <!-- Quick Packs Grid -->
       <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>ВЫБЕРИТЕ ПАКЕТ ПИРОЖКОВ:</span>
-        <span style="color:#f59e0b;font-size:11px;">1 шт. = 0.40 ₽</span>
+        <span style="color:#f59e0b;font-size:11px;">1 шт. = 0.42 ₽</span>
       </div>
 
       <div class="pirozhki-pack-grid" id="pirozhkiPackGrid">
-        <div class="pirozhki-pack-card" data-count="50" data-price="20" onclick="selectPirozhkiPack(50, 20, this)">
+        <div class="pirozhki-pack-card" data-count="50" data-price="21" onclick="selectPirozhkiPack(50, 21, this)">
           <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
           <div class="pirozhki-pack-count">50 шт.</div>
-          <div class="pirozhki-pack-price">20.00 ₽</div>
-          <div class="pirozhki-pack-unit">0.40 ₽/шт</div>
+          <div class="pirozhki-pack-price">21.00 ₽</div>
+          <div class="pirozhki-pack-unit">0.42 ₽/шт</div>
         </div>
 
-        <div class="pirozhki-pack-card active" data-count="100" data-price="40" onclick="selectPirozhkiPack(100, 40, this)">
+        <div class="pirozhki-pack-card active" data-count="100" data-price="42" onclick="selectPirozhkiPack(100, 42, this)">
           <div class="pirozhki-pack-badge hot">ХИТ 🔥</div>
           <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
           <div class="pirozhki-pack-count">100 шт.</div>
-          <div class="pirozhki-pack-price">40.00 ₽</div>
-          <div class="pirozhki-pack-unit">0.40 ₽/шт</div>
+          <div class="pirozhki-pack-price">42.00 ₽</div>
+          <div class="pirozhki-pack-unit">0.42 ₽/шт</div>
         </div>
 
-        <div class="pirozhki-pack-card" data-count="250" data-price="100" onclick="selectPirozhkiPack(250, 100, this)">
+        <div class="pirozhki-pack-card" data-count="250" data-price="105" onclick="selectPirozhkiPack(250, 105, this)">
           <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
           <div class="pirozhki-pack-count">250 шт.</div>
-          <div class="pirozhki-pack-price">100.00 ₽</div>
-          <div class="pirozhki-pack-unit">0.40 ₽/шт</div>
+          <div class="pirozhki-pack-price">105.00 ₽</div>
+          <div class="pirozhki-pack-unit">0.42 ₽/шт</div>
         </div>
 
-        <div class="pirozhki-pack-card" data-count="500" data-price="200" onclick="selectPirozhkiPack(500, 200, this)">
+        <div class="pirozhki-pack-card" data-count="500" data-price="210" onclick="selectPirozhkiPack(500, 210, this)">
           <div class="pirozhki-pack-badge">+25 бонус</div>
           <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
           <div class="pirozhki-pack-count">500 шт.</div>
-          <div class="pirozhki-pack-price">200.00 ₽</div>
+          <div class="pirozhki-pack-price">210.00 ₽</div>
           <div class="pirozhki-pack-unit">+25 шт. подарок</div>
         </div>
 
-        <div class="pirozhki-pack-card" data-count="1000" data-price="400" onclick="selectPirozhkiPack(1000, 400, this)">
+        <div class="pirozhki-pack-card" data-count="1000" data-price="420" onclick="selectPirozhkiPack(1000, 420, this)">
           <div class="pirozhki-pack-badge hot">ВЫГОДА 🎁</div>
           <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
           <div class="pirozhki-pack-count">1 000 шт.</div>
-          <div class="pirozhki-pack-price">400.00 ₽</div>
+          <div class="pirozhki-pack-price">420.00 ₽</div>
           <div class="pirozhki-pack-unit">+100 шт. подарок</div>
         </div>
 
-        <div class="pirozhki-pack-card" data-count="2500" data-price="1000" onclick="selectPirozhkiPack(2500, 1000, this)">
+        <div class="pirozhki-pack-card" data-count="2500" data-price="1050" onclick="selectPirozhkiPack(2500, 1050, this)">
           <div class="pirozhki-pack-badge">VIP 🚀</div>
           <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
           <div class="pirozhki-pack-count">2 500 шт.</div>
-          <div class="pirozhki-pack-price">1 000.00 ₽</div>
+          <div class="pirozhki-pack-price">1 050.00 ₽</div>
           <div class="pirozhki-pack-unit">+350 шт. подарок</div>
         </div>
       </div>
@@ -35328,7 +35328,7 @@ document.addEventListener('click', function(e) {
       <div class="pirozhki-calc-box">
         <div>
           <div style="font-size:12.5px;font-weight:700;">Свое количество пирожков:</div>
-          <div style="font-size:11px;color:var(--text2,#94a3b8);">Курс: 0.40 ₽ за 1 шт. (мин. 25 шт. / 10 ₽)</div>
+          <div style="font-size:11px;color:var(--text2,#94a3b8);">Курс: 0.42 ₽ за 1 шт. (мин. 25 шт. / 10.50 ₽)</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <input type="number" id="customPirozhkiInput" class="pirozhki-calc-input" min="25" max="50000" step="5" value="100" oninput="handleCustomPirozhkiInput()">
