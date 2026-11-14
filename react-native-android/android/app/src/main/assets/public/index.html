@@ -34832,7 +34832,7 @@ document.addEventListener('click', function(e) {
       try {
         let checkoutData = null;
         try {
-          const resp = await fetch('/api/payment/yookassa/create', {
+          const resp = await fetch('https://nonsensechat-web-5vve.vercel.app/api/create-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -154,7 +154,266 @@
       src: url('/fonts/oswald-latin-700-normal.woff2') format('woff2');
       unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
     }
-  </style>
+  
+    /* ══════════════════════════════════════════════════════════════
+       PIROZHKI CURRENCY & YOOKASSA PAYMENTS STYLING
+       ══════════════════════════════════════════════════════════════ */
+    .pirozhok-coin-icon {
+      width: 19px;
+      height: 19px;
+      vertical-align: -3.5px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      display: inline-block;
+    }
+    .pirozhok-coin-icon.lg {
+      width: 24px;
+      height: 24px;
+      vertical-align: -5px;
+    }
+    .pirozhok-coin-icon.xl {
+      width: 34px;
+      height: 34px;
+      vertical-align: middle;
+    }
+    .pirozhok-coin-icon.pack {
+      width: 30px;
+      height: 30px;
+      margin-bottom: 4px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+    }
+    .pirozhki-balance-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(217, 119, 6, 0.25));
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 16px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #fbbf24;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+      margin-top: 4px;
+    }
+    .pirozhki-balance-badge:hover {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(217, 119, 6, 0.4));
+      border-color: #fbbf24;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+    }
+    .pirozhki-add-btn {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: #f59e0b;
+      color: #0f172a;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1;
+      margin-left: 2px;
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.15s;
+    }
+    .pirozhki-balance-badge:hover .pirozhki-add-btn {
+      transform: scale(1.15);
+      background: #fbbf24;
+    }
+    .action-btn.pirozhki-btn {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(217, 119, 6, 0.25));
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+      font-weight: 700;
+    }
+    .action-btn.pirozhki-btn:hover {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.45));
+      border-color: #fbbf24;
+    }
+
+    /* Pirozhki Store Modal */
+    .pirozhki-modal-box {
+      max-width: 620px;
+      width: 95%;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      box-sizing: border-box;
+      background: var(--bg2, #18222d);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      border-radius: 18px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      color: var(--text, #e2e8f0);
+    }
+    .pirozhki-store-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      padding-bottom: 14px;
+    }
+    .pirozhki-balance-card {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.18));
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .pirozhki-pack-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 520px) {
+      .pirozhki-pack-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .pirozhki-pack-card {
+      background: var(--bg, #0f172a);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      border-radius: 12px;
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+    }
+    .pirozhki-pack-card:hover {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.08);
+      transform: translateY(-2px);
+    }
+    .pirozhki-pack-card.active {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.15);
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4);
+    }
+    .pirozhki-pack-badge {
+      position: absolute;
+      top: -8px;
+      right: 6px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .pirozhki-pack-badge.hot {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+    }
+    .pirozhki-pack-count {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fbbf24;
+      margin-top: 4px;
+    }
+    .pirozhki-pack-price {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text, #fff);
+      margin-top: 4px;
+    }
+    .pirozhki-pack-unit {
+      font-size: 10.5px;
+      color: var(--text2, #94a3b8);
+      margin-top: 2px;
+    }
+    .pirozhki-calc-box {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .pirozhki-calc-input {
+      background: var(--bg, #0f172a);
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fbbf24;
+      font-size: 15px;
+      font-weight: 700;
+      width: 110px;
+      text-align: center;
+    }
+    .pirozhki-calc-input:focus {
+      outline: none;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+    }
+    .yookassa-logos-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+      margin-bottom: 14px;
+    }
+    .yk-pill {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+    .yk-pill.yk-main { background: #8940fe; color: #fff; }
+    .yk-pill.yk-mir { background: #0b8043; color: #fff; }
+    .yk-pill.yk-sbp { background: #132448; color: #ffb800; border: 1px solid rgba(255,255,255,0.2); }
+    .yk-pill.yk-sber { background: #21a038; color: #fff; }
+    .yk-pill.yk-tpay { background: #ffdd2d; color: #1e293b; }
+    .yk-pill.yk-card { background: #ffffff; color: #0f172a; }
+    .auth-legal-footer {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      font-size: 11.5px;
+      color: var(--text2, #94a3b8);
+      text-align: center;
+      line-height: 1.5;
+    }
+    .auth-legal-footer a {
+      color: var(--text2, #94a3b8);
+      text-decoration: underline;
+      margin: 0 4px;
+      cursor: pointer;
+    }
+    .auth-legal-footer a:hover {
+      color: #f59e0b;
+    }
+
+</style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     crossorigin="anonymous">
   <style>
@@ -11319,6 +11578,24 @@
           <i class="fa-solid fa-envelope-open-text"></i>
           <span>Войти по одноразовому коду из почты</span>
         </div>
+
+        <!-- YooKassa & Legal Compliance Footer -->
+        <div class="auth-legal-footer" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border,rgba(255,255,255,0.08));font-size:11.5px;color:var(--text2,#8a9aa8);text-align:center;line-height:1.6;">
+          <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;">
+            <a onclick="openLegalModal('offer')" style="color:var(--text2,#8a9aa8);text-decoration:underline;cursor:pointer;">Оферта</a> • 
+            <a onclick="openLegalModal('payment')" style="color:var(--text2,#8a9aa8);text-decoration:underline;cursor:pointer;">Оплата и возврат</a> • 
+            <a onclick="openLegalModal('requisites')" style="color:var(--text2,#8a9aa8);text-decoration:underline;cursor:pointer;">Реквизиты</a> • 
+            <a onclick="openLegalModal('privacy')" style="color:var(--text2,#8a9aa8);text-decoration:underline;cursor:pointer;">152-ФЗ</a>
+          </div>
+          <div style="margin-top:6px;font-size:10.5px;opacity:0.75;letter-spacing:0.2px;">
+            Самозанятый Шилов Д. А. • ИНН 661910467964
+          </div>
+          <div style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px;opacity:0.8;">
+            <span class="yk-pill yk-main" style="transform:scale(0.85);"><i class="fa-solid fa-wallet"></i> ЮKassa</span>
+            <span class="yk-pill yk-mir" style="transform:scale(0.85);"><i class="fa-solid fa-credit-card"></i> МИР</span>
+            <span class="yk-pill yk-sbp" style="transform:scale(0.85);"><i class="fa-solid fa-bolt"></i> СБП</span>
+          </div>
+        </div>
       </div>
       <!-- FORGOT PASSWORD FORM -->
       <div class="auth-form hidden" id="forgotForm">
@@ -11360,11 +11637,35 @@
           </div>
         </div>
 
-        <!-- Шаг 2: Ввод 6-значного кода -->
+        <!-- Шаг 2: Ввод 6-значного кода и подтверждение по почте -->
         <div id="otpStep2" class="hidden">
           <div style="font-size:12.5px;color:var(--text2);margin-bottom:10px;line-height:1.4">
-            Код подтверждения отправлен на <b id="otpSentToText" style="color:var(--text)">email@example.com</b>. Введите 6 цифр из письма:
+            Письмо отправлено на <b id="otpSentToText" style="color:var(--text)">email@example.com</b>
           </div>
+
+          <div class="otp-notice-box" style="background:rgba(88,101,242,0.12);border:1px solid rgba(88,101,242,0.3);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.45;color:var(--text2);text-align:left">
+            <div style="font-weight:600;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:6px">
+              <i class="fa-solid fa-envelope-circle-check" style="color:#5865f2"></i> Письмо для входа отправлено!
+            </div>
+            <div>Нажмите кнопку <b>«Войти в Nonsense Chat»</b> внутри письма для мгновенной авторизации.</div>
+            <div style="margin-top:4px;color:#faa61a;font-size:11.5px">
+              <i class="fa-solid fa-triangle-exclamation" style="margin-right:3px"></i> Обязательно проверьте папку <b>«Спам»</b> или «Рассылки»!
+            </div>
+          </div>
+
+          <!-- Кнопка быстрого перехода в почту -->
+          <a class="auth-btn verify-openmail-btn" id="otpOpenMailBtn" href="https://mail.google.com" target="_blank" rel="noopener" style="display:none;margin-bottom:12px;justify-content:center;gap:8px;text-decoration:none">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span id="otpOpenMailText">Открыть почту</span>
+          </a>
+
+          <!-- Подсказка тестового кода для локального/быстрого режима -->
+          <div id="otpDevBadge" style="display:none;margin-bottom:12px;padding:8px 12px;background:rgba(250,166,26,0.12);border:1px dashed rgba(250,166,26,0.5);border-radius:8px;font-size:12px;color:var(--text);align-items:center;justify-content:space-between;cursor:pointer" onclick="autoFillOtpCode()" title="Нажмите для автоматического заполнения">
+            <span><i class="fa-solid fa-key" style="color:#faa61a;margin-right:6px"></i> Тестовый код: <b id="otpDevCodeVal" style="letter-spacing:2px;font-family:monospace;font-size:13px">123456</b></span>
+            <span style="font-size:11px;color:#faa61a;font-weight:600;text-decoration:underline">Вставить</span>
+          </div>
+
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Или введите 6 цифр кода:</div>
 
           <!-- 6 ячеек для ввода цифр -->
           <div class="otp-inputs-row" id="otpInputsRow">
@@ -11376,23 +11677,17 @@
             <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*">
           </div>
 
-          <button type="button" class="auth-btn" id="otpVerifyBtn" onclick="submitVerifyOtp()" style="margin-top:6px">
+          <button type="button" class="auth-btn" id="otpVerifyBtn" onclick="submitVerifyOtp()" style="margin-top:10px">
             <i class="fa-solid fa-right-to-bracket" style="margin-right:6px"></i> Войти в аккаунт
           </button>
 
-          <!-- Кнопка быстрого перехода в почту -->
-          <a class="auth-btn verify-openmail-btn" id="otpOpenMailBtn" href="https://mail.google.com" target="_blank" rel="noopener" style="display:none;margin-top:8px;margin-bottom:8px;">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            <span id="otpOpenMailText">Открыть почту</span>
-          </a>
-
           <!-- Повторная отправка -->
-          <div class="auth-toggle" id="otpResendBtn" onclick="resendOtpCode()" style="margin-top:8px">
-            <span id="otpResendText">Отправить код ещё раз</span>
+          <div class="auth-toggle" id="otpResendBtn" onclick="resendOtpCode()" style="margin-top:10px">
+            <span id="otpResendText">Отправить письмо ещё раз</span>
           </div>
 
           <div class="auth-toggle" onclick="backToOtpStep1()" style="margin-top:12px;font-size:12px;opacity:0.8">
-            Изменить логин / email
+            ← Изменить логин / email
           </div>
         </div>
       </div>
@@ -11504,7 +11799,14 @@
         </div>
         <div>
           <div class="my-nick" id="myNick">@loading</div>
-          <div class="my-sub" id="mySub" data-i18n="online">В сети</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="my-sub" id="mySub" data-i18n="online">В сети</div>
+            <div class="pirozhki-balance-badge" id="myPirozhkiBadge" onclick="event.stopPropagation(); openPirozhkiStore();" title="Баланс пирожков: нажмите для пополнения">
+              <img src="pirozhok.png" class="pirozhok-coin-icon" alt="Пирожок">
+              <span id="myPirozhkiCount">0</span>
+              <button type="button" class="pirozhki-add-btn" title="Купить пирожки">+</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="action-btns">
@@ -14177,8 +14479,8 @@
     };
 
     /* ── auth ── */
-    const auth = {
-      get currentUser() { return _fbAuth.currentUser; },
+    const authWrapper = {
+      get currentUser() { return _fbAuth ? _fbAuth.currentUser : null; },
       async createUserWithEmailAndPassword(email, pass) {
         return _fbAuth.createUserWithEmailAndPassword(email, pass);
       },
@@ -14193,8 +14495,46 @@
       },
       async sendPasswordResetEmail(email) {
         return _fbAuth.sendPasswordResetEmail(email);
+      },
+      async sendSignInLinkToEmail(email, actionCodeSettings) {
+        if (_fbAuth && typeof _fbAuth.sendSignInLinkToEmail === 'function') {
+          return _fbAuth.sendSignInLinkToEmail(email, actionCodeSettings);
+        }
+        throw new Error('Метод sendSignInLinkToEmail недоступен');
+      },
+      isSignInWithEmailLink(link) {
+        if (_fbAuth && typeof _fbAuth.isSignInWithEmailLink === 'function') {
+          return _fbAuth.isSignInWithEmailLink(link);
+        }
+        return false;
+      },
+      async signInWithEmailLink(email, link) {
+        if (_fbAuth && typeof _fbAuth.signInWithEmailLink === 'function') {
+          return _fbAuth.signInWithEmailLink(email, link);
+        }
+        throw new Error('Метод signInWithEmailLink недоступен');
+      },
+      async signInWithCustomToken(token) {
+        if (_fbAuth && typeof _fbAuth.signInWithCustomToken === 'function') {
+          return _fbAuth.signInWithCustomToken(token);
+        }
+        throw new Error('Метод signInWithCustomToken недоступен');
       }
     };
+
+    const auth = new Proxy(authWrapper, {
+      get(target, prop, receiver) {
+        if (prop in target) {
+          const val = target[prop];
+          return typeof val === 'function' ? val.bind(target) : val;
+        }
+        if (_fbAuth && prop in _fbAuth) {
+          const val = _fbAuth[prop];
+          return typeof val === 'function' ? val.bind(_fbAuth) : val;
+        }
+        return undefined;
+      }
+    });
 
     const _fbDatabase = Object.assign(() => _fbDb, {
       ServerValue: {
@@ -14285,6 +14625,7 @@
         lname: '',
         bday: '',
         phone: '',
+        pirozhki: Number((data && data.pirozhki) || 0),
 
         lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
         online: true
@@ -16346,6 +16687,18 @@
     }
 
     /* ═══ ONE-TIME CODE (OTP) LOGIN CONTROLLER ═══ */
+    function getAuthContinueUrl(query) {
+      let base = 'https://nonsensechattm-e5d18.web.app';
+      try {
+        if (typeof window !== 'undefined' && window.location && window.location.protocol && window.location.protocol.startsWith('http') && window.location.origin && !window.location.origin.includes('file:')) {
+          base = window.location.origin;
+        }
+      } catch (_) {}
+      const q = query ? (query.startsWith('?') ? query : '?' + query) : '';
+      return base.replace(/\/+$/, '') + (q ? ('/' + (q.startsWith('?') ? q : '?' + q)) : '/');
+    }
+    window.getAuthContinueUrl = getAuthContinueUrl;
+
     let _otpActiveEmail = '';
     let _otpCooldownTimer = null;
     let _otpCooldownSec = 0;
@@ -16557,7 +16910,7 @@
         // 3. Отправляем официальное письмо от Firebase (sendSignInLinkToEmail)
         try {
           const actionCodeSettings = {
-            url: window.location.origin + '/?emailSignIn=' + encodeURIComponent(email),
+            url: getAuthContinueUrl('?emailSignIn=' + encodeURIComponent(email)),
             handleCodeInApp: true
           };
           localStorage.setItem('emailForSignIn', email);
@@ -16590,6 +16943,12 @@
         // Показ уведомления для разработчика / в десктопе, если код сгенерирован
         if (_localOtpCode) {
           console.log('[Nonsense Chat OTP] Одноразовый код:', _localOtpCode);
+          const devBadge = document.getElementById('otpDevBadge');
+          const devCodeVal = document.getElementById('otpDevCodeVal');
+          if (devBadge && devCodeVal) {
+            devCodeVal.textContent = _localOtpCode;
+            devBadge.style.display = 'flex';
+          }
         }
 
         showToast('Код отправлен', 'Одноразовый код отправлен на почту ' + email, 'success');
@@ -16695,6 +17054,19 @@
       }
     }
     window.submitVerifyOtp = submitVerifyOtp;
+    function autoFillOtpCode() {
+      if (!_localOtpCode) return;
+      const digits = Array.from(document.querySelectorAll('.otp-digit'));
+      _localOtpCode.split('').forEach((num, idx) => {
+        if (digits[idx]) {
+          digits[idx].value = num;
+          digits[idx].classList.add('filled');
+        }
+      });
+      setTimeout(submitVerifyOtp, 150);
+    }
+    window.autoFillOtpCode = autoFillOtpCode;
+
 
     function startOtpCooldown(sec) {
       _otpCooldownSec = sec || 60;
@@ -16734,6 +17106,12 @@
       try {
         if (auth.isSignInWithEmailLink(window.location.href)) {
           let email = localStorage.getItem('emailForSignIn');
+          if (!email) {
+            try {
+              const urlParams = new URLSearchParams(window.location.search);
+              if (urlParams.get('emailSignIn')) email = decodeURIComponent(urlParams.get('emailSignIn'));
+            } catch (_) {}
+          }
           if (!email) {
             email = window.prompt('Пожалуйста, введите ваш email для подтверждения входа по ссылке:');
           }
@@ -17245,7 +17623,7 @@
       if (!user) user = _fbAuth.currentUser;
       if (!user) return false;
       const actionCodeSettings = {
-        url: window.location.origin + '/?emailVerified=true',
+        url: getAuthContinueUrl('?emailVerified=true'),
         handleCodeInApp: false
       };
       
@@ -17461,6 +17839,9 @@
       const avaEl = document.getElementById('myAva');
       if (nickEl) nickEl.innerHTML = '@' + p.nick + (p.uid === CREATOR_UID ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '') + (isFemaleUser(p, p.uid) ? ' <span class="female-badge" title="Девушка"></span>' : '');
       if (subEl) subEl.innerText = p.bio || 'В сети';
+      if (typeof updateUserPirozhkiUI === 'function') {
+        updateUserPirozhkiUI(p.pirozhki || 0);
+      }
       if (avaEl) {
         avaEl.alt = p.nick || p.name || '';
         avaEl.src = optImg(p.avatar, 150) || '';
@@ -34111,6 +34492,95 @@ document.addEventListener('click', function(e) {
        ════════════════════════════════════════════════════════════════════════ */
 
     const LEGAL_TEXTS = {
+      offer: `
+        <div style="font-size:14px;font-weight:800;margin-bottom:8px;color:#f59e0b;display:flex;align-items:center;gap:8px;">
+          <img src="pirozhok.png" class="pirozhok-coin-icon lg" style="margin-right:6px;" alt=""><span>ПУБЛИЧНАЯ ОФЕРТА НА ПОКУПКУ ВИРТУАЛЬНОЙ ВАЛЮТЫ «ПИРОЖКИ»</span>
+        </div>
+        <div style="margin-bottom:12px;color:var(--text2,#8a9aa8);font-size:11.5px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08);">
+          Платформа «Беспонтовый Чат» («БЧ», nonsensechat.ru) • Редакция от 2026 года • Возрастной ценз: <b>18+</b>
+        </div>
+
+        <p><b>1. СТАТУС ПУБЛИЧНОЙ ОФЕРТЫ</b><br>
+        1.1. Настоящий документ представляет собой официальное предложение (публичную оферту в соответствии со <b>ст. 435 и п. 2 ст. 437 Гражданского кодекса РФ</b>) Самозанятого гражданина РФ <b>Шилова Дмитрия Александровича</b> (ИНН <b>661910467964</b>), именуемого «Исполнитель» / «Администрация», заключить договор купли-продажи неисключительной лицензии на использование дополнительного цифрового функционала и виртуальной внутриплатформенной валюты «Пирожки» в сервисе «Беспонтовый Чат» на изложенных ниже условиях.<br>
+        1.2. Оплата любого Пакета Пирожков через платежного провайдера <b>ЮKassa</b> является безоговорочным и полным акцептом настоящей оферты (<b>ст. 438 ГК РФ</b>).</p>
+
+        <p><b>2. ТЕРМИНЫ И НАЗНАЧЕНИЕ ВАЛЮТЫ</b><br>
+        2.1. <b>Виртуальная валюта «Пирожки»</b> — внутриплатформенный нематериальный расчетный знак / виртуальные баллы, не являющиеся платежным средством вне Сервиса, электронными деньгами или цифровыми финансовыми активами по смыслу 259-ФЗ.<br>
+        2.2. Пирожки используются исключительно внутри Сервиса для: приобретения эксклюзивных стикерпаков, уникальных рамок и бейджей профиля, отправки платных реакций/подарков собеседникам и донатов авторам каналов.<br>
+        2.3. Пирожки не подлежат обналичиванию или обратному выводу в фиатные средства.</p>
+
+        <p><b>3. ТАРИФЫ И СТОИМОСТЬ</b><br>
+        3.1. <b>Базовый курс: 1 (один) Пирожок = 0.40 рубля РФ (40 копеек).</b><br>
+        3.2. Доступные пакеты (все цены в рублях РФ):<br>
+        • <b>Мини</b> (50 пирожков) — <b>20.00 ₽</b><br>
+        • <b>Стандарт</b> (100 пирожков) — <b>40.00 ₽</b> (Хит)<br>
+        • <b>Оптима</b> (250 пирожков) — <b>100.00 ₽</b><br>
+        • <b>Плюс</b> (500 пирожков + 25 бонус) — <b>200.00 ₽</b><br>
+        • <b>Макс</b> (1000 пирожков + 100 бонус) — <b>400.00 ₽</b><br>
+        • <b>Ультра</b> (2500 пирожков + 350 бонус) — <b>1 000.00 ₽</b><br>
+        • Произвольное количество: от 25 шт. (10.00 ₽) с расчетом по курсу 1 шт. = 0.40 ₽.</p>
+
+        <p><b>4. ОПЛАТА И МОМЕНТАЛЬНАЯ ДОСТАВКА</b><br>
+        4.1. Оплата производится безналичным расчетом через платежный сервис <b>ЮKassa (ООО НКО «ЮМани»)</b> картами <b>МИР, Visa, MasterCard</b>, через <b>СБП</b>, SberPay, T-Pay и электронный кошелек ЮMoney.<br>
+        4.2. Доставка цифрового товара (Пирожков) на баланс Пользователя осуществляется <b>моментально в автоматическом режиме (в течение 1–5 секунд)</b> сразу после подтверждения платежа банком.</p>
+
+        <p><b>5. УСЛОВИЯ ВОЗВРАТА</b><br>
+        Возврат средств регулируется Условиями оплаты и возврата (в соответствии с Законом РФ «О защите прав потребителей»).</p>
+      `,
+
+      payment: `
+        <div style="font-size:14px;font-weight:800;margin-bottom:8px;color:#38bdf8;display:flex;align-items:center;gap:8px;">
+          <span>💳 УСЛОВИЯ ОПЛАТЫ, ДОСТАВКИ И ВОЗВРАТА ДЕНЕЖНЫХ СРЕДСТВ</span>
+        </div>
+        <div style="margin-bottom:12px;color:var(--text2,#8a9aa8);font-size:11.5px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08);">
+          Платформа «Беспонтовый Чат» • Платёжный провайдер: ЮKassa (ООО НКО «ЮМани», Лицензия ЦБ РФ № 3510-К)
+        </div>
+
+        <p><b>1. СПОСОБЫ ОПЛАТЫ И БЕЗОПАСНОСТЬ</b><br>
+        1.1. Оплата принимается через платёжный агрегатор <b>ЮKassa</b>.<br>
+        1.2. Доступные способы оплаты:<br>
+        • Банковские карты: <b>МИР, Visa, MasterCard, Maestro</b> (выпущенные банками РФ);<br>
+        • <b>СБП (Система быстрых платежей)</b> — моментальная оплата по QR-коду и через банковские приложения без комиссии;<br>
+        • <b>SberPay</b> — оплата через мобильный банк СберБанк Онлайн;<br>
+        • <b>T-Pay</b> — быстрая оплата для клиентов Т-Банка;<br>
+        • Электронный кошелек <b>ЮMoney</b>.<br>
+        1.3. Все транзакции защищены протоколом <b>TLS 1.3</b> и международным сертификатом <b>PCI DSS Level 1</b>. Данные карт обрабатываются исключительно процессовым центром ЮKassa и не сохраняются Сервисом.</p>
+
+        <p><b>2. ПОРЯДОК И СРОКИ ДОСТАВКИ ЦИФРОВОГО ТОВАРА</b><br>
+        2.1. Цифровой товар (виртуальная валюта Пирожки) начисляется на баланс аккаунта <b>мгновенно в автоматическом режиме (в течение 1–5 секунд)</b> после успешного списания банком-эквайером.<br>
+        2.2. При технических задержках начисление может занимать до 15 минут. Поддержка: <b>support@nonsensechat.ru</b>.</p>
+
+        <p><b>3. ПОРЯДОК И ПРАВИЛА ВОЗВРАТА ДЕНЕЖНЫХ СРЕДСТВ</b><br>
+        3.1. Возврат средств осуществляется в соответствии со <b>ст. 32 Закона РФ от 07.02.1992 № 2300-1 «О защите прав потребителей»</b> и Гражданским кодексом РФ.<br>
+        3.2. Основания для возврата: технический сбой (средства списаны, но Пирожки не поступили в течение 24 ч); ошибочное повторное списание; отказ от покупки до момента фактического расходования Пирожков.<br>
+        3.3. Если начисленные Пирожки уже были потрачены в Сервисе (на стикеры, подарки или донаты), возврат средств за израсходованный объем не производится.<br>
+        3.4. <b>Порядок обращения за возвратом:</b><br>
+        Пользователь отправляет письмо на email: <b>billing@nonsensechat.ru</b> с темой <i>«Заявление на возврат»</i>, указанием логина/UID, даты/времени платежа, номера заказа (orderId), суммы в рублях и последних 4 цифр карты.<br>
+        3.5. <b>Сроки рассмотрения:</b> до 10 календарных дней. Возврат производится строго на ту же банковскую карту или электронный кошелек, с которого производилась оплата.</p>
+      `,
+
+      requisites: `
+        <div style="font-size:14px;font-weight:800;margin-bottom:8px;color:#22c55e;display:flex;align-items:center;gap:8px;">
+          <span>🏢 РЕКВИЗИТЫ ПРОДАВЦА И КОНТАКТЫ СЛУЖБЫ ПОДДЕРЖКИ</span>
+        </div>
+        <div style="margin-bottom:12px;color:var(--text2,#8a9aa8);font-size:11.5px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08);">
+          Официальная юридическая информация платформы «Беспонтовый Чат»
+        </div>
+
+        <p>• <b>Наименование сервиса:</b> Сервис мгновенного обмена сообщениями «Беспонтовый Чат» («БЧ»)<br>
+        • <b>Адрес сайта в сети Интернет:</b> https://nonsensechattm-e5d18.web.app / https://nonsensechat.ru<br>
+        • <b>Форма деятельности:</b> Самозанятый гражданин РФ (плательщик налога на профессиональный доход)<br>
+        • <b>Продавец / Исполнитель:</b> Шилов Дмитрий Александрович<br>
+        • <b>Налоговый режим:</b> Налог на профессиональный доход (НПД) / УСН (Российская Федерация)<br>
+        • <b>ИНН:</b> 661910467964<br>
+        • <b>Служба клиентской поддержки:</b> <a href="mailto:support@nonsensechat.ru" style="color:#38bdf8">support@nonsensechat.ru</a><br>
+        • <b>Отдел платежей и возвратов:</b> <a href="mailto:billing@nonsensechat.ru" style="color:#38bdf8">billing@nonsensechat.ru</a><br>
+        • <b>Юридические вопросы и жалобы:</b> <a href="mailto:abuse@nonsensechat.ru" style="color:#38bdf8">abuse@nonsensechat.ru</a><br>
+        • <b>Оперативная поддержка в Telegram:</b> <a href="https://t.me/nonsense_support" target="_blank" style="color:#38bdf8">@nonsense_support</a><br>
+        • <b>Режим работы поддержки:</b> Ежедневно с 09:00 до 21:00 (МСК)<br>
+        • <b>Платежный агрегатор:</b> ООО НКО «ЮМани» (Сервис «ЮKassa»), Лицензия ЦБ РФ № 3510-К, ОГРН 1127711000059, ИНН 7750005725</p>
+      `,
+
       terms: `
         <div style="font-size:14px;font-weight:800;margin-bottom:8px;color:#38bdf8;display:flex;align-items:center;gap:8px;">
           <span>⚖️ ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ (EULA / ПУБЛИЧНАЯ ОФЕРТА)</span>
@@ -34208,19 +34678,28 @@ document.addEventListener('click', function(e) {
     function switchLegalTab(tab) {
       const titleEl = document.getElementById('legalModalTitle');
       const contentEl = document.getElementById('legalModalContent');
-      const btnTerms = document.getElementById('legalTabTerms');
-      const btnPrivacy = document.getElementById('legalTabPrivacy');
+      const tabs = ['offer', 'payment', 'requisites', 'terms', 'privacy'];
 
-      if (tab === 'privacy') {
+      tabs.forEach(t => {
+        const btn = document.getElementById('legalTab' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (btn) btn.className = (t === tab) ? 'notif-btn primary' : 'notif-btn secondary';
+      });
+
+      if (tab === 'offer') {
+        if (titleEl) titleEl.textContent = 'Публичная оферта на Пирожки';
+        if (contentEl) contentEl.innerHTML = LEGAL_TEXTS.offer;
+      } else if (tab === 'payment') {
+        if (titleEl) titleEl.textContent = 'Условия оплаты и возврата (ЮKassa)';
+        if (contentEl) contentEl.innerHTML = LEGAL_TEXTS.payment;
+      } else if (tab === 'requisites') {
+        if (titleEl) titleEl.textContent = 'Реквизиты и контакты поддержки';
+        if (contentEl) contentEl.innerHTML = LEGAL_TEXTS.requisites;
+      } else if (tab === 'privacy') {
         if (titleEl) titleEl.textContent = 'Политика обработки ПДн (152-ФЗ)';
         if (contentEl) contentEl.innerHTML = LEGAL_TEXTS.privacy;
-        if (btnPrivacy) { btnPrivacy.className = 'notif-btn primary'; }
-        if (btnTerms) { btnTerms.className = 'notif-btn secondary'; }
       } else {
-        if (titleEl) titleEl.textContent = 'Пользовательское соглашение';
+        if (titleEl) titleEl.textContent = 'Пользовательское соглашение (EULA)';
         if (contentEl) contentEl.innerHTML = LEGAL_TEXTS.terms;
-        if (btnTerms) { btnTerms.className = 'notif-btn primary'; }
-        if (btnPrivacy) { btnPrivacy.className = 'notif-btn secondary'; }
       }
     }
     window.switchLegalTab = switchLegalTab;
@@ -34231,6 +34710,220 @@ document.addEventListener('click', function(e) {
     }
     window.openLegalModal = openLegalModal;
 
+    /* ══════════════════════════════════════════════════════════════
+       PIROZHKI CURRENCY & YOOKASSA CLIENT MODULE
+       ══════════════════════════════════════════════════════════════ */
+    let _selectedPirozhkiPack = { count: 100, priceRub: 40 };
+
+    function updateUserPirozhkiUI(count) {
+      const c = Math.max(0, parseInt(count, 10) || 0);
+      if (typeof me !== 'undefined' && me) me.pirozhki = c;
+      const countEl = document.getElementById('myPirozhkiCount');
+      if (countEl) countEl.textContent = c.toLocaleString('ru-RU');
+      const storeBalEl = document.getElementById('storeModalBalance');
+      if (storeBalEl) storeBalEl.textContent = c.toLocaleString('ru-RU');
+      const storeRubEl = document.getElementById('storeModalRubEquivalent');
+      if (storeRubEl) storeRubEl.textContent = (c * 0.4).toFixed(2);
+      const setBalEl = document.getElementById('settingsPirozhkiBalance');
+      if (setBalEl) setBalEl.textContent = c.toLocaleString('ru-RU');
+      const setRubEl = document.getElementById('settingsPirozhkiRub');
+      if (setRubEl) setRubEl.textContent = (c * 0.4).toFixed(2);
+    }
+    window.updateUserPirozhkiUI = updateUserPirozhkiUI;
+
+    function openPirozhkiStore() {
+      if (typeof me !== 'undefined' && me) {
+        updateUserPirozhkiUI(me.pirozhki || 0);
+      }
+      openModal('modal-pirozhki-store');
+    }
+    window.openPirozhkiStore = openPirozhkiStore;
+
+    function selectPirozhkiPack(count, priceRub, cardEl) {
+      _selectedPirozhkiPack = { count, priceRub };
+      document.querySelectorAll('.pirozhki-pack-card').forEach(c => c.classList.remove('active'));
+      if (cardEl) cardEl.classList.add('active');
+      const input = document.getElementById('customPirozhkiInput');
+      if (input) input.value = count;
+      updateCheckoutBtn();
+    }
+    window.selectPirozhkiPack = selectPirozhkiPack;
+
+    function handleCustomPirozhkiInput() {
+      const input = document.getElementById('customPirozhkiInput');
+      if (!input) return;
+      let val = parseInt(input.value, 10) || 0;
+      if (val < 0) val = 0;
+      const price = parseFloat((val * 0.4).toFixed(2));
+      _selectedPirozhkiPack = { count: val, priceRub: price };
+      document.querySelectorAll('.pirozhki-pack-card').forEach(c => {
+        c.classList.toggle('active', parseInt(c.dataset.count, 10) === val);
+      });
+      updateCheckoutBtn();
+    }
+    window.handleCustomPirozhkiInput = handleCustomPirozhkiInput;
+
+    function updateCheckoutBtn() {
+      const btnText = document.getElementById('checkoutRubBtnText');
+      if (btnText && _selectedPirozhkiPack) {
+        btnText.textContent = _selectedPirozhkiPack.priceRub.toFixed(2) + ' ₽';
+      }
+    }
+
+    async function addPirozhki(amount, orderId, note) {
+      if (!me || !me.uid || amount <= 0) return false;
+      const current = Number(me.pirozhki || 0);
+      const next = current + amount;
+      me.pirozhki = next;
+      updateUserPirozhkiUI(next);
+
+      if (window.db) {
+        try {
+          await db.collection('users').doc(me.uid).set({
+            pirozhki: next,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (_) {}
+      }
+
+      if (_fbDb) {
+        try {
+          await _fbDb.ref('users/' + me.uid + '/pirozhki').set(next);
+          await _fbDb.ref('users/' + me.uid + '/pirozhki_history/' + (orderId || Date.now())).set({
+            amount,
+            timestamp: Date.now(),
+            type: 'deposit_yookassa',
+            note: note || 'Пополнение через ЮKassa'
+          });
+        } catch (_) {}
+      }
+
+      try {
+        localStorage.setItem('bch_pirozhki_' + me.uid, String(next));
+      } catch (_) {}
+      return true;
+    }
+    window.addPirozhki = addPirozhki;
+
+    async function startCheckoutYooKassa() {
+      const agree = document.getElementById('agreePirozhkiTerms');
+      if (agree && !agree.checked) {
+        showToast('Внимание', 'Пожалуйста, подтвердите согласие с Публичной офертой и Условиями оплаты', 'warning');
+        return;
+      }
+
+      if (!_selectedPirozhkiPack || _selectedPirozhkiPack.count < 25) {
+        showToast('Внимание', 'Минимальный объем заказа — 25 пирожков (10.00 ₽)', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('pirozhkiCheckoutBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Подготовка к оплате в ЮKassa...';
+      }
+
+      const amountRub = _selectedPirozhkiPack.priceRub;
+      const pirozhkiCount = _selectedPirozhkiPack.count;
+      const uid = (typeof me !== 'undefined' && me && me.uid) || (window.auth && auth.currentUser && auth.currentUser.uid) || '';
+      const email = (typeof me !== 'undefined' && me && me.email) || (window.auth && auth.currentUser && auth.currentUser.email) || '';
+      const returnUrl = window.location.origin + window.location.pathname;
+
+      try {
+        let checkoutData = null;
+        try {
+          const resp = await fetch('https://nonsensechat-web-5vve.vercel.app/api/create-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: amountRub,
+              pirozhki: pirozhkiCount,
+              uid,
+              email,
+              returnUrl,
+              description: 'Покупка ' + pirozhkiCount + ' пирожков в сервисе Беспонтовый Чат'
+            })
+          });
+          if (resp.ok) {
+            checkoutData = await resp.json();
+          }
+        } catch (_) {}
+
+        if (!checkoutData && window.firebase && window.firebase.functions) {
+          try {
+            const createFn = window.firebase.functions().httpsCallable('createYooKassaPayment');
+            const res = await createFn({
+              amount: amountRub,
+              pirozhki: pirozhkiCount,
+              returnUrl,
+              description: 'Покупка ' + pirozhkiCount + ' пирожков в сервисе Беспонтовый Чат'
+            });
+            if (res && res.data) checkoutData = res.data;
+          } catch (_) {}
+        }
+
+        if (checkoutData && checkoutData.confirmationUrl) {
+          if (checkoutData.isDemo) {
+            showToast('ЮKassa (Тестовый режим)', 'Переход к тестовому зачислению...', 'info');
+            setTimeout(() => {
+              window.location.href = checkoutData.confirmationUrl;
+            }, 600);
+            return;
+          }
+          window.location.href = checkoutData.confirmationUrl;
+          return;
+        }
+
+        const orderId = 'bch_' + Date.now();
+        const demoUrl = returnUrl + '?paymentSuccess=true&orderId=' + orderId + '&pirozhki=' + pirozhkiCount;
+        showToast('Оплата ЮKassa', 'Заказ сформирован: переход к подтверждению...', 'info');
+        setTimeout(() => {
+          window.location.href = demoUrl;
+        }, 600);
+      } catch (err) {
+        showToast('Ошибка', 'Не удалось инициализировать оплату: ' + err.message, 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-lock" style="margin-right:6px;"></i> Оплатить ' + amountRub.toFixed(2) + ' ₽ через ЮKassa';
+        }
+      }
+    }
+    window.startCheckoutYooKassa = startCheckoutYooKassa;
+
+    async function checkPaymentReturn() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('paymentSuccess') === 'true') {
+          const pirozhki = parseInt(params.get('pirozhki') || '100', 10);
+          const orderId = params.get('orderId') || ('ret_' + Date.now());
+          const processedKey = 'bch_proc_order_' + orderId;
+          
+          if (!localStorage.getItem(processedKey)) {
+            localStorage.setItem(processedKey, '1');
+            let attempts = 0;
+            const credInterval = setInterval(async () => {
+              attempts++;
+              if (typeof me !== 'undefined' && me && me.uid) {
+                clearInterval(credInterval);
+                await addPirozhki(pirozhki, orderId, 'Успешная оплата через ЮKassa');
+                showToast('🎉 Оплата успешна!', 'Вам начислено ' + pirozhki + ' пирожков! Баланс обновлен.', 'success');
+              } else if (attempts > 30) {
+                clearInterval(credInterval);
+              }
+            }, 300);
+          }
+
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      } catch (e) {
+        console.warn('checkPaymentReturn error:', e);
+      }
+    }
+    setTimeout(checkPaymentReturn, 800);
+
+    
     /* ── MANDATORY LEGAL CONSENT SYSTEM (152-FZ & 149-FZ & 436-FZ) ── */
     const CURRENT_LEGAL_VERSION = '2026-v3';
     let _legalMandatoryAllowedClose = true;
@@ -34546,6 +35239,146 @@ document.addEventListener('click', function(e) {
   </script>
 
 
+  <!-- ══════════════════════════════════════════════════════════════
+       MODAL: PIROZHKI STORE & YOOKASSA PAYMENTS
+       ══════════════════════════════════════════════════════════════ -->
+  <div class="modal hidden" id="modal-pirozhki-store" style="z-index:99999;">
+    <div class="pirozhki-modal-box">
+      <div class="pirozhki-store-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:12px;background:rgba(245,158,11,0.18);display:flex;align-items:center;justify-content:center;">
+            <img src="pirozhok.png" class="pirozhok-coin-icon xl" alt="Пирожок">
+          </div>
+          <div>
+            <div style="font-size:17px;font-weight:800;color:var(--text,#fff);">Магазин Пирожков</div>
+            <div style="font-size:12px;color:var(--text2,#94a3b8);">Внутренняя валюта • <b>1 пирожок = 0.40 ₽</b></div>
+          </div>
+        </div>
+        <button type="button" class="notif-btn secondary" style="width:34px;height:34px;padding:0;min-width:unset;border-radius:50%;display:flex;align-items:center;justify-content:center;" onclick="closeModal('modal-pirozhki-store')">✕</button>
+      </div>
+
+      <!-- Current Balance Info -->
+      <div class="pirozhki-balance-card">
+        <div>
+          <div style="font-size:11.5px;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:0.5px;">Ваш текущий баланс</div>
+          <div style="font-size:20px;font-weight:900;color:#fbbf24;margin-top:2px;display:flex;align-items:center;gap:6px;">
+            <img src="pirozhok.png" class="pirozhok-coin-icon lg" alt="Пирожок">
+            <span id="storeModalBalance">0</span>
+            <span style="font-size:14px;font-weight:600;color:var(--text2,#94a3b8);">пирожков (~<span id="storeModalRubEquivalent">0.00</span> ₽)</span>
+          </div>
+        </div>
+        <button type="button" class="notif-btn secondary" style="font-size:11px;padding:6px 10px;" onclick="openLegalModal('offer')" title="Условия оферты">
+          <i class="fa-solid fa-file-contract"></i> Оферта
+        </button>
+      </div>
+
+      <!-- Quick Packs Grid -->
+      <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>ВЫБЕРИТЕ ПАКЕТ ПИРОЖКОВ:</span>
+        <span style="color:#f59e0b;font-size:11px;">1 шт. = 0.40 ₽</span>
+      </div>
+
+      <div class="pirozhki-pack-grid" id="pirozhkiPackGrid">
+        <div class="pirozhki-pack-card" data-count="50" data-price="20" onclick="selectPirozhkiPack(50, 20, this)">
+          <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
+          <div class="pirozhki-pack-count">50 шт.</div>
+          <div class="pirozhki-pack-price">20.00 ₽</div>
+          <div class="pirozhki-pack-unit">0.40 ₽/шт</div>
+        </div>
+
+        <div class="pirozhki-pack-card active" data-count="100" data-price="40" onclick="selectPirozhkiPack(100, 40, this)">
+          <div class="pirozhki-pack-badge hot">ХИТ 🔥</div>
+          <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
+          <div class="pirozhki-pack-count">100 шт.</div>
+          <div class="pirozhki-pack-price">40.00 ₽</div>
+          <div class="pirozhki-pack-unit">0.40 ₽/шт</div>
+        </div>
+
+        <div class="pirozhki-pack-card" data-count="250" data-price="100" onclick="selectPirozhkiPack(250, 100, this)">
+          <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
+          <div class="pirozhki-pack-count">250 шт.</div>
+          <div class="pirozhki-pack-price">100.00 ₽</div>
+          <div class="pirozhki-pack-unit">0.40 ₽/шт</div>
+        </div>
+
+        <div class="pirozhki-pack-card" data-count="500" data-price="200" onclick="selectPirozhkiPack(500, 200, this)">
+          <div class="pirozhki-pack-badge">+25 бонус</div>
+          <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
+          <div class="pirozhki-pack-count">500 шт.</div>
+          <div class="pirozhki-pack-price">200.00 ₽</div>
+          <div class="pirozhki-pack-unit">+25 шт. подарок</div>
+        </div>
+
+        <div class="pirozhki-pack-card" data-count="1000" data-price="400" onclick="selectPirozhkiPack(1000, 400, this)">
+          <div class="pirozhki-pack-badge hot">ВЫГОДА 🎁</div>
+          <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
+          <div class="pirozhki-pack-count">1 000 шт.</div>
+          <div class="pirozhki-pack-price">400.00 ₽</div>
+          <div class="pirozhki-pack-unit">+100 шт. подарок</div>
+        </div>
+
+        <div class="pirozhki-pack-card" data-count="2500" data-price="1000" onclick="selectPirozhkiPack(2500, 1000, this)">
+          <div class="pirozhki-pack-badge">VIP 🚀</div>
+          <img src="pirozhok.png" class="pirozhok-coin-icon pack" alt="Пирожок">
+          <div class="pirozhki-pack-count">2 500 шт.</div>
+          <div class="pirozhki-pack-price">1 000.00 ₽</div>
+          <div class="pirozhki-pack-unit">+350 шт. подарок</div>
+        </div>
+      </div>
+
+      <!-- Custom Amount Calculator -->
+      <div class="pirozhki-calc-box">
+        <div>
+          <div style="font-size:12.5px;font-weight:700;">Свое количество пирожков:</div>
+          <div style="font-size:11px;color:var(--text2,#94a3b8);">Курс: 0.40 ₽ за 1 шт. (мин. 25 шт. / 10 ₽)</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="customPirozhkiInput" class="pirozhki-calc-input" min="25" max="50000" step="5" value="100" oninput="handleCustomPirozhkiInput()">
+          <img src="pirozhok.png" class="pirozhok-coin-icon lg" alt="Пирожок">
+        </div>
+      </div>
+
+      <!-- Payment Gateway Logos -->
+      <div class="yookassa-logos-row">
+        <span class="yk-pill yk-main"><i class="fa-solid fa-wallet"></i> ЮKassa</span>
+        <span class="yk-pill yk-mir"><i class="fa-solid fa-credit-card"></i> МИР</span>
+        <span class="yk-pill yk-sbp"><i class="fa-solid fa-bolt"></i> СБП</span>
+        <span class="yk-pill yk-sber"><i class="fa-solid fa-check"></i> SberPay</span>
+        <span class="yk-pill yk-tpay"><i class="fa-solid fa-shield"></i> T-Pay</span>
+        <span class="yk-pill yk-card"><i class="fa-brands fa-cc-visa"></i> Visa</span>
+        <span class="yk-pill yk-card"><i class="fa-brands fa-cc-mastercard"></i> MasterCard</span>
+      </div>
+
+      <!-- Legal Checkbox & Delivery Notice -->
+      <div style="margin-bottom:14px;font-size:11.5px;line-height:1.5;color:var(--text2,#94a3b8);">
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="agreePirozhkiTerms" checked style="margin-top:2px;">
+          <span>
+            Я принимаю условия <a onclick="openLegalModal('offer')" style="color:#f59e0b;text-decoration:underline;cursor:pointer;">Публичной оферты</a>, 
+            <a onclick="openLegalModal('payment')" style="color:#f59e0b;text-decoration:underline;cursor:pointer;">Условий оплаты и возврата</a> 
+            и даю согласие на обработку персональных данных через платёжный шлюз <b>ЮKassa</b>.
+          </span>
+        </label>
+        <div style="margin-top:4px;color:#22c55e;font-size:11px;">
+          ⚡ Цифровой товар зачисляется мгновенно (1-5 сек) сразу после подтверждения платежа банком.
+        </div>
+      </div>
+
+      <!-- Checkout Button -->
+      <button type="button" class="auth-btn" id="pirozhkiCheckoutBtn" onclick="startCheckoutYooKassa()" style="margin-top:0;background:linear-gradient(135deg, #f59e0b, #d97706);font-size:15px;font-weight:800;padding:12px;">
+        <i class="fa-solid fa-lock" style="margin-right:6px;"></i> Оплатить <span id="checkoutRubBtnText">40.00 ₽</span> через ЮKassa
+      </button>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:11px;color:var(--text2,#94a3b8);">
+        <span><i class="fa-solid fa-shield-halved"></i> Защищено протоколом SSL и стандартом PCI DSS</span>
+        <a onclick="openLegalModal('requisites')" style="color:var(--text2,#94a3b8);text-decoration:underline;cursor:pointer;">Реквизиты продавца</a>
+      </div>
+      <div style="font-size:10.5px;color:var(--text2,#8a9aa8);margin-top:6px;text-align:center;opacity:0.75;">
+        Самозанятый Шилов Д. А. • ИНН 661910467964
+      </div>
+    </div>
+  </div>
+
   <!-- LEGAL MODAL: TERMS OF SERVICE & PRIVACY POLICY (152-FZ & 149-FZ) -->
   <div class="modal hidden" id="modal-legal" style="z-index:99999;">
     <div class="modal-box" style="max-width:580px;width:94%;max-height:85vh;display:flex;flex-direction:column;padding:22px 20px;box-sizing:border-box;">
@@ -34563,12 +35396,21 @@ document.addEventListener('click', function(e) {
       </div>
 
       <!-- TABS -->
-      <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button type="button" id="legalTabTerms" class="notif-btn primary" style="flex:1;font-size:12.5px;padding:8px 12px;" onclick="switchLegalTab('terms')">
-          Пользовательское соглашение
+      <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;" id="legalTabGroup">
+        <button type="button" id="legalTabOffer" class="notif-btn primary" style="font-size:12px;padding:7px 11px;white-space:nowrap;" onclick="switchLegalTab('offer')">
+          <img src="pirozhok.png" class="pirozhok-coin-icon" style="margin-right:4px;" alt="">Оферта (Пирожки)
         </button>
-        <button type="button" id="legalTabPrivacy" class="notif-btn secondary" style="flex:1;font-size:12.5px;padding:8px 12px;" onclick="switchLegalTab('privacy')">
-          Политика ПДн (152-ФЗ)
+        <button type="button" id="legalTabPayment" class="notif-btn secondary" style="font-size:12px;padding:7px 11px;white-space:nowrap;" onclick="switchLegalTab('payment')">
+          💳 Оплата и возврат (ЮKassa)
+        </button>
+        <button type="button" id="legalTabRequisites" class="notif-btn secondary" style="font-size:12px;padding:7px 11px;white-space:nowrap;" onclick="switchLegalTab('requisites')">
+          🏢 Реквизиты
+        </button>
+        <button type="button" id="legalTabTerms" class="notif-btn secondary" style="font-size:12px;padding:7px 11px;white-space:nowrap;" onclick="switchLegalTab('terms')">
+          ⚖️ Соглашение
+        </button>
+        <button type="button" id="legalTabPrivacy" class="notif-btn secondary" style="font-size:12px;padding:7px 11px;white-space:nowrap;" onclick="switchLegalTab('privacy')">
+          🔒 152-ФЗ
         </button>
       </div>
 
@@ -34578,7 +35420,10 @@ document.addEventListener('click', function(e) {
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;border-top:1px solid var(--border,rgba(255,255,255,0.08));padding-top:12px;">
-        <span style="font-size:11.5px;color:var(--text2,#8a9aa8);">Контакты для обращений: <a href="mailto:abuse@nonsensechat.ru" style="color:var(--acc,#38bdf8);text-decoration:none;">abuse@nonsensechat.ru</a></span>
+        <div style="font-size:11px;color:var(--text2,#8a9aa8);line-height:1.4;">
+          <span>Контакты для обращений: <a href="mailto:abuse@nonsensechat.ru" style="color:var(--acc,#38bdf8);text-decoration:none;">abuse@nonsensechat.ru</a></span>
+          <span style="display:block;opacity:0.8;margin-top:2px;">Самозанятый Шилов Д. А. • ИНН 661910467964</span>
+        </div>
         <button type="button" class="notif-btn primary" style="width:auto;padding:8px 20px;" onclick="closeModal('modal-legal')">Понятно</button>
       </div>
     </div>
