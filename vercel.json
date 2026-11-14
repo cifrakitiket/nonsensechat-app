@@ -1,5 +1,7 @@
 {
-  "buildCommand": null,
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "",
+  "buildCommand": "",
   "outputDirectory": "public",
   "rewrites": [
     { "source": "/api/payment/yookassa/create", "destination": "/api/create-payment" },

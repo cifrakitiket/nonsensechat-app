@@ -2,9 +2,5 @@
   "name": "nonsensechat",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
-    "local": "node server/local-backend.js",
-    "vkcloud": "node server/vkcloud-backend.js",
-    "desktop": "cd electron-desktop && npx electron ."
-  }
+  "packageManager": "npm@10.8.2"
 }
