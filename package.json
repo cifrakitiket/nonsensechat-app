@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "vkcloud": "node server/vkcloud-backend.js",
     "pb": "node server/start-pocketbase.js",
-    "local": "node server/local-backend.js"
+    "local": "node server/local-backend.js",
+    "desktop:build": "cd desktop-react && npm run build",
+    "desktop:dev": "cd desktop-react && npm run dev",
+    "desktop": "cd electron-desktop && npx electron ."
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

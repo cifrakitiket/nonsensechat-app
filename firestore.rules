@@ -19,6 +19,12 @@ service cloud.firestore {
       }
     }
 
+    // ── Жалобы на противоправный контент (149-ФЗ) ──
+    match /reports/{reportId} {
+      allow create: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.uid == "JBe6nbSfgWOOEa9puh62dY5BuaY2";
+    }
+
     // ── Чаты ──
     match /chats/{chatId} {
       allow read, write: if request.auth != null &&
@@ -56,14 +62,23 @@ service cloud.firestore {
     }
 
     // ── Стикерпаки ──
-    // Читать может любой авторизованный (чтобы устанавливать чужие паки),
+    // Читать может любой (чтобы видеть стикеры в чатах и каталоге),
     // создавать/менять/удалять — только автор пака.
     match /stickerPacks/{packId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow create: if request.auth != null &&
         request.resource.data.authorUid == request.auth.uid;
       allow update, delete: if request.auth != null &&
         resource.data.authorUid == request.auth.uid;
+    }
+
+    // ── Сопоставление юзернеймов для входа и проверки уникальности ──
+    match /usernames/{usernameLower} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null &&
+        resource.data.uid == request.auth.uid;
     }
   }
 }

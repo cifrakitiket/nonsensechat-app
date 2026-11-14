@@ -2,12 +2,14 @@
   "name": "nonsense-chat",
   "productName": "Nonsense Chat",
   "version": "1.0.0",
-  "description": "Nonsense Chat Desktop Application",
-  "author": "Nonsense",
+  "description": "Nonsense Chat — Desktop Client (Discord Style)",
+  "author": "Nonsense Chat Team",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win nsis -c.publish=never"
+    "pack": "electron-packager . \"Nonsense Chat\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=public/icon.ico --ignore=\"^/(dist|\\.git|.*\\.apk|.*\\.zip)\"",
+    "dist": "electron-builder --win nsis -c.publish=never",
+    "dist:portable": "electron-builder --win portable -c.publish=never"
   },
   "build": {
     "appId": "com.nonsense.chat",
@@ -20,10 +22,15 @@
       "main.js",
       "preload.js",
       "public/**/*",
-      "server/**/*"
+      "server/**/*",
+      "!public/*.apk",
+      "!public/*.zip"
     ],
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "public/icon.ico"
     },
     "nsis": {
@@ -35,6 +42,7 @@
     }
   },
   "devDependencies": {
+    "@electron/packager": "^18.3.6",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8"
   }

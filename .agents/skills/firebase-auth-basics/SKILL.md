@@ -2,6 +2,8 @@
 name: firebase-auth-basics
 description: Guide for setting up and using Firebase Authentication. Use this skill when the user's app requires user sign-in, user management, or secure data access using auth rules.
 compatibility: This skill is best used with the Firebase CLI, but does not require it. Firebase CLI can be accessed through `npx -y firebase-tools@latest`.
+metadata:
+  category: Identity
 ---
 
 ## Prerequisites
@@ -70,7 +72,10 @@ Configure Firebase Authentication in `firebase.json` by adding an 'auth' block:
       "googleSignIn": {
         "oAuthBrandDisplayName": "Your Brand Name",
         "supportEmail": "support@example.com",
-        "authorizedRedirectUris": ["https://example.com", "http://localhost"]
+        "authorizedRedirectUris": [
+          "https://my-project-id.firebaseapp.com/__/auth/handler",
+          "http://localhost:4000"
+        ]
       }
     }
   }
@@ -80,10 +85,10 @@ Configure Firebase Authentication in `firebase.json` by adding an 'auth' block:
 > [!NOTE] If the Google Sign-In popup opens and immediately closes with the
 > error `[firebase_auth/unauthorized-domain]`, it means the domain is not
 > authorized. For local development, ensure `localhost` is included in the
-> **Authorized Domains** list in the Firebase Console or via the
-> `authorizedDomains` field in `firebase.json`. **CRITICAL**: Do NOT include the
-> protocol or port number in the Authorized Domains list (e.g., use `localhost`,
-> NOT `http://localhost:9090`).
+> **Authorized Domains** list in the Firebase Console (Authentication >
+> Settings > Authorized domains). **CRITICAL**: Do NOT include the protocol or
+> port number in the Authorized Domains list (e.g., use `localhost`, NOT
+> `http://localhost:9090`).
 
 **CRITICAL**: After configuring `firebase.json`, you MUST deploy the auth
 configuration to the Firebase backend for the changes to take effect. This is
@@ -110,6 +115,8 @@ Enable other providers in the Firebase Console.
 **Flutter** See [references/flutter_setup.md](references/flutter_setup.md).
 **Android (Kotlin)** See
 [references/client_sdk_android.md](references/client_sdk_android.md).
+
+**iOS (Swift)** See [references/ios_setup.md](references/ios_setup.md).
 
 ### 3. Security Rules
 
