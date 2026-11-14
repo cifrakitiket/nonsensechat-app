@@ -1,4 +1,6 @@
 {
+  "framework": null,
+  "installCommand": "echo 'No install needed'",
   "buildCommand": null,
   "outputDirectory": "public",
   "rewrites": [
