@@ -212,9 +212,34 @@ function createLocalBackend(options = {}) {
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
       const email = String(body.email || '').trim().toLowerCase();
       const password = String(body.password || '');
-      if (!email || password.length < 6) return json(res, 400, { error: 'Password should be at least 6 characters' });
-      if (auth.users[email]) return json(res, 400, { error: 'User already registered' });
-      const user = { id: id(), email, passwordHash: hashPassword(password) };
+      const nick = String(body.nick || body.username || '').trim().replace(/^@+/, '');
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return json(res, 400, { error: 'Некорректный формат email' });
+      }
+      if (email.length > 32) {
+        return json(res, 400, { error: 'Логин не должен превышать 32 символа' });
+      }
+      if (password.length < 6 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+        return json(res, 400, { error: 'Пароль должен содержать не менее 6 символов, буквы и цифры' });
+      }
+      if (nick) {
+        if (!/^[a-zA-Z0-9_]{3,32}$/.test(nick) || !/[a-zA-Z]/.test(nick)) {
+          return json(res, 400, { error: 'Юзернейм может содержать только латиницу (a-z), цифры и _ (3-32 символа)' });
+        }
+        const nickTaken = Object.values(auth.users).some(u => String(u.nick || '').toLowerCase() === nick.toLowerCase());
+        if (nickTaken) {
+          return json(res, 400, { error: `Юзернейм @${nick} уже занят` });
+        }
+      }
+      if (auth.users[email]) return json(res, 400, { error: 'Пользователь с таким email уже зарегистрирован' });
+      const user = { 
+        id: id(), 
+        email, 
+        nick: nick || email.split('@')[0], 
+        nickLower: (nick || email.split('@')[0]).toLowerCase(), 
+        passwordHash: hashPassword(password) 
+      };
       auth.users[email] = user;
       saveAuth();
       return json(res, 200, { data: { session: authResponse(user), user: { id: user.id, email } } });
@@ -222,12 +247,57 @@ function createLocalBackend(options = {}) {
 
     if (url.pathname === '/api/auth/signin' && req.method === 'POST') {
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
-      const email = String(body.email || '').trim().toLowerCase();
-      const user = auth.users[email];
-      if (!user || !verifyPassword(body.password || '', user.passwordHash)) {
-        return json(res, 401, { error: 'Invalid login credentials' });
+      const input = String(body.email || body.login || '').trim().toLowerCase();
+      const password = String(body.password || '');
+      
+      let user = auth.users[input];
+      if (!user) {
+        const clean = input.replace(/^@+/, '');
+        user = Object.values(auth.users).find(u => 
+          String(u.nickLower || u.nick || '').toLowerCase() === clean
+        );
       }
-      return json(res, 200, { data: { session: authResponse(user), user: { id: user.id, email } } });
+      if (!user || !verifyPassword(password, user.passwordHash)) {
+        return json(res, 401, { error: 'Неверный логин или пароль' });
+      }
+      return json(res, 200, { data: { session: authResponse(user), user: { id: user.id, email: user.email } } });
+    }
+
+    if (url.pathname === '/api/auth/otp-request' && req.method === 'POST') {
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const input = String(body.email || body.login || '').trim().toLowerCase();
+      let user = auth.users[input];
+      if (!user) {
+        const clean = input.replace(/^@+/, '');
+        user = Object.values(auth.users).find(u => 
+          String(u.nickLower || u.nick || '').toLowerCase() === clean
+        );
+      }
+      if (!user) return json(res, 404, { error: 'Пользователь не найден' });
+
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      if (!global._localOtps) global._localOtps = new Map();
+      global._localOtps.set(user.email, {
+        code,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        user
+      });
+      console.log(`[LocalBackend OTP] Код для ${user.email}: ${code}`);
+      return json(res, 200, { success: true, email: user.email, code });
+    }
+
+    if (url.pathname === '/api/auth/otp-verify' && req.method === 'POST') {
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const email = String(body.email || '').trim().toLowerCase();
+      const code = String(body.code || '').trim();
+
+      if (!global._localOtps) global._localOtps = new Map();
+      const rec = global._localOtps.get(email);
+      if (!rec || Date.now() > rec.expiresAt || rec.code !== code) {
+        return json(res, 400, { error: 'Неверный или истёкший одноразовый код' });
+      }
+      global._localOtps.delete(email);
+      return json(res, 200, { data: { session: authResponse(rec.user), user: { id: rec.user.id, email: rec.user.email } } });
     }
 
     if (url.pathname === '/api/auth/session') {
@@ -299,6 +369,88 @@ function createLocalBackend(options = {}) {
       return json(res, 200, { ok: true });
     }
 
+    // YooKassa Payment integration
+    if (url.pathname === '/api/payment/yookassa/create' && req.method === 'POST') {
+      try {
+        const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        const { amount, pirozhki, uid, email, description, returnUrl } = body;
+        const shopId = process.env.YOOKASSA_SHOP_ID;
+        const secretKey = process.env.YOOKASSA_SECRET_KEY;
+        const orderId = 'bch_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');
+        const fallbackConfirmationUrl = (returnUrl || 'https://nonsensechattm-e5d18.web.app') + 
+          '?paymentSuccess=true&orderId=' + encodeURIComponent(orderId) + 
+          '&pirozhki=' + encodeURIComponent(pirozhki || 100);
+
+        if (shopId && secretKey) {
+          try {
+            const ykPayload = {
+              amount: { value: parseFloat(amount || 40).toFixed(2), currency: 'RUB' },
+              confirmation: {
+                type: 'redirect',
+                return_url: fallbackConfirmationUrl
+              },
+              capture: true,
+              description: description || ('Пополнение баланса (' + (pirozhki || 100) + ' пирожков) в Беспонтовом Чате'),
+              metadata: { orderId, uid: uid || '', pirozhki: pirozhki || 100 }
+            };
+            const ykRes = await fetch('https://api.yookassa.ru/v3/payments', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Idempotence-Key': orderId,
+                'Authorization': 'Basic ' + Buffer.from(shopId + ':' + secretKey).toString('base64')
+              },
+              body: JSON.stringify(ykPayload)
+            });
+            const ykData = await ykRes.json();
+            return json(res, 200, {
+              ok: true,
+              orderId,
+              paymentId: ykData.id,
+              confirmationUrl: ykData.confirmation ? ykData.confirmation.confirmation_url : fallbackConfirmationUrl,
+              status: ykData.status
+            });
+          } catch (ykErr) {
+            console.error('[YooKassa] API Error:', ykErr);
+          }
+        }
+
+        // Demo/Sandbox fallback mode for YooKassa moderation and local verification
+        return json(res, 200, {
+          ok: true,
+          orderId,
+          paymentId: 'demo_' + orderId,
+          confirmationUrl: fallbackConfirmationUrl,
+          isDemo: true,
+          message: 'Демо-режим: укажите YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY в .env для боевых платежей.'
+        });
+      } catch (err) {
+        return json(res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    if (url.pathname === '/api/payment/yookassa/webhook' && req.method === 'POST') {
+      try {
+        const event = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        if (event && event.event === 'payment.succeeded' && event.object) {
+          const { metadata, amount } = event.object;
+          const uid = metadata && metadata.uid;
+          const pirozhki = parseInt(metadata && metadata.pirozhki, 10);
+          if (uid && pirozhki > 0) {
+            const usersTbl = table('users');
+            if (usersTbl[uid]) {
+              usersTbl[uid].pirozhki = (usersTbl[uid].pirozhki || 0) + pirozhki;
+              saveDb();
+              notify('users', uid);
+            }
+          }
+        }
+        return json(res, 200, { ok: true });
+      } catch (err) {
+        return json(res, 400, { ok: false, error: err.message });
+      }
+    }
+
     if (url.pathname === '/api/upload' && req.method === 'PUT') {
       const name = path.basename(url.searchParams.get('name') || 'file').replace(/[^\w.\-]+/g, '_') || 'file';
       const ext = path.extname(name);
@@ -326,12 +478,39 @@ function createLocalBackend(options = {}) {
         return;
       }
       const rawPath = decodeURIComponent(url.pathname);
-      const relativePath = rawPath === '/' ? 'index.html' : rawPath.replace(/^\/+/, '');
-      const resolved = path.resolve(publicDir, relativePath);
+      let relativePath = rawPath === '/' ? '' : rawPath.replace(/^\/+/, '');
+
+      const defaultIndex = 'index.html';
+
+      if (!relativePath) {
+        relativePath = defaultIndex;
+      }
+
+      let resolved = path.resolve(publicDir, relativePath);
+
       if (!resolved.startsWith(path.resolve(publicDir))) { res.writeHead(403); res.end('Forbidden'); return; }
+
+      // If directory is requested, look for index.html inside
+      try {
+        if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+          const subIndex = path.join(resolved, 'index.html');
+          if (fs.existsSync(subIndex)) {
+            resolved = subIndex;
+          }
+        }
+      } catch (_) {}
+
       fs.readFile(resolved, (err, data) => {
         if (err) {
-          fs.readFile(path.join(publicDir, 'index.html'), (fallbackErr, fallback) => {
+          // Only fallback to index.html for navigation routes (not static files with extensions)
+          const ext = path.extname(url.pathname);
+          if (ext && ext !== '.html') {
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end('Not found: ' + url.pathname);
+            return;
+          }
+          const fallbackPath = path.join(publicDir, defaultIndex);
+          fs.readFile(fallbackPath, (fallbackErr, fallback) => {
             if (fallbackErr) { res.writeHead(404); res.end('Not found'); return; }
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
             res.end(fallback);

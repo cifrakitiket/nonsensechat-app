@@ -1,20 +1,38 @@
 # Dependencies
-node_modules
-electron-desktop/node_modules
+node_modules/
+*/node_modules/
+electron-desktop/node_modules/
+desktop-react/node_modules/
+native-pc/node_modules/
 
 # Builds & Packages
 dist/
 dist-installer/
 electron-desktop/dist/
 electron-desktop/dist-installer/
+desktop-react/dist/
 .next/
 *.exe
+*.exe.*
+*.old
+*.apk
+*.aab
+*.jar
 
-# Data & Logs
+# React Native & Android builds
+react-native-android/android/app/build/
+react-native-android/android/.gradle/
+react-native-android/android/build/
+flutter_android/build/
+flutter_android/.dart_tool/
+flutter_android/android/.gradle/
+
+# Data & Logs & Scratches
 data/
 pb_data/
 *.log
 aqtinstall.log
+scratch/
 
 # System & IDE
 .DS_Store
@@ -22,18 +40,16 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Environment
+# Environment & Secrets
 .env
-.env*.local
-flutter_android/build/
-flutter_android/.dart_tool/
+.env*
+!.env.example
+!.env.vkcloud.example
+vkcloud.txt
+functions/.env
+
+# Archives & Caches
 *.zip
 .firebase/
-
-flutter_android/android/.gradle/
-
 .claude/
 */.claude/
-
-public.zip
-public/*.zip

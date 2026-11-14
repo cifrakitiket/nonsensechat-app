@@ -1,0 +1,26 @@
+{
+  "name": "Беспонтовый Чат",
+  "short_name": "Беспонтовый",
+  "description": "Быстрый, дерзкий и свободный мессенджер без лишнего пафоса. Чаты, звонки, крутые стикеры и кастомные эмодзи.",
+  "lang": "ru",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1420",
+  "theme_color": "#0e1420",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

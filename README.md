@@ -26,25 +26,25 @@
 
 ---
 
-## 🚀 Запуск и Сборка
+## 🚀 Быстрый запуск
 
-### 1. Быстрый запуск из исходного кода
-```bash
-# Переход в папку десктопного приложения
-cd electron-desktop
+### ⚡ 1. Быстрый запуск ПК-клиента для Windows (Discord-архитектура)
+Полноценный клиент с нативным треем, всплывающими уведомлениями Action Center, темами с сайта, WebRTC-звонками и демонстрацией экрана.
+Подробное описание: [NATIVE_PC.md](NATIVE_PC.md).
 
-# Установка зависимостей
-npm install
-
-# Запуск приложения
-npm start
+```cmd
+# Запуск ПК-клиента:
+run-pc.bat
 ```
 
-### 2. Сборка портативного .exe приложения
-```bash
-cd electron-desktop
-npx @electron/packager . "Nonsense Chat" --platform=win32 --arch=x64 --out=dist --overwrite --icon=public/icon.ico
+---
+
+### 📦 2. Сборка автономного исполняемого файла (.exe)
+```cmd
+# Сборка готового .exe:
+build-pc.bat
 ```
+*Готовый исполняемый файл будет доступен в `electron-desktop/dist/Nonsense Chat-win32-x64/Nonsense Chat.exe`.*
 *Готовый исполняемый файл будет доступен в `electron-desktop/dist/Nonsense Chat-win32-x64/Nonsense Chat.exe`.*
 
 ### 3. Сборка установочного сетапника (NSIS Installer)

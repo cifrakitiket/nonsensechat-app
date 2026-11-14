@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Юридическая информация, Оферта и Оплата • Беспонтовый Чат</title>
+  <link rel="icon" href="logo.png" type="image/png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #f59e0b;
+      --primary-hover: #d97706;
+      --accent: #38bdf8;
+      --border: rgba(255, 255, 255, 0.1);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .pirozhok-coin-icon {
+      width: 19px;
+      height: 19px;
+      vertical-align: -3.5px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      display: inline-block;
+    }
+    .pirozhok-coin-icon.lg {
+      width: 24px;
+      height: 24px;
+      vertical-align: -5px;
+    }
+    .pirozhok-coin-icon.xl {
+      width: 34px;
+      height: 34px;
+      vertical-align: middle;
+    }
+    .pirozhok-coin-icon.pack {
+      width: 30px;
+      height: 30px;
+      margin-bottom: 4px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+    }
+    
+    .header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .header-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+    }
+    .header-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .header-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: var(--primary);
+      padding: 8px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .back-btn:hover {
+      background: var(--primary);
+      color: #0f172a;
+    }
+    .container {
+      max-width: 960px;
+      width: 100%;
+      margin: 24px auto;
+      padding: 0 16px;
+      flex: 1;
+    }
+    .tabs-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: thin;
+    }
+    .tab-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text);
+    }
+    .tab-btn.active {
+      background: rgba(245, 158, 11, 0.18);
+      border-color: var(--primary);
+      color: #fbbf24;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .card h1, .card h2, .card h3 {
+      color: var(--text);
+      margin-top: 18px;
+      margin-bottom: 8px;
+    }
+    .card h1 {
+      font-size: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card p {
+      margin-bottom: 14px;
+      color: #cbd5e1;
+    }
+    .card ul, .card ol {
+      margin-left: 22px;
+      margin-bottom: 14px;
+      color: #cbd5e1;
+    }
+    .card li {
+      margin-bottom: 6px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-amber {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+    .price-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+    .price-table th, .price-table td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    .price-table th {
+      background: rgba(255, 255, 255, 0.05);
+      font-weight: 700;
+      color: var(--text);
+    }
+    .price-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .payment-logos-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-top: 20px;
+    }
+    .payment-pill {
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 800;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .payment-pill.yk { background: #8940fe; color: #fff; }
+    .payment-pill.mir { background: #0b8043; color: #fff; }
+    .payment-pill.sbp { background: #132448; color: #ffb800; border: 1px solid rgba(255,255,255,0.2); }
+    .payment-pill.sber { background: #21a038; color: #fff; }
+    .payment-pill.tpay { background: #ffdd2d; color: #333333; }
+    .footer {
+      background: #090e17;
+      border-top: 1px solid var(--border);
+      padding: 20px 24px;
+      margin-top: 32px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover {
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <a href="/" class="header-left">
+      <img src="logo.png" alt="Беспонтовый Чат" class="header-logo" onerror="this.style.display='none'">
+      <div>
+        <div class="header-title">Беспонтовый Чат (БЧ)</div>
+        <div class="header-sub">Правовая информация • Оферта • Платежи через ЮKassa</div>
+      </div>
+    </a>
+    <a href="/" class="back-btn">
+      <i class="fa-solid fa-arrow-left"></i>
+      <span>В мессенджер</span>
+    </a>
+  </header>
+
+  <main class="container">
+    <!-- TABS -->
+    <div class="tabs-bar" id="tabsBar">
+      <button class="tab-btn active" data-tab="offer" onclick="setTab('offer')">
+        <img src="pirozhok.png" class="pirozhok-coin-icon" style="margin-right:4px;" alt="">
+        <span>Публичная оферта (Пирожки)</span>
+      </button>
+      <button class="tab-btn" data-tab="payment" onclick="setTab('payment')">
+        <i class="fa-regular fa-credit-card"></i>
+        <span>Оплата и возврат (ЮKassa)</span>
+      </button>
+      <button class="tab-btn" data-tab="requisites" onclick="setTab('requisites')">
+        <i class="fa-solid fa-building-columns"></i>
+        <span>Реквизиты и контакты</span>
+      </button>
+      <button class="tab-btn" data-tab="terms" onclick="setTab('terms')">
+        <i class="fa-solid fa-scale-balanced"></i>
+        <span>Пользовательское соглашение (EULA)</span>
+      </button>
+      <button class="tab-btn" data-tab="privacy" onclick="setTab('privacy')">
+        <i class="fa-solid fa-user-shield"></i>
+        <span>Политика конфиденциальности (152-ФЗ)</span>
+      </button>
+    </div>
+
+    <!-- CONTENT CARD -->
+    <div class="card" id="contentCard">
+      <!-- Injected dynamically -->
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="?tab=offer">Публичная оферта</a>
+      <a href="?tab=payment">Условия оплаты и возврата</a>
+      <a href="?tab=requisites">Реквизиты</a>
+      <a href="?tab=terms">Пользовательское соглашение</a>
+      <a href="?tab=privacy">Политика конфиденциальности</a>
+    </div>
+    <div style="margin-bottom:4px;">Самозанятый Шилов Дмитрий Александрович • ИНН 661910467964</div>
+    <div>© 2026 «Беспонтовый Чат» (nonsensechat.ru). Все права защищены. Безопасность платежей обеспечена ЮKassa (ООО НКО «ЮМани», Лицензия ЦБ РФ № 3510-К).</div>
+  </footer>
+
+  <script>
+    const LEGAL_CONTENT = {
+      offer: `
+        <h1><img src="pirozhok.png" class="pirozhok-coin-icon lg" style="margin-right:8px;" alt=""> Публичная оферта на покупку виртуальной валюты «Пирожки»</h1>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+          Редакция от 2026 года • Сервис «Беспонтовый Чат» (nonsensechat.ru) • 18+
+        </div>
+
+        <p>Настоящий документ является официальным предложением (<b>Публичной офертой</b> в соответствии со <b>ст. 435 и п. 2 ст. 437 Гражданского кодекса РФ</b>) Самозанятого гражданина РФ <b>Шилова Дмитрия Александровича</b> (ИНН <b>661910467964</b>), далее именуемого «Исполнитель» / «Администрация», заключить договор купли-продажи неисключительной лицензии на использование дополнительного цифрового функционала и виртуальной внутриплатформенной валюты «Пирожки» в сервисе «Беспонтовый Чат» на изложенных ниже условиях.</p>
+
+        <h3>1. ТЕРМИНЫ И ОПРЕДЕЛЕНИЯ</h3>
+        <ul>
+          <li><b>Сервис / Платформа</b> — программный комплекс «Беспонтовый Чат» («БЧ»), доступный в сети Интернет по адресу https://nonsensechat.ru, https://nonsensechattm-e5d18.web.app, а также в форме десктопных и мобильных приложений.</li>
+          <li><b>Пользователь / Покупатель</b> — дееспособное физическое лицо, достигшее 18-летнего возраста, использующее Сервис и совершающее покупку цифрового контента.</li>
+          <li><b>Виртуальная валюта «Пирожки» (Пирожки)</b> — внутриплатформенные учетные цифровые единицы (баллы), используемые исключительно внутри Сервиса для оплаты дополнительных цифровых услуг. Пирожки не являются деньгами, валютой, электронными денежными средствами или цифровыми финансовыми активами по смыслу Федерального закона № 259-ФЗ.</li>
+          <li><b>Акцепт Оферты</b> — совершение Пользователем оплаты любого из Пакетов Пирожков через платежного провайдера ЮKassa либо подтверждение заказа. Акцепт является полным и безоговорочным (ст. 438 ГК РФ).</li>
+        </ul>
+
+        <h3>2. ПРЕДМЕТ ДОГОВОРА И СТОИМОСТЬ (КУРС ВАЛЮТЫ)</h3>
+        <p>2.1. Администрация предоставляет Пользователю неисключительную лицензию на использование дополнительного платного функционала Сервиса путем начисления на внутренний баланс учетной записи Пользователя виртуальной валюты «Пирожки», а Пользователь обязуется произвести оплату в соответствии с установленными тарифами.</p>
+        <p>2.2. <b>Базовая стоимость: 1 (один) Пирожок = 0.40 рубля РФ (40 копеек).</b></p>
+        <p>2.3. В Сервисе доступны следующие пакеты приобретения (все цены указаны в рублях РФ):</p>
+        
+        <table class="price-table">
+          <thead>
+            <tr>
+              <th>Пакет</th>
+              <th>Количество пирожков</th>
+              <th>Бонус</th>
+              <th>Цена (RUB)</th>
+              <th>Цена за 1 шт.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Мини</b></td>
+              <td>50 шт.</td>
+              <td>—</td>
+              <td><b>20.00 ₽</b></td>
+              <td>0.40 ₽</td>
+            </tr>
+            <tr style="background:rgba(245,158,11,0.08)">
+              <td><b>Стандарт (Хит)</b></td>
+              <td>100 шт.</td>
+              <td>—</td>
+              <td><b>40.00 ₽</b></td>
+              <td>0.40 ₽</td>
+            </tr>
+            <tr>
+              <td><b>Оптима</b></td>
+              <td>250 шт.</td>
+              <td>—</td>
+              <td><b>100.00 ₽</b></td>
+              <td>0.40 ₽</td>
+            </tr>
+            <tr>
+              <td><b>Плюс</b></td>
+              <td>500 шт.</td>
+              <td>+25 шт.</td>
+              <td><b>200.00 ₽</b></td>
+              <td>0.38 ₽</td>
+            </tr>
+            <tr style="background:rgba(245,158,11,0.08)">
+              <td><b>Макс (Выгода)</b></td>
+              <td>1 000 шт.</td>
+              <td>+100 шт.</td>
+              <td><b>400.00 ₽</b></td>
+              <td>0.36 ₽</td>
+            </tr>
+            <tr>
+              <td><b>Ультра (VIP)</b></td>
+              <td>2 500 шт.</td>
+              <td>+350 шт.</td>
+              <td><b>1 000.00 ₽</b></td>
+              <td>0.35 ₽</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>2.4. Пользователь также может выбрать произвольное количество Пирожков (от 25 шт. / 10.00 ₽) с расчетом по курсу 1 пирожок = 0.40 ₽.</p>
+
+        <h3>3. ПОРЯДОК ОПЛАТЫ И ДОСТАВКИ ЦИФРОВОГО ТОВАРА</h3>
+        <p>3.1. Оплата осуществляется через официальный платежный сервис <b>ЮKassa (ООО НКО «ЮМани»)</b> с использованием банковских карт <b>МИР, Visa, MasterCard</b>, Системы быстрых платежей (<b>СБП</b>), SberPay, T-Pay и электронных кошельков.</p>
+        <p>3.2. <b>Доставка цифрового товара:</b> зачисление Пирожков на баланс учетной записи Пользователя осуществляется <b>моментально в автоматическом режиме (в течение 1–5 секунд)</b> сразу после подтверждения успешной транзакции банком-эквайером.</p>
+        <p>3.3. В случае задержки на стороне банковского шлюза срок зачисления может составлять до 15 минут. При возникновении вопросов Пользователь вправе обратиться в техническую поддержку: <b>support@nonsensechat.ru</b>.</p>
+
+        <h3>4. ПРАВИЛА ИСПОЛЬЗОВАНИЯ ПИРОЖКОВ</h3>
+        <p>4.1. Пирожки предназначены исключительно для использования внутри платформы «Беспонтовый Чат» для:</p>
+        <ul>
+          <li>Отправки платных реакций и виртуальных подарков собеседникам;</li>
+          <li>Кастомизации профиля (персональные бейджи, цветовые рамки, статус-значки);</li>
+          <li>Приобретения эксклюзивных анимированных стикерпаков;</li>
+          <li>Добровольных донатов и поддержки авторов публичных каналов.</li>
+        </ul>
+        <p>4.2. Пирожки не подлежат обналичиванию, обратной конвертации в рубли РФ или иные фиатные валюты и не могут передаваться за пределы платформы.</p>
+
+        <h3>5. ВОЗВРАТ СРЕДСТВ И РАЗРЕШЕНИЕ СПОРОВ</h3>
+        <p>Условия и порядок возврата денежных средств регулируются документом «Условия оплаты и возврата денежных средств», являющимся неотъемлемой частью настоящей Оферты.</p>
+      `,
+
+      payment: `
+        <h1><i class="fa-regular fa-credit-card" style="color:#38bdf8"></i> Условия оплаты, доставки и возврата средств</h1>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+          Соответствие Закону РФ «О защите прав потребителей» и стандартам безопасности платежей PCI DSS • Платежи через ЮKassa
+        </div>
+
+        <h3>1. СПОСОБЫ ОПЛАТЫ И ПЛАТЕЖНЫЙ ПРОВАЙДЕР</h3>
+        <p>1.1. Прием платежей на сайте осуществляется через официальный сертифицированный платежный шлюз <b>ЮKassa</b> (ООО НКО «ЮМани», Лицензия Банка России № 3510-К).</p>
+        <p>1.2. Доступные способы оплаты:</p>
+        <ul>
+          <li><b>Банковские карты:</b> МИР, Visa, MasterCard, Maestro (все банки РФ);</li>
+          <li><b>СБП (Система быстрых платежей):</b> моментальная оплата через QR-код или приложение банка без комиссии;</li>
+          <li><b>SberPay:</b> быстрая оплата в приложении СберБанк Онлайн;</li>
+          <li><b>T-Pay:</b> оплата в 1 клик для клиентов Т-Банка (Тинькофф);</li>
+          <li><b>Электронный кошелек ЮMoney.</b></li>
+        </ul>
+
+        <div class="payment-logos-bar">
+          <span class="payment-pill yk"><i class="fa-solid fa-wallet"></i> ЮKassa</span>
+          <span class="payment-pill mir"><i class="fa-solid fa-credit-card"></i> МИР</span>
+          <span class="payment-pill sbp"><i class="fa-solid fa-bolt"></i> СБП</span>
+          <span class="payment-pill sber"><i class="fa-solid fa-check"></i> SberPay</span>
+          <span class="payment-pill tpay"><i class="fa-solid fa-shield"></i> T-Pay</span>
+          <span class="payment-pill"><i class="fa-brands fa-cc-visa"></i> Visa</span>
+          <span class="payment-pill"><i class="fa-brands fa-cc-mastercard"></i> MasterCard</span>
+        </div>
+
+        <h3>2. БЕЗОПАСНОСТЬ ПЛАТЕЖЕЙ И ПЕРЕДАЧИ ДАННЫХ</h3>
+        <p>2.1. Безопасность всех платежей обеспечивается протоколом защищенного соединения <b>TLS 1.3</b> и международным сертификатом безопасности платежных карт <b>PCI DSS Level 1</b>.</p>
+        <p>2.2. Платформа «Беспонтовый Чат» <b>не собирает, не обрабатывает и не сохраняет данные банковских карт</b> (номер карты, срок действия, CVV/CVC коды). Все реквизиты вводятся на защищенной платежной странице банка-эквайера ЮKassa.</p>
+
+        <h3>3. ПОРЯДОК И СРОКИ ДОСТАВКИ ЦИФРОВОГО ТОВАРА</h3>
+        <p>3.1. Цифровой товар (виртуальная валюта Пирожки) доставляется Пользователю исключительно в электронном виде.</p>
+        <p>3.2. <b>Срок зачисления:</b> мгновенно (в течение 1–5 секунд) после получения подтверждения оплаты от ЮKassa.</p>
+        <p>3.3. В случае задержки более 15 минут обратитесь в службу поддержки: <b>billing@nonsensechat.ru</b> с указанием email аккаунта и даты платежа.</p>
+
+        <h3>4. ПРАВИЛА И ПОРЯДОК ВОЗВРАТА ДЕНЕЖНЫХ СРЕДСТВ</h3>
+        <p>4.1. Возврат средств осуществляется в соответствии со <b>ст. 32 Закона РФ от 07.02.1992 № 2300-1 «О защите прав потребителей»</b> и Гражданским кодексом РФ.</p>
+        <p>4.2. <b>Основания для возврата:</b></p>
+        <ul>
+          <li>Технический сбой платежной системы или платформы, при котором средства списались, но Пирожки не поступили на баланс в течение 24 часов;</li>
+          <li>Ошибочное повторное (двойное) списание денежных средств;</li>
+          <li>Отказ от покупки до момента фактического расходования (использования) начисленных Пирожков.</li>
+        </ul>
+        <p>4.3. Если приобретенные Пирожки уже были полностью или частично потрачены в Сервисе (на стикеры, подарки или донаты), возврат средств за израсходованный объем не производится.</p>
+        
+        <p>4.4. <b>Порядок подачи заявления на возврат:</b></p>
+        <ol>
+          <li>Пользователь отправляет письмо на email: <b>billing@nonsensechat.ru</b> или <b>support@nonsensechat.ru</b>;</li>
+          <li>В теме письма указывается: <i>«Заявление на возврат средств»</i>;</li>
+          <li>В тексте письма указываются: логин/UID в сервисе, дата и время платежа, сумма в рублях, номер транзакции (orderId), причина возврата и последние 4 цифры карты;</li>
+          <li>Срок рассмотрения заявления — <b>до 10 (десяти) календарных дней</b>;</li>
+          <li>Возврат осуществляется <b>строго на ту же банковскую карту или электронный кошелек</b>, с которого была совершена оплата. Срок поступления средств на карту зависит от банка-эмитента (обычно 1–3 рабочих дня).</li>
+        </ol>
+      `,
+
+      requisites: `
+        <h1><i class="fa-solid fa-building-columns" style="color:#22c55e"></i> Реквизиты продавца и контакты службы поддержки</h1>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+          Официальная информация об администраторе сервиса «Беспонтовый Чат»
+        </div>
+
+        <table class="price-table">
+          <tbody>
+            <tr>
+              <td style="width:35%;color:var(--text-muted)"><b>Наименование сервиса:</b></td>
+              <td>Платформа мгновенного обмена сообщениями «Беспонтовый Чат» («БЧ»)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Адрес сайта в сети Интернет:</b></td>
+              <td><a href="https://nonsensechattm-e5d18.web.app" style="color:var(--accent);text-decoration:none;">https://nonsensechattm-e5d18.web.app</a> / <a href="https://nonsensechat.ru" style="color:var(--accent);text-decoration:none;">https://nonsensechat.ru</a></td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Форма деятельности:</b></td>
+              <td>Самозанятый гражданин РФ (плательщик налога на профессиональный доход)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Администратор / Продавец:</b></td>
+              <td>Шилов Дмитрий Александрович</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Налоговый режим:</b></td>
+              <td>Налог на профессиональный доход (НПД) / УСН (Российская Федерация)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>ИНН:</b></td>
+              <td><b>661910467964</b></td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Служба клиентской поддержки:</b></td>
+              <td><a href="mailto:support@nonsensechat.ru" style="color:var(--accent)">support@nonsensechat.ru</a></td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Отдел платежей и возвратов:</b></td>
+              <td><a href="mailto:billing@nonsensechat.ru" style="color:var(--accent)">billing@nonsensechat.ru</a></td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Юридические вопросы и жалобы (149-ФЗ):</b></td>
+              <td><a href="mailto:abuse@nonsensechat.ru" style="color:var(--accent)">abuse@nonsensechat.ru</a></td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Оперативная поддержка в Telegram:</b></td>
+              <td><a href="https://t.me/nonsense_support" target="_blank" style="color:var(--accent)">@nonsense_support</a></td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Режим работы поддержки:</b></td>
+              <td>Ежедневно с 09:00 до 21:00 по московскому времени (МСК)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)"><b>Платежный агрегатор:</b></td>
+              <td>ООО НКО «ЮМани» (Сервис «ЮKassa»), Лицензия ЦБ РФ № 3510-К, ОГРН 1127711000059, ИНН 7750005725</td>
+            </tr>
+          </tbody>
+        </table>
+      `,
+
+      terms: `
+        <h1><i class="fa-solid fa-scale-balanced" style="color:#38bdf8"></i> Пользовательское соглашение (EULA)</h1>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+          Редакция от 2026 года • Сервис «Беспонтовый Чат» • Возрастной ценз: 18+
+        </div>
+
+        <p><b>1. СТАТУС СОГЛАШЕНИЯ И ПУБЛИЧНАЯ ОФЕРТА</b><br>
+        1.1. Настоящее Пользовательское соглашение представляет собой официальное предложение Администрации сервиса «Беспонтовый Чат» в соответствии со ст. 435 и 437 ГК РФ.<br>
+        1.2. Регистрация учетной записи, авторизация и использование функций сервиса означает полное принятие условий настоящего соглашения (акцепт).</p>
+
+        <p><b>2. СТАТУС ИНФОРМАЦИОННОГО ПОСРЕДНИКА (СТ. 1253.1 ГК РФ, 149-ФЗ)</b><br>
+        2.1. В соответствии со ст. 1253.1 ГК РФ и Федеральным законом № 149-ФЗ, Администрация выступает исключительно в качестве информационного посредника, обеспечивающего техническую возможность обмена сообщениями между пользователями.<br>
+        2.2. Администрация не является автором сообщений пользователей и не осуществляет предварительную цензуру личной зашифрованной переписки.</p>
+
+        <p><b>3. ВОЗРАСТНОЙ ЦЕНЗ (436-ФЗ)</b><br>
+        Использование сервиса разрешено исключительно лицам, достигшим возраста 18 лет.</p>
+
+        <p><b>4. ПРАВИЛА И ЗАПРЕТЫ</b><br>
+        Запрещается распространение спама, вредоносного ПО, призывов к экстремизму, терроризму и иной информации, запрещенной законодательством Российской Федерации.</p>
+      `,
+
+      privacy: `
+        <h1><i class="fa-solid fa-user-shield" style="color:#22c55e"></i> Политика обработки персональных данных (152-ФЗ РФ)</h1>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+          Соответствие Федеральному закону РФ № 152-ФЗ «О персональных данных»
+        </div>
+
+        <p><b>1. ОБЩИЕ ПОЛОЖЕНИЯ</b><br>
+        1.1. Настоящая Политика определяет порядок обработки и защиты персональных данных пользователей сервиса «Беспонтовый Чат» в соответствии с Федеральным законом от 27.07.2006 № 152-ФЗ.<br>
+        1.2. Принятие настоящей Политики означает информированное согласие на обработку персональных данных.</p>
+
+        <p><b>2. ЛОКАЛИЗАЦИЯ ДАННЫХ В РФ (Ч. 5 СТ. 18 152-ФЗ)</b><br>
+        Все базы данных пользователей и медиафайлы физически размещены в сертифицированных защищенных дата-центрах на территории Российской Федерации.</p>
+
+        <p><b>3. ОБРАБОТКА ПЛАТЕЖНЫХ ДАННЫХ</b><br>
+        В целях проведения платежей за виртуальную валюту «Пирожки» обработка платежей осуществляется платежным провайдером ЮKassa (ООО НКО «ЮМани»). Платформа не хранит номера банковских карт пользователей.</p>
+
+        <p><b>4. УНИЧТОЖЕНИЕ ДАННЫХ («ПРАВО НА ЗАБВЕНИЕ»)</b><br>
+        Пользователь имеет право в любой момент запросить удаление своего аккаунта и всех связанных данных через интерфейс «Настройки» → «Безопасность» → «Удалить аккаунт».</p>
+      `
+    };
+
+    function setTab(tabKey) {
+      const card = document.getElementById('contentCard');
+      const buttons = document.querySelectorAll('.tab-btn');
+      
+      buttons.forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tabKey);
+      });
+
+      if (LEGAL_CONTENT[tabKey]) {
+        card.innerHTML = LEGAL_CONTENT[tabKey];
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname + '?tab=' + tabKey);
+        }
+      }
+    }
+
+    // Auto-detect tab from URL ?tab=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTab = urlParams.get('tab') || 'offer';
+    setTab(initialTab);
+  </script>
+</body>
+</html>
