@@ -1,0 +1,8 @@
+{
+  "buildCommand": null,
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/payment/yookassa/create", "destination": "/api/create-payment" },
+    { "source": "/api/payment/yookassa/webhook", "destination": "/api/webhook" }
+  ]
+}
