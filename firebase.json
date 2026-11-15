@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "nonsensechattm-e5d18",
     "public": "public",
     "ignore": [
       "firebase.json",
