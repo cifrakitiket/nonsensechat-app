@@ -5905,7 +5905,7 @@
       top: 24px;
       left: 50%;
       transform: translateX(-50%) translateY(-140%);
-      z-index: 99999;
+      z-index: 1500000 !important;
       background: rgba(15, 23, 42, 0.96);
       border: 1px solid rgba(255, 255, 255, 0.18);
       backdrop-filter: blur(24px);
@@ -7138,7 +7138,7 @@
       position: fixed;
       top: 20px;
       right: 20px;
-      z-index: 100000;
+      z-index: 2000000 !important;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -16393,6 +16393,7 @@
       return new Promise(resolve => {
         const el = document.getElementById('customConfirm');
         if (!el) { resolve(true); return; }
+        if (typeof bringModalToFront === 'function') bringModalToFront(el);
         document.getElementById('ccTitle').innerText = title || 'Подтверждение';
         document.getElementById('ccText').innerText = text || '';
         const inp = document.getElementById('ccInput');
@@ -17879,12 +17880,33 @@
       }
     })();
 
-    /* ═══ MODALS ═══ */
+    /* ═══ MODALS & WINDOW Z-INDEX LAYER MANAGER ═══ */
+    let _topModalZIndex = 100000;
+
+    function bringModalToFront(modalOrId) {
+      const el = (typeof modalOrId === 'string') ? document.getElementById(modalOrId) : modalOrId;
+      if (!el) return;
+      let maxZ = _topModalZIndex;
+      document.querySelectorAll('.modal:not(.hidden), #customConfirm:not(.hidden)').forEach(m => {
+        const z = parseInt(m.style.zIndex || window.getComputedStyle(m).zIndex, 10);
+        if (!isNaN(z) && z > maxZ && z < 900000) {
+          maxZ = z;
+        }
+      });
+      _topModalZIndex = Math.max(_topModalZIndex, maxZ) + 10;
+      el.style.zIndex = _topModalZIndex;
+    }
+    window.bringModalToFront = bringModalToFront;
+
     function openModal(id) {
       const lp = document.getElementById('langPicker'); if (lp) lp.classList.remove('open');
       const tp = document.getElementById('themePicker'); if (tp) tp.classList.remove('open');
       if (typeof hideCtx === 'function') hideCtx();
       const el = document.getElementById(id); if (!el) return;
+
+      // Always bring the invoked window/modal on top of all other open windows
+      bringModalToFront(el);
+
       el.classList.remove('closing'); el.classList.remove('hidden');
       if (id === 'modal-friend') {
         const cSec = document.getElementById('creatorFriendSection');
@@ -17905,6 +17927,17 @@
         if (id === 'modal-myprofile') { if (typeof stopMicTest === 'function') stopMicTest(); if (typeof stopCamTest === 'function') stopCamTest(); }
       }, 200);
     }
+    // Clicking on an open modal (or inside it) brings it to the front
+    document.addEventListener('mousedown', e => {
+      const modalEl = e.target.closest('.modal:not(.hidden)');
+      if (modalEl && !modalEl.classList.contains('closing')) {
+        const currentZ = parseInt(modalEl.style.zIndex || window.getComputedStyle(modalEl).zIndex, 10);
+        if (currentZ < _topModalZIndex) {
+          bringModalToFront(modalEl);
+        }
+      }
+    }, true);
+
     document.addEventListener('click', e => {
       if (e.target.classList.contains('modal')) closeModal(e.target.id);
       const lp = document.getElementById('langPicker');
@@ -20631,6 +20664,9 @@
       saveProfileCache(me.uid, me);
       renderMyProfileHeader(me);
       uCache[me.uid] = null;
+      if (typeof vpUid !== 'undefined' && vpUid === me.uid && typeof renderSteamProfile === 'function') {
+        renderSteamProfile(me, me.uid);
+      }
       closeModal('modal-myprofile');
     }
 
