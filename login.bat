@@ -4,6 +4,6 @@ cd /d "%~dp0"
 echo ========================================================
 echo   NonsenseChat - Firebase Login
 echo ========================================================
-call npx --yes firebase-tools login
+call npx --yes firebase-tools login --reauth
 echo.
 pause
