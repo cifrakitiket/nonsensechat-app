@@ -1236,7 +1236,7 @@
     /* 1. Stats Grid */
     .steam-stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
     }
     .steam-stat-card {
@@ -14163,8 +14163,8 @@
           <input type="hidden" id="mpAvaUrl">
 
           <button type="button" class="steam-btn primary" onclick="closeModal('modal-myprofile');if(me)viewProfile(me.uid);" style="width:100%;margin-bottom:14px;padding:11px 16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;box-shadow:0 4px 14px rgba(43,92,143,0.4);">
-            <i class="fa-brands fa-steam" style="font-size:17px;color:#66c0f4;"></i>
-            <span>Открыть мой профиль Steam</span>
+            <i class="fa-solid fa-id-card" style="font-size:16px;color:#66c0f4;"></i>
+            <span>Посмотреть мой профиль</span>
           </button>
 
           <div class="tgme-card">
@@ -14542,8 +14542,8 @@
       <!-- Steam Window Header Bar -->
       <div class="steam-top-bar">
         <div class="steam-top-brand">
-          <i class="fa-brands fa-steam" style="font-size:17px;color:#66c0f4;"></i>
-          <span>ПРОФИЛЬ STEAM</span>
+          <i class="fa-solid fa-id-card" style="font-size:16px;color:#66c0f4;"></i>
+          <span>ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ</span>
         </div>
         <div class="steam-top-acts">
           <button type="button" class="steam-icon-btn" onclick="copySteamProfileLink()" title="Скопировать ссылку на профиль"><i class="fa-solid fa-link"></i></button>
@@ -14587,34 +14587,6 @@
                 <div class="steam-summary-text" id="spBioText">Информация не указана</div>
               </div>
             </div>
-
-            <!-- Steam Level & Featured Badge Widget (Top Right) -->
-            <div class="steam-level-col">
-              <div class="steam-level-header">
-                <span class="steam-level-lbl">Уровень</span>
-                <div class="steam-level-badge tier-grey" id="spLevelBadge">
-                  <span id="spLevelNum">1</span>
-                </div>
-              </div>
-              <div class="steam-xp-box">
-                <div class="steam-xp-info">
-                  <span id="spXpCur">0 XP</span>
-                  <span id="spXpNext">100 XP</span>
-                </div>
-                <div class="steam-xp-bar-wrap">
-                  <div class="steam-xp-bar-fill" id="spXpBarFill" style="width: 20%;"></div>
-                </div>
-              </div>
-
-              <!-- Featured Badge Mini -->
-              <div class="steam-featured-badge" id="spFeaturedBadge">
-                <div class="steam-fbadge-icon" id="spFBadgeIcon">🥟</div>
-                <div class="steam-fbadge-details">
-                  <div class="steam-fbadge-name" id="spFBadgeName">Пекарь</div>
-                  <div class="steam-fbadge-xp" id="spFBadgeXp">+100 XP</div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- Steam Action Buttons Row -->
@@ -14644,12 +14616,12 @@
           </div>
         </div>
 
-        <!-- STEAM SHOWCASES -->
+        <!-- SHOWCASES -->
         <div class="steam-showcases-wrap">
           <!-- 1. Stats Showcase -->
           <div class="steam-showcase">
             <div class="steam-showcase-title">
-              <i class="fa-solid fa-chart-simple" style="color:#66c0f4;margin-right:6px;"></i> Статистика игрока
+              <i class="fa-solid fa-chart-simple" style="color:#66c0f4;margin-right:6px;"></i> Статистика профиля
             </div>
             <div class="steam-stats-grid">
               <div class="steam-stat-card">
@@ -14657,43 +14629,13 @@
                 <div class="steam-stat-lbl">Пирожков на балансе</div>
               </div>
               <div class="steam-stat-card">
-                <div class="steam-stat-val" id="spStatLevel">Ур. 1</div>
-                <div class="steam-stat-lbl">Ранг аккаунта</div>
-              </div>
-              <div class="steam-stat-card">
                 <div class="steam-stat-val" id="spStatDays">1 дн.</div>
                 <div class="steam-stat-lbl">Выслуга лет / Стаж</div>
               </div>
               <div class="steam-stat-card">
                 <div class="steam-stat-val" id="spStatFriends">0</div>
-                <div class="steam-stat-lbl">Друзей в сети</div>
+                <div class="steam-stat-lbl">Диалогов и друзей</div>
               </div>
-            </div>
-          </div>
-
-          <!-- 2. Badges Showcase -->
-          <div class="steam-showcase">
-            <div class="steam-showcase-title">
-              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-                <span><i class="fa-solid fa-award" style="color:#ffd700;margin-right:6px;"></i> Витрина значков</span>
-                <span class="steam-showcase-count" id="spBadgesCount">4 значка</span>
-              </div>
-            </div>
-            <div class="steam-badges-grid" id="spBadgesGrid">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-
-          <!-- 3. Achievements Showcase -->
-          <div class="steam-showcase">
-            <div class="steam-showcase-title">
-              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-                <span><i class="fa-solid fa-trophy" style="color:#f59e0b;margin-right:6px;"></i> Витрина достижений</span>
-                <span class="steam-showcase-count" id="spAchCount">4 из 4 (100%)</span>
-              </div>
-            </div>
-            <div class="steam-ach-row" id="spAchRow">
-              <!-- Rendered via JS -->
             </div>
           </div>
 
@@ -14741,14 +14683,14 @@
       <div class="steam-top-bar">
         <div class="steam-top-brand">
           <i class="fa-solid fa-palette" style="color:#ffd700;font-size:16px;"></i>
-          <span>ОФОРМЛЕНИЕ ПРОФИЛЯ STEAM</span>
+          <span>ОФОРМЛЕНИЕ ПРОФИЛЯ</span>
         </div>
         <button type="button" class="steam-icon-btn close-btn" onclick="closeModal('modal-steam-customizer')">✕</button>
       </div>
 
       <div class="steam-customizer-body">
         <div style="font-size:12px;color:#8f98a0;margin-bottom:14px;">
-          Настройте фон и анимированную рамку аватара в стиле Магазина Очков Steam:
+          Настройте стильный фон карточки и рамку аватара:
         </div>
 
         <!-- 1. Theme Background Selection -->
@@ -14756,7 +14698,7 @@
         <div class="steam-theme-grid">
           <div class="steam-theme-opt active" data-theme="classic" onclick="selectSteamTheme('classic', this)">
             <div class="steam-theme-preview theme-classic"></div>
-            <span>Классический Steam</span>
+            <span>Тёмный графит</span>
           </div>
           <div class="steam-theme-opt" data-theme="cyberpunk" onclick="selectSteamTheme('cyberpunk', this)">
             <div class="steam-theme-preview theme-cyberpunk"></div>
@@ -20978,38 +20920,9 @@
         spBioText.innerHTML = u.bio ? (typeof formatMentionsHtml === 'function' ? formatMentionsHtml(u.bio) : u.bio) : 'Информация о себе не указана.';
       }
 
-      // 5. Level & XP
-      const spLevelNum = document.getElementById('spLevelNum');
-      if (spLevelNum) spLevelNum.innerText = data.level;
-
-      const spLevelBadge = document.getElementById('spLevelBadge');
-      if (spLevelBadge) spLevelBadge.className = 'steam-level-badge ' + data.tierClass;
-
-      const spXpCur = document.getElementById('spXpCur');
-      if (spXpCur) spXpCur.innerText = data.currentLevelXp + ' XP';
-
-      const spXpNext = document.getElementById('spXpNext');
-      if (spXpNext) spXpNext.innerText = data.nextLevelXp + ' XP';
-
-      const spXpBarFill = document.getElementById('spXpBarFill');
-      if (spXpBarFill) spXpBarFill.style.width = Math.min(100, Math.max(8, data.currentLevelXp)) + '%';
-
-      // Featured Badge
-      const spFBadgeIcon = document.getElementById('spFBadgeIcon');
-      if (spFBadgeIcon) spFBadgeIcon.innerText = data.featuredBadge.icon;
-
-      const spFBadgeName = document.getElementById('spFBadgeName');
-      if (spFBadgeName) spFBadgeName.innerText = data.featuredBadge.name;
-
-      const spFBadgeXp = document.getElementById('spFBadgeXp');
-      if (spFBadgeXp) spFBadgeXp.innerText = data.featuredBadge.xp;
-
-      // 6. Stats Showcase
+      // 5. Stats Showcase
       const spStatPirozhki = document.getElementById('spStatPirozhki');
       if (spStatPirozhki) spStatPirozhki.innerText = data.pirozhki + ' 🥟';
-
-      const spStatLevel = document.getElementById('spStatLevel');
-      if (spStatLevel) spStatLevel.innerText = 'Ур. ' + data.level;
 
       const spStatDays = document.getElementById('spStatDays');
       if (spStatDays) spStatDays.innerText = data.daysOld + ' дн.';
@@ -21018,34 +20931,6 @@
       if (spStatFriends) {
         const count = Array.isArray(allChats) ? allChats.filter(c => c.type === 'dm').length : 0;
         spStatFriends.innerText = count;
-      }
-
-      // 7. Badges Showcase
-      const spBadgesGrid = document.getElementById('spBadgesGrid');
-      const spBadgesCount = document.getElementById('spBadgesCount');
-      if (spBadgesCount) spBadgesCount.innerText = data.badges.length + ' значков';
-      if (spBadgesGrid) {
-        spBadgesGrid.innerHTML = data.badges.map(b => `
-          <div class="steam-badge-card" title="${b.desc}">
-            <div class="steam-badge-icon">${b.icon}</div>
-            <div class="steam-badge-title">${b.title}</div>
-            <div class="steam-badge-xp">${b.xp}</div>
-          </div>
-        `).join('');
-      }
-
-      // 8. Achievements Showcase
-      const spAchRow = document.getElementById('spAchRow');
-      const spAchCount = document.getElementById('spAchCount');
-      if (spAchCount) spAchCount.innerText = data.achievements.length + ' из ' + data.achievements.length + ' (100%)';
-      if (spAchRow) {
-        spAchRow.innerHTML = data.achievements.map(a => `
-          <div class="steam-ach-card" title="${a.desc}">
-            <div class="steam-ach-icon">${a.icon}</div>
-            <div class="steam-ach-name">${a.name}</div>
-            <div class="steam-ach-desc">${a.desc}</div>
-          </div>
-        `).join('');
       }
 
       // 9. Status
@@ -21082,7 +20967,7 @@
       const isOnline = (typeof userIsOnline === 'function') ? userIsOnline(u) : !!u.online;
       if (isOnline) {
         badge.className = 'steam-status-pill online';
-        text.innerText = 'В игре: NonsenseChat';
+        text.innerText = 'В сети';
       } else {
         badge.className = 'steam-status-pill offline';
         const lastSeen = (typeof asDate === 'function') ? asDate(u.lastSeen) : null;
@@ -21098,12 +20983,12 @@
       const url = window.location.origin + window.location.pathname + '#user=' + vpUid;
       if (navigator.clipboard) {
         navigator.clipboard.writeText(url).then(() => {
-          showToast('Профиль Steam', 'Ссылка на профиль @' + name + ' скопирована в буфер!', 'info');
+          showToast('Профиль', 'Ссылка на профиль @' + name + ' скопирована!', 'info');
         }).catch(() => {
-          showToast('Профиль Steam', 'UID: ' + vpUid, 'info');
+          showToast('Профиль', 'UID: ' + vpUid, 'info');
         });
       } else {
-        showToast('Профиль Steam', 'UID: ' + vpUid, 'info');
+        showToast('Профиль', 'UID: ' + vpUid, 'info');
       }
     }
     window.copySteamProfileLink = copySteamProfileLink;
@@ -21230,7 +21115,7 @@
       try { localStorage.setItem('steam_comments_' + vpUid, JSON.stringify(local.slice(0, 30))); } catch (_) {}
 
       loadSteamComments(vpUid);
-      showToast('Стена Steam', 'Комментарий опубликован!', 'success');
+      showToast('Комментарии', 'Комментарий опубликован!', 'success');
     }
     window.postSteamComment = postSteamComment;
 
@@ -21250,7 +21135,7 @@
       try { localStorage.setItem('steam_comments_' + vpUid, JSON.stringify(local)); } catch (_) {}
 
       loadSteamComments(vpUid);
-      showToast('Стена Steam', 'Комментарий удален', 'info');
+      showToast('Комментарии', 'Комментарий удален', 'info');
     }
     window.deleteSteamComment = deleteSteamComment;
 
@@ -21313,7 +21198,7 @@
       if (vpUid === me.uid) {
         renderSteamProfile(me, me.uid);
       }
-      showToast('Оформление Steam', 'Оформление профиля успешно обновлено!', 'success');
+      showToast('Оформление', 'Оформление профиля успешно обновлено!', 'success');
     }
     window.saveSteamCustomization = saveSteamCustomization;
 
