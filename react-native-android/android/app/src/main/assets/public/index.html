@@ -260,6 +260,113 @@
     .user-custom-prefix:hover {
       transform: scale(1.06);
     }
+    /* Prefix Sound Badge & Playing Animation */
+    .user-custom-prefix.has-sound {
+      cursor: pointer !important;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    .user-custom-prefix.has-sound:hover {
+      filter: brightness(1.22) drop-shadow(0 0 5px rgba(245, 158, 11, 0.6));
+      transform: scale(1.08) translateY(-1px) !important;
+    }
+    .user-custom-prefix.has-sound:active {
+      transform: scale(0.96) !important;
+    }
+    .user-custom-prefix .prefix-sound-icon {
+      font-size: 0.85em;
+      opacity: 0.95;
+      margin-right: 2px;
+      transition: transform 0.15s ease;
+    }
+    .user-custom-prefix.playing-sound {
+      animation: prefixSoundPulse 0.35s ease infinite alternate !important;
+    }
+    .user-custom-prefix.playing-sound .prefix-sound-icon {
+      animation: prefixIconWave 0.3s ease infinite alternate !important;
+    }
+    @keyframes prefixSoundPulse {
+      0% {
+        transform: scale(1);
+        filter: brightness(1.1);
+      }
+      100% {
+        transform: scale(1.12);
+        filter: brightness(1.4) drop-shadow(0 0 10px rgba(245, 158, 11, 0.9));
+      }
+    }
+    @keyframes prefixIconWave {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.35) rotate(-10deg); }
+    }
+    /* Prefix Sound Modal Presets Cards */
+    .prefix-sound-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .prefix-sound-card:hover {
+      background: rgba(245, 158, 11, 0.09);
+      border-color: rgba(245, 158, 11, 0.35);
+      transform: translateY(-1px);
+    }
+    .prefix-sound-card.active {
+      background: rgba(245, 158, 11, 0.16);
+      border-color: #f59e0b;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+    }
+    .prefix-sound-card .ps-icon {
+      font-size: 20px;
+      width: 30px;
+      text-align: center;
+    }
+    .prefix-sound-card .ps-info {
+      flex: 1;
+      margin-left: 8px;
+      min-width: 0;
+    }
+    .prefix-sound-card .ps-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text, #fff);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .prefix-sound-card .ps-dur {
+      font-size: 10.5px;
+      color: var(--text2, #94a3b8);
+    }
+    .prefix-sound-card .ps-play-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(0, 0, 0, 0.35);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .prefix-sound-card .ps-play-btn:hover {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      color: #000;
+      transform: scale(1.1);
+    }
     .user-custom-prefix.lg {
       font-size: 11.5px;
       padding: 3px 9px;
@@ -14168,7 +14275,13 @@
           </button>
 
           <div class="tgme-card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><div class="tgme-card-title" style="margin-bottom:0" data-i18n="username">Юзернейм / Имя</div><span id="mpPrefixBadge"></span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div class="tgme-card-title" style="margin-bottom:0" data-i18n="username">Юзернейм / Имя</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span id="mpPrefixBadge"></span>
+                <button type="button" id="mpPrefixSoundBtn" class="notif-btn secondary" style="display:none;font-size:11px;padding:2px 8px;border-color:rgba(245,158,11,0.35);color:#f59e0b;" onclick="openPrefixSoundModal('existing')" title="Настроить звук префикса"><i class="fa-solid fa-volume-high"></i> Звук</button>
+              </div>
+            </div>
             <div class="tgme-field"><input id="mpUsername" maxlength="32" placeholder="Юзернейм (до 32 символов)" autocomplete="off"></div>
             <div class="tgme-hint" data-i18n="usernameHint">По юзернейму вас смогут находить другие пользователи.</div>
           </div>
@@ -15985,6 +16098,8 @@
           hideLastSeen: !!profile.hideLastSeen,
           prefix: profile.prefix || '',
           prefixStyle: profile.prefixStyle || 'gold',
+          prefixSound: profile.prefixSound || '',
+          prefixSoundName: profile.prefixSoundName || '',
           steamTheme: profile.steamTheme || 'classic',
           steamFrame: profile.steamFrame || 'none'
         };
@@ -16010,6 +16125,8 @@
         pirozhki: Number((data && data.pirozhki) || 0),
         prefix: (data && data.prefix) || '',
         prefixStyle: (data && data.prefixStyle) || 'gold',
+        prefixSound: (data && data.prefixSound) || '',
+        prefixSoundName: (data && data.prefixSoundName) || '',
         steamTheme: (data && data.steamTheme) || 'classic',
         steamFrame: (data && data.steamFrame) || 'none',
 
@@ -19663,6 +19780,19 @@
               if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
             }
           });
+          _fbDb.ref('users/' + user.uid + '/prefixSound').on('value', snap => {
+            const val = snap.val();
+            if (typeof me !== 'undefined' && me) {
+              me.prefixSound = val || '';
+              if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
+            }
+          });
+          _fbDb.ref('users/' + user.uid + '/prefixSoundName').on('value', snap => {
+            const val = snap.val();
+            if (typeof me !== 'undefined' && me) {
+              me.prefixSoundName = val || '';
+            }
+          });
         }
       } catch (errPirozhki) {
         console.warn('Pirozhki listener error:', errPirozhki);
@@ -20391,6 +20521,8 @@
       document.getElementById('mpUsername').value = me.nick || '';
       const mpPref = document.getElementById('mpPrefixBadge');
       if (mpPref) mpPref.innerHTML = (me.prefix ? renderUserPrefixBadge(me, true) : '');
+      const mpSBtn = document.getElementById('mpPrefixSoundBtn');
+      if (mpSBtn) mpSBtn.style.display = (me && me.prefix) ? 'inline-flex' : 'none';
       document.getElementById('mpHideLastSeen').checked = !!me.hideLastSeen;
       const lsEl = document.getElementById('mpLastSeenInfo');
       lsEl.innerText = userStatusText(me);
@@ -21089,6 +21221,8 @@
         authorAva: me.avatar || '',
         authorPrefix: me.prefix || '',
         authorPrefixStyle: me.prefixStyle || 'gold',
+        authorPrefixSound: me.prefixSound || '',
+        authorPrefixSoundName: me.prefixSoundName || '',
         text: text,
         createdAt: new Date().toISOString()
       };
@@ -25400,7 +25534,7 @@
         type: 'text',
         ...(isChanPost ? { isChannelPost: true, views: 1, viewedBy: [me.uid] } : {}),
         ...(signalPayload ? { signal: signalPayload } : {}),
-        ...(me && me.prefix ? { prefix: me.prefix, prefixStyle: me.prefixStyle || 'gold' } : {})
+        ...(me && me.prefix ? { prefix: me.prefix, prefixStyle: me.prefixStyle || 'gold', ...(me.prefixSound ? { prefixSound: me.prefixSound, prefixSoundName: me.prefixSoundName || '' } : {}) } : {})
       };
       if (signalPayload) {
         data._localDecrypted = rawText;
@@ -36590,18 +36724,433 @@ document.addEventListener('click', function(e) {
     window.updateUserPirozhkiUI = updateUserPirozhkiUI;
 
     /* ══════════════════════════════════════════════════════════════
-       USER PREFIXES & BADGES SYSTEM
+       USER PREFIXES & BADGES SYSTEM WITH SOUND (MAX 2 SECONDS)
        ══════════════════════════════════════════════════════════════ */
+    let _sharedPrefixAudioCtx = null;
+    function getSharedPrefixAudioContext() {
+      if (!_sharedPrefixAudioCtx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) _sharedPrefixAudioCtx = new AudioCtx();
+      }
+      if (_sharedPrefixAudioCtx && _sharedPrefixAudioCtx.state === 'suspended') {
+        _sharedPrefixAudioCtx.resume().catch(() => {});
+      }
+      return _sharedPrefixAudioCtx;
+    }
+
+    /* ─── 12 High Quality Preset Sound Effects (Web Audio API Synthesized) ─── */
+    const PREFIX_SOUND_PRESETS = [
+      { id: 'coin', name: 'Монетка', icon: '🪙', dur: '0.3с', desc: 'Звонкий ретро-бонус' },
+      { id: 'magic', name: 'Магия', icon: '✨', dur: '0.5с', desc: 'Искрящийся аккорд' },
+      { id: 'victory', name: 'Победа', icon: '🏆', dur: '0.7с', desc: 'Победный фанфар' },
+      { id: 'nom', name: 'Пирожок', icon: '🥟', dur: '0.4с', desc: 'Хрустящий кусь' },
+      { id: 'meow', name: 'Мяу', icon: '🐱', dur: '0.5с', desc: 'Милое мяуканье' },
+      { id: 'laser', name: 'Бластер', icon: '🔫', dur: '0.3с', desc: 'Космический пиу' },
+      { id: 'punch', name: 'Удар', icon: '🥊', dur: '0.3с', desc: 'Мощный бас-удар' },
+      { id: 'bell', name: 'Колокол', icon: '🔔', dur: '0.7с', desc: 'Хрустальный перезвон' },
+      { id: 'pop', name: 'Капля', icon: '💧', dur: '0.2с', desc: 'Водяной бульк' },
+      { id: 'blip', name: '8-Bit', icon: '👾', dur: '0.2с', desc: 'Аркадный пик' },
+      { id: 'cyber', name: 'Кибер', icon: '⚡', dur: '0.4с', desc: 'Футуристичный свист' },
+      { id: 'tada', name: 'Та-да!', icon: '🎉', dur: '0.6с', desc: 'Праздничный аккорд' }
+    ];
+
+    function playPrefixPresetAudio(preset) {
+      const ctx = getSharedPrefixAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      switch (preset) {
+        case 'coin': {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(987, now);
+          osc.frequency.setValueAtTime(1318, now + 0.08);
+          gain.gain.setValueAtTime(0.32, now);
+          gain.gain.setValueAtTime(0.32, now + 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.35);
+          break;
+        }
+        case 'magic': {
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + i * 0.09);
+            gain.gain.setValueAtTime(0, now + i * 0.09);
+            gain.gain.linearRampToValueAtTime(0.25, now + i * 0.09 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.4);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + i * 0.09);
+            osc.stop(now + i * 0.09 + 0.42);
+          });
+          break;
+        }
+        case 'victory': {
+          const notes = [587.33, 587.33, 587.33, 880];
+          const times = [0, 0.12, 0.24, 0.38];
+          const lens = [0.1, 0.1, 0.1, 0.5];
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + times[i]);
+            gain.gain.setValueAtTime(0.25, now + times[i]);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + times[i] + lens[i]);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + times[i]);
+            osc.stop(now + times[i] + lens[i]);
+          });
+          break;
+        }
+        case 'nom': {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(360, now);
+          osc.frequency.exponentialRampToValueAtTime(130, now + 0.18);
+          osc.frequency.setValueAtTime(430, now + 0.2);
+          osc.frequency.exponentialRampToValueAtTime(150, now + 0.38);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.4);
+          break;
+        }
+        case 'meow': {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+          osc.frequency.exponentialRampToValueAtTime(440, now + 0.5);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.3, now + 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.52);
+          break;
+        }
+        case 'laser': {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(1800, now);
+          osc.frequency.exponentialRampToValueAtTime(150, now + 0.22);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+          break;
+        }
+        case 'punch': {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(260, now);
+          osc.frequency.exponentialRampToValueAtTime(35, now + 0.28);
+          gain.gain.setValueAtTime(0.45, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+          break;
+        }
+        case 'bell': {
+          [1567.98, 3135.96].forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(idx === 0 ? 0.3 : 0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.78);
+          });
+          break;
+        }
+        case 'pop': {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.15);
+          break;
+        }
+        case 'blip': {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.setValueAtTime(1760, now + 0.06);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.18);
+          break;
+        }
+        case 'cyber': {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(1300, now + 0.15);
+          osc.frequency.exponentialRampToValueAtTime(380, now + 0.35);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.38);
+          break;
+        }
+        case 'tada': {
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.type = 'triangle';
+          osc1.frequency.setValueAtTime(587.33, now);
+          gain1.gain.setValueAtTime(0.25, now);
+          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          osc1.start(now);
+          osc1.stop(now + 0.15);
+
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(783.99, now + 0.15);
+          gain2.gain.setValueAtTime(0.3, now + 0.15);
+          gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.start(now + 0.15);
+          osc2.stop(now + 0.6);
+          break;
+        }
+      }
+    }
+    window.playPrefixPresetAudio = playPrefixPresetAudio;
+
+    /* ─── Client-side Audio Trimmer (Strict Max 2.0 Seconds) ─── */
+    async function trimAudioBlobToMax2Sec(blobOrFile) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return blobOrFile;
+
+      const ctx = new AudioCtx();
+      try {
+        const arrayBuffer = await blobOrFile.arrayBuffer();
+        const decoded = await ctx.decodeAudioData(arrayBuffer);
+
+        const sampleRate = Math.min(decoded.sampleRate || 44100, 44100);
+        const maxDuration = 2.0; // STRICT 2.0 SECONDS HARD LIMIT
+        const duration = Math.min(decoded.duration, maxDuration);
+        const numFrames = Math.max(1, Math.floor(duration * sampleRate));
+        const numChannels = Math.min(decoded.numberOfChannels || 1, 2);
+
+        const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        const offlineCtx = new OfflineCtx(numChannels, numFrames, sampleRate);
+        const source = offlineCtx.createBufferSource();
+        source.buffer = decoded;
+
+        // 50ms fade-out at end of 2 seconds to avoid any click/pop
+        const gain = offlineCtx.createGain();
+        const fadeStart = Math.max(0, duration - 0.05);
+        gain.gain.setValueAtTime(1, fadeStart);
+        gain.gain.linearRampToValueAtTime(0.001, duration);
+
+        source.connect(gain);
+        gain.connect(offlineCtx.destination);
+        source.start(0, 0, duration);
+
+        const renderedBuffer = await offlineCtx.startRendering();
+        return bufferToWavBlob(renderedBuffer);
+      } finally {
+        try { ctx.close(); } catch (_) {}
+      }
+    }
+
+    function bufferToWavBlob(buffer) {
+      const numChannels = buffer.numberOfChannels;
+      const sampleRate = buffer.sampleRate;
+      const format = 1; // PCM
+      const bitDepth = 16;
+      const numFrames = buffer.length;
+      const bytesPerSample = bitDepth / 8;
+      const blockAlign = numChannels * bytesPerSample;
+      const byteRate = sampleRate * blockAlign;
+      const dataSize = numFrames * blockAlign;
+      const headerSize = 44;
+      const totalSize = headerSize + dataSize;
+
+      const arrayBuffer = new ArrayBuffer(totalSize);
+      const view = new DataView(arrayBuffer);
+
+      function writeStr(v, offset, str) {
+        for (let i = 0; i < str.length; i++) {
+          v.setUint8(offset + i, str.charCodeAt(i));
+        }
+      }
+
+      writeStr(view, 0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeStr(view, 8, 'WAVE');
+
+      writeStr(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, format, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, byteRate, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitDepth, true);
+
+      writeStr(view, 36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      const channels = [];
+      for (let c = 0; c < numChannels; c++) {
+        channels.push(buffer.getChannelData(c));
+      }
+
+      let offset = 44;
+      for (let i = 0; i < numFrames; i++) {
+        for (let c = 0; c < numChannels; c++) {
+          let s = channels[c][i];
+          s = Math.max(-1, Math.min(1, s));
+          const val = s < 0 ? s * 32768 : s * 32767;
+          view.setInt16(offset, val, true);
+          offset += 2;
+        }
+      }
+
+      return new Blob([arrayBuffer], { type: 'audio/wav' });
+    }
+
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Не удалось прочитать аудио'));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    /* ─── Global Audio Player for Prefix Badges ─── */
+    let _activePrefixAudio = null;
+    let _activePrefixAudioTimeout = null;
+
+    function playRawPrefixAudio(soundUrl, onEnd) {
+      if (!soundUrl) return;
+      if (_activePrefixAudio) {
+        try { _activePrefixAudio.pause(); } catch (_) {}
+        _activePrefixAudio = null;
+      }
+      if (_activePrefixAudioTimeout) {
+        clearTimeout(_activePrefixAudioTimeout);
+        _activePrefixAudioTimeout = null;
+      }
+      try {
+        const a = new Audio(soundUrl);
+        _activePrefixAudio = a;
+        a.currentTime = 0;
+        a.volume = 1.0;
+
+        // STRICT 2.0 SECONDS HARD LIMIT
+        _activePrefixAudioTimeout = setTimeout(() => {
+          try { a.pause(); } catch (_) {}
+          if (onEnd) onEnd();
+        }, 2000);
+
+        a.onended = () => {
+          if (_activePrefixAudioTimeout) clearTimeout(_activePrefixAudioTimeout);
+          if (onEnd) onEnd();
+        };
+
+        a.play().catch(err => {
+          console.warn('Prefix audio play failed:', err);
+          if (onEnd) onEnd();
+        });
+      } catch (err) {
+        console.warn('Prefix audio creation failed:', err);
+        if (onEnd) onEnd();
+      }
+    }
+    window.playRawPrefixAudio = playRawPrefixAudio;
+
+    function playPrefixBadgeSound(e, el) {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      if (!el) return;
+      const rawSound = el.dataset ? el.dataset.sound : el.getAttribute('data-sound');
+      if (!rawSound) return;
+      const soundSource = decodeURIComponent(rawSound);
+      if (!soundSource) return;
+
+      document.querySelectorAll('.user-custom-prefix.playing-sound').forEach(b => b.classList.remove('playing-sound'));
+      el.classList.add('playing-sound');
+
+      if (soundSource.startsWith('preset:')) {
+        const preset = soundSource.replace('preset:', '');
+        playPrefixPresetAudio(preset);
+        setTimeout(() => {
+          el.classList.remove('playing-sound');
+        }, 700);
+        return;
+      }
+
+      playRawPrefixAudio(soundSource, () => {
+        el.classList.remove('playing-sound');
+      });
+    }
+    window.playPrefixBadgeSound = playPrefixBadgeSound;
+
+    /* ─── Prefix Badge Renderer ─── */
     function renderUserPrefixBadge(u, isLg) {
       if (!u) return '';
       const prefixText = (typeof u === 'string') ? u : (u.prefix || u.customPrefix || '');
       if (!prefixText || typeof prefixText !== 'string' || !prefixText.trim()) return '';
       const styleKey = (u && u.prefixStyle) || 'gold';
+      const soundSrc = (u && (u.prefixSound || u.customPrefixSound || u.prefixSoundUrl || u.authorPrefixSound)) || '';
+      const soundName = (u && (u.prefixSoundName || u.customPrefixSoundName || u.authorPrefixSoundName)) || '';
       const esc = (typeof escUp === 'function') ? escUp(prefixText) : prefixText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      if (soundSrc) {
+        const encSound = encodeURIComponent(soundSrc);
+        const titleText = soundName ? ('🔊 ' + soundName + ' • Нажмите, чтобы послушать') : '🔊 Звук префикса • Нажмите, чтобы послушать';
+        return '<span class="user-custom-prefix prefix-' + styleKey + (isLg ? ' lg' : '') + ' has-sound" data-sound="' + encSound + '" onclick="playPrefixBadgeSound(event, this)" title="' + titleText.replace(/"/g, '&quot;') + '"><i class="fa-solid fa-volume-high prefix-sound-icon"></i>' + esc + '</span>';
+      }
+
       return '<span class="user-custom-prefix prefix-' + styleKey + (isLg ? ' lg' : '') + '" title="Префикс">' + esc + '</span>';
     }
     window.renderUserPrefixBadge = renderUserPrefixBadge;
 
+    /* ─── Store Tabs & Active Prefix State ─── */
     let _selectedStoreTab = 'buy';
     function switchStoreTab(tab) {
       _selectedStoreTab = tab;
@@ -36623,6 +37172,7 @@ document.addEventListener('click', function(e) {
       if (tab === 'prefixes') {
         renderActivePrefixInStore();
         updateCustomPrefixLivePreview();
+        updateDraftCustomPrefixSoundUI();
       }
     }
     window.switchStoreTab = switchStoreTab;
@@ -36630,18 +37180,138 @@ document.addEventListener('click', function(e) {
     function renderActivePrefixInStore() {
       const disp = document.getElementById('myCurrentPrefixDisplay');
       const remBtn = document.getElementById('removePrefixBtn');
+      const manageSoundBtn = document.getElementById('managePrefixSoundBtn');
+      const manageSoundText = document.getElementById('managePrefixSoundBtnText');
+      const soundInfoBox = document.getElementById('myCurrentPrefixSoundInfo');
+      const soundTitle = document.getElementById('myPrefixSoundTitle');
+
       if (!disp) return;
       if (typeof me !== 'undefined' && me && me.prefix) {
         disp.innerHTML = renderUserPrefixBadge(me, true);
         if (remBtn) remBtn.style.display = 'inline-flex';
+        if (manageSoundBtn) {
+          manageSoundBtn.style.display = 'inline-flex';
+          if (manageSoundText) manageSoundText.textContent = me.prefixSound ? 'Изменить звук' : 'Добавить звук (до 2с)';
+        }
+        if (soundInfoBox) {
+          if (me.prefixSound) {
+            soundInfoBox.style.display = 'flex';
+            if (soundTitle) soundTitle.textContent = me.prefixSoundName || 'Пользовательский звук';
+          } else {
+            soundInfoBox.style.display = 'none';
+          }
+        }
       } else {
         disp.innerHTML = '<span style="color:var(--text2,#94a3b8);font-style:italic;">Не установлен</span>';
         if (remBtn) remBtn.style.display = 'none';
+        if (manageSoundBtn) manageSoundBtn.style.display = 'none';
+        if (soundInfoBox) soundInfoBox.style.display = 'none';
       }
     }
     window.renderActivePrefixInStore = renderActivePrefixInStore;
 
-    async function buyPresetPrefix(prefixText, styleKey, cost) {
+    function playMyCurrentPrefixSound() {
+      if (!me || !me.prefixSound) return;
+      if (me.prefixSound.startsWith('preset:')) {
+        playPrefixPresetAudio(me.prefixSound.replace('preset:', ''));
+      } else {
+        playRawPrefixAudio(me.prefixSound);
+      }
+    }
+    window.playMyCurrentPrefixSound = playMyCurrentPrefixSound;
+
+    async function updateMyPrefixSound(soundSource, soundName) {
+      if (!me || !me.uid) {
+        showToast('Внимание', 'Пожалуйста, авторизуйтесь в аккаунте', 'warning');
+        return;
+      }
+      if (!me.prefix) {
+        showToast('Внимание', 'Сначала установите префикс', 'warning');
+        return;
+      }
+
+      me.prefixSound = soundSource;
+      me.prefixSoundName = soundName;
+
+      if (window.db) {
+        try {
+          await db.collection('users').doc(me.uid).set({
+            prefixSound: soundSource,
+            prefixSoundName: soundName,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (e) {
+          console.warn('Firestore prefixSound error:', e);
+        }
+      }
+
+      if (window._fbDb) {
+        try {
+          await _fbDb.ref('users/' + me.uid + '/prefixSound').set(soundSource);
+          await _fbDb.ref('users/' + me.uid + '/prefixSoundName').set(soundName);
+        } catch (e) {
+          console.warn('RTDB prefixSound error:', e);
+        }
+      }
+
+      if (typeof uCache !== 'undefined' && uCache[me.uid]) {
+        uCache[me.uid].prefixSound = soundSource;
+        uCache[me.uid].prefixSoundName = soundName;
+      }
+      if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
+      if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
+      renderActivePrefixInStore();
+
+      if (typeof renderChatList === 'function') renderChatList();
+      if (typeof activeId !== 'undefined' && activeId && typeof msgsUnsub !== 'undefined' && msgsUnsub && msgsUnsub._run) {
+        try { msgsUnsub._run(); } catch (_) {}
+      }
+
+      showToast('Звук префикса сохранен! 🔊', 'При нажатии на ваш префикс звучит: ' + soundName, 'success');
+    }
+    window.updateMyPrefixSound = updateMyPrefixSound;
+
+    async function removeMyPrefixSound() {
+      if (!me || !me.uid) return;
+      me.prefixSound = '';
+      me.prefixSoundName = '';
+
+      if (window.db) {
+        try {
+          await db.collection('users').doc(me.uid).set({
+            prefixSound: '',
+            prefixSoundName: '',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (_) {}
+      }
+
+      if (window._fbDb) {
+        try {
+          await _fbDb.ref('users/' + me.uid + '/prefixSound').set('');
+          await _fbDb.ref('users/' + me.uid + '/prefixSoundName').set('');
+        } catch (_) {}
+      }
+
+      if (typeof uCache !== 'undefined' && uCache[me.uid]) {
+        uCache[me.uid].prefixSound = '';
+        uCache[me.uid].prefixSoundName = '';
+      }
+      if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
+      if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
+      renderActivePrefixInStore();
+
+      if (typeof renderChatList === 'function') renderChatList();
+      if (typeof activeId !== 'undefined' && activeId && typeof msgsUnsub !== 'undefined' && msgsUnsub && msgsUnsub._run) {
+        try { msgsUnsub._run(); } catch (_) {}
+      }
+
+      showToast('Звук убран', 'Звук префикса отключен', 'info');
+    }
+    window.removeMyPrefixSound = removeMyPrefixSound;
+
+    /* ─── Buy Presets & Custom Prefixes ─── */
+    async function buyPresetPrefix(prefixText, styleKey, cost, soundUrl, soundName) {
       if (!me || !me.uid) {
         showToast('Внимание', 'Пожалуйста, авторизуйтесь в аккаунте', 'warning');
         return;
@@ -36660,16 +37330,26 @@ document.addEventListener('click', function(e) {
       me.pirozhki = newBal;
       me.prefix = prefixText;
       me.prefixStyle = styleKey;
+      if (typeof soundUrl !== 'undefined') {
+        me.prefixSound = soundUrl || '';
+        me.prefixSoundName = soundName || '';
+      }
       updateUserPirozhkiUI(newBal);
+
+      const userUpdateData = {
+        pirozhki: newBal,
+        prefix: prefixText,
+        prefixStyle: styleKey,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (typeof soundUrl !== 'undefined') {
+        userUpdateData.prefixSound = soundUrl || '';
+        userUpdateData.prefixSoundName = soundName || '';
+      }
 
       if (window.db) {
         try {
-          await db.collection('users').doc(me.uid).set({
-            pirozhki: newBal,
-            prefix: prefixText,
-            prefixStyle: styleKey,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
+          await db.collection('users').doc(me.uid).set(userUpdateData, { merge: true });
         } catch (e) { console.warn('Firestore prefix error:', e); }
       }
 
@@ -36678,6 +37358,10 @@ document.addEventListener('click', function(e) {
           await _fbDb.ref('users/' + me.uid + '/pirozhki').set(newBal);
           await _fbDb.ref('users/' + me.uid + '/prefix').set(prefixText);
           await _fbDb.ref('users/' + me.uid + '/prefixStyle').set(styleKey);
+          if (typeof soundUrl !== 'undefined') {
+            await _fbDb.ref('users/' + me.uid + '/prefixSound').set(soundUrl || '');
+            await _fbDb.ref('users/' + me.uid + '/prefixSoundName').set(soundName || '');
+          }
           await _fbDb.ref('users/' + me.uid + '/pirozhki_history/' + Date.now()).set({
             amount: -cost,
             timestamp: Date.now(),
@@ -36692,6 +37376,10 @@ document.addEventListener('click', function(e) {
         uCache[me.uid].prefix = prefixText;
         uCache[me.uid].prefixStyle = styleKey;
         uCache[me.uid].pirozhki = newBal;
+        if (typeof soundUrl !== 'undefined') {
+          uCache[me.uid].prefixSound = soundUrl || '';
+          uCache[me.uid].prefixSoundName = soundName || '';
+        }
       }
       if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
       if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
@@ -36713,18 +37401,72 @@ document.addEventListener('click', function(e) {
     }
     window.selectCustomPrefixStyle = selectCustomPrefixStyle;
 
+    let _draftCustomPrefixSound = '';
+    let _draftCustomPrefixSoundName = '';
+
     function updateCustomPrefixLivePreview() {
       const inp = document.getElementById('customPrefixInput');
       const txt = (inp ? inp.value.trim() : '') || 'МАЖОР';
       const badge = document.getElementById('customPrefixPreviewBadge');
       if (badge) {
-        badge.className = 'user-custom-prefix prefix-' + _selectedCustomPrefixStyle;
-        badge.textContent = txt;
+        const hasSound = !!_draftCustomPrefixSound;
+        badge.className = 'user-custom-prefix prefix-' + _selectedCustomPrefixStyle + (hasSound ? ' has-sound' : '');
+        badge.innerHTML = (hasSound ? '<i class="fa-solid fa-volume-high prefix-sound-icon"></i>' : '') + ((typeof escUp === 'function') ? escUp(txt) : txt.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+        if (hasSound) {
+          badge.dataset.sound = encodeURIComponent(_draftCustomPrefixSound);
+          badge.title = '🔊 ' + (_draftCustomPrefixSoundName || 'Звук префикса') + ' (нажмите, чтобы послушать)';
+        } else {
+          badge.removeAttribute('data-sound');
+          badge.title = 'Префикс';
+        }
       }
       const nickEl = document.getElementById('customPrefixPreviewNick');
       if (nickEl && typeof me !== 'undefined' && me && me.nick) nickEl.textContent = '@' + me.nick;
     }
     window.updateCustomPrefixLivePreview = updateCustomPrefixLivePreview;
+
+    function updateDraftCustomPrefixSoundUI() {
+      const nameEl = document.getElementById('customPrefixSelectedSoundName');
+      const testBtn = document.getElementById('customPrefixSoundTestBtn');
+      const clearBtn = document.getElementById('customPrefixSoundClearBtn');
+
+      if (nameEl) nameEl.textContent = _draftCustomPrefixSoundName || 'Без звука';
+      if (testBtn) testBtn.style.display = _draftCustomPrefixSound ? 'inline-flex' : 'none';
+      if (clearBtn) clearBtn.style.display = _draftCustomPrefixSound ? 'inline-flex' : 'none';
+    }
+    window.updateDraftCustomPrefixSoundUI = updateDraftCustomPrefixSoundUI;
+
+    function testDraftCustomPrefixSound() {
+      if (!_draftCustomPrefixSound) return;
+      if (_draftCustomPrefixSound.startsWith('preset:')) {
+        playPrefixPresetAudio(_draftCustomPrefixSound.replace('preset:', ''));
+      } else {
+        playRawPrefixAudio(_draftCustomPrefixSound);
+      }
+    }
+    window.testDraftCustomPrefixSound = testDraftCustomPrefixSound;
+
+    function clearDraftCustomPrefixSound() {
+      _draftCustomPrefixSound = '';
+      _draftCustomPrefixSoundName = '';
+      updateCustomPrefixLivePreview();
+      updateDraftCustomPrefixSoundUI();
+    }
+    window.clearDraftCustomPrefixSound = clearDraftCustomPrefixSound;
+
+    function testCustomPrefixPreviewClick(e) {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      const badge = document.getElementById('customPrefixPreviewBadge');
+      if (_draftCustomPrefixSound) {
+        playPrefixBadgeSound(e, badge);
+      } else {
+        showToast('Звук не выбран', 'Нажмите "Выбрать / Записать", чтобы прикрепить звук до 2 секунд', 'info');
+      }
+    }
+    window.testCustomPrefixPreviewClick = testCustomPrefixPreviewClick;
 
     async function buyCustomPrefix() {
       const inp = document.getElementById('customPrefixInput');
@@ -36738,7 +37480,7 @@ document.addEventListener('click', function(e) {
         showToast('Внимание', 'Максимальная длина префикса — 12 символов', 'warning');
         return;
       }
-      await buyPresetPrefix(txt, _selectedCustomPrefixStyle, 250);
+      await buyPresetPrefix(txt, _selectedCustomPrefixStyle, 250, _draftCustomPrefixSound, _draftCustomPrefixSoundName);
     }
     window.buyCustomPrefix = buyCustomPrefix;
 
@@ -36749,12 +37491,16 @@ document.addEventListener('click', function(e) {
 
       me.prefix = '';
       me.prefixStyle = '';
+      me.prefixSound = '';
+      me.prefixSoundName = '';
 
       if (window.db) {
         try {
           await db.collection('users').doc(me.uid).set({
             prefix: '',
             prefixStyle: '',
+            prefixSound: '',
+            prefixSoundName: '',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
         } catch (_) {}
@@ -36764,12 +37510,16 @@ document.addEventListener('click', function(e) {
         try {
           await _fbDb.ref('users/' + me.uid + '/prefix').set('');
           await _fbDb.ref('users/' + me.uid + '/prefixStyle').set('');
+          await _fbDb.ref('users/' + me.uid + '/prefixSound').set('');
+          await _fbDb.ref('users/' + me.uid + '/prefixSoundName').set('');
         } catch (_) {}
       }
 
       if (typeof uCache !== 'undefined' && uCache[me.uid]) {
         uCache[me.uid].prefix = '';
         uCache[me.uid].prefixStyle = '';
+        uCache[me.uid].prefixSound = '';
+        uCache[me.uid].prefixSoundName = '';
       }
       if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
       if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
@@ -36780,6 +37530,303 @@ document.addEventListener('click', function(e) {
       showToast('Префикс снят', 'Ваш префикс успешно удален', 'info');
     }
     window.removeMyPrefix = removeMyPrefix;
+
+    /* ─── Sound Selection Modal Logic (Presets, Upload & Mic) ─── */
+    let _prefixSoundModalTarget = 'existing';
+    let _selectedModalSound = '';
+    let _selectedModalSoundName = '';
+
+    function openPrefixSoundModal(target) {
+      _prefixSoundModalTarget = target || 'existing';
+
+      if (_prefixSoundModalTarget === 'existing') {
+        if (me && me.prefixSound) {
+          setSelectedModalPrefixSound(me.prefixSound, me.prefixSoundName || 'Мой звук');
+        } else {
+          setSelectedModalPrefixSound('', 'Без звука');
+        }
+      } else {
+        if (_draftCustomPrefixSound) {
+          setSelectedModalPrefixSound(_draftCustomPrefixSound, _draftCustomPrefixSoundName || 'Выбранный звук');
+        } else {
+          setSelectedModalPrefixSound('', 'Без звука');
+        }
+      }
+
+      renderPrefixPresetsGrid();
+      switchPrefixSoundTab('presets');
+      openModal('modal-prefix-sound');
+    }
+    window.openPrefixSoundModal = openPrefixSoundModal;
+
+    function switchPrefixSoundTab(tab) {
+      const btnPresets = document.getElementById('pSoundTabBtnPresets');
+      const btnUpload = document.getElementById('pSoundTabBtnUpload');
+      const btnMic = document.getElementById('pSoundTabBtnMic');
+      const cPresets = document.getElementById('pSoundTabPresets');
+      const cUpload = document.getElementById('pSoundTabUpload');
+      const cMic = document.getElementById('pSoundTabMic');
+
+      if (btnPresets) btnPresets.classList.toggle('active', tab === 'presets');
+      if (btnUpload) btnUpload.classList.toggle('active', tab === 'upload');
+      if (btnMic) btnMic.classList.toggle('active', tab === 'mic');
+
+      if (cPresets) cPresets.style.display = (tab === 'presets') ? 'block' : 'none';
+      if (cUpload) cUpload.style.display = (tab === 'upload') ? 'block' : 'none';
+      if (cMic) cMic.style.display = (tab === 'mic') ? 'block' : 'none';
+    }
+    window.switchPrefixSoundTab = switchPrefixSoundTab;
+
+    function renderPrefixPresetsGrid() {
+      const container = document.getElementById('prefixSoundPresetsGrid');
+      if (!container) return;
+      container.innerHTML = PREFIX_SOUND_PRESETS.map(p => {
+        const isAct = _selectedModalSound === ('preset:' + p.id);
+        return '<div class="prefix-sound-card' + (isAct ? ' active' : '') + '" data-preset="' + p.id + '" data-name="' + p.name + '" data-sound-key="preset:' + p.id + '" onclick="selectPrefixPresetCard(this)">' +
+          '<div class="ps-icon">' + p.icon + '</div>' +
+          '<div class="ps-info">' +
+            '<div class="ps-name">' + p.name + '</div>' +
+            '<div class="ps-dur">' + p.dur + ' • ' + p.desc + '</div>' +
+          '</div>' +
+          '<button type="button" class="ps-play-btn" onclick="previewPresetBtnClick(event, this)" title="Прослушать">' +
+            '<i class="fa-solid fa-play"></i>' +
+          '</button>' +
+        '</div>';
+      }).join('');
+    }
+    window.renderPrefixPresetsGrid = renderPrefixPresetsGrid;
+
+    function selectPrefixPresetCard(el) {
+      if (!el) return;
+      const presetId = el.dataset.preset;
+      const presetName = el.dataset.name;
+      selectPrefixPresetSound(presetId, presetName);
+    }
+    window.selectPrefixPresetCard = selectPrefixPresetCard;
+
+    function previewPresetBtnClick(e, btn) {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      const card = btn ? btn.closest('.prefix-sound-card') : null;
+      const presetId = card ? card.dataset.preset : '';
+      if (presetId) playPrefixPresetAudio(presetId);
+    }
+    window.previewPresetBtnClick = previewPresetBtnClick;
+
+    function selectPrefixPresetSound(presetId, presetName) {
+      setSelectedModalPrefixSound('preset:' + presetId, presetName);
+      playPrefixPresetAudio(presetId);
+    }
+    window.selectPrefixPresetSound = selectPrefixPresetSound;
+
+    function setSelectedModalPrefixSound(soundSource, soundName) {
+      _selectedModalSound = soundSource || '';
+      _selectedModalSoundName = soundName || 'Без звука';
+
+      const lbl = document.getElementById('prefixSoundModalSelectedLabel');
+      if (lbl) lbl.textContent = _selectedModalSoundName;
+
+      const btn = document.getElementById('prefixSoundModalPreviewBtn');
+      if (btn) btn.style.display = _selectedModalSound ? 'inline-flex' : 'none';
+
+      document.querySelectorAll('.prefix-sound-card').forEach(c => {
+        c.classList.toggle('active', !!(_selectedModalSound && _selectedModalSound === c.dataset.soundKey));
+      });
+    }
+
+    function playSelectedModalPrefixSound() {
+      if (!_selectedModalSound) return;
+      if (_selectedModalSound.startsWith('preset:')) {
+        playPrefixPresetAudio(_selectedModalSound.replace('preset:', ''));
+      } else {
+        playRawPrefixAudio(_selectedModalSound);
+      }
+    }
+    window.playSelectedModalPrefixSound = playSelectedModalPrefixSound;
+
+    async function applyPrefixSoundChoice() {
+      closeModal('modal-prefix-sound');
+      stopPrefixMicRecording();
+
+      if (_prefixSoundModalTarget === 'existing') {
+        if (!_selectedModalSound) {
+          await removeMyPrefixSound();
+          return;
+        }
+        await updateMyPrefixSound(_selectedModalSound, _selectedModalSoundName);
+      } else {
+        _draftCustomPrefixSound = _selectedModalSound;
+        _draftCustomPrefixSoundName = _selectedModalSoundName;
+        updateCustomPrefixLivePreview();
+        updateDraftCustomPrefixSoundUI();
+      }
+    }
+    window.applyPrefixSoundChoice = applyPrefixSoundChoice;
+
+    async function clearAndSavePrefixSound() {
+      setSelectedModalPrefixSound('', 'Без звука');
+      await applyPrefixSoundChoice();
+    }
+    window.clearAndSavePrefixSound = clearAndSavePrefixSound;
+
+    /* ─── File Upload Handler ─── */
+    async function handlePrefixAudioFileSelect(event) {
+      const file = event.target && event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const statusBox = document.getElementById('prefixAudioFileStatus');
+      const statusName = document.getElementById('prefixAudioFileName');
+      const statusMeta = document.getElementById('prefixAudioFileMeta');
+
+      try {
+        if (statusBox) {
+          statusBox.style.display = 'flex';
+          if (statusName) statusName.textContent = '⏳ Обработка ' + file.name + '...';
+          if (statusMeta) statusMeta.textContent = 'Проверка и обрезка до 2.0 сек...';
+        }
+
+        const trimmedBlob = await trimAudioBlobToMax2Sec(file);
+        const dataUrl = await blobToDataUrl(trimmedBlob);
+        const baseName = file.name.replace(/\.[^/.]+$/, '').slice(0, 16);
+
+        if (statusName) statusName.textContent = '🎵 ' + baseName;
+        if (statusMeta) statusMeta.innerHTML = '✅ <span style="color:#22c55e;">Готово (макс. 2.0 сек)</span>';
+
+        setSelectedModalPrefixSound(dataUrl, 'Файл: ' + baseName);
+      } catch (err) {
+        console.error('Audio file process error:', err);
+        showToast('Ошибка аудио', 'Не удалось обработать аудиофайл: ' + (err.message || err), 'error');
+        if (statusBox) statusBox.style.display = 'none';
+      }
+    }
+    window.handlePrefixAudioFileSelect = handlePrefixAudioFileSelect;
+
+    /* ─── Microphone Recorder (Strict Max 2.0 Seconds) ─── */
+    let _prefixMediaRecorder = null;
+    let _prefixRecordedChunks = [];
+    let _prefixRecordTimerInterval = null;
+    let _prefixRecordStartTime = 0;
+    let _prefixDraftRecordedDataUrl = null;
+
+    async function togglePrefixMicRecording() {
+      const btn = document.getElementById('prefixMicRecordBtn');
+      const statusText = document.getElementById('prefixMicStatusText');
+      const timerEl = document.getElementById('prefixMicTimer');
+      const progEl = document.getElementById('prefixMicProgress');
+      const resultBox = document.getElementById('prefixMicResultBox');
+
+      if (_prefixMediaRecorder && _prefixMediaRecorder.state === 'recording') {
+        stopPrefixMicRecording();
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        _prefixRecordedChunks = [];
+        _prefixDraftRecordedDataUrl = null;
+        if (resultBox) resultBox.style.display = 'none';
+
+        const mimeType = (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
+          ? 'audio/webm;codecs=opus'
+          : ((typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) ? 'audio/ogg;codecs=opus' : '');
+
+        _prefixMediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+        _prefixMediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) _prefixRecordedChunks.push(e.data);
+        };
+
+        _prefixMediaRecorder.onstop = async () => {
+          try { stream.getTracks().forEach(t => t.stop()); } catch (_) {}
+          if (_prefixRecordTimerInterval) {
+            clearInterval(_prefixRecordTimerInterval);
+            _prefixRecordTimerInterval = null;
+          }
+
+          const rawBlob = new Blob(_prefixRecordedChunks, { type: _prefixMediaRecorder.mimeType || 'audio/webm' });
+
+          try {
+            const trimmedWavBlob = await trimAudioBlobToMax2Sec(rawBlob);
+            _prefixDraftRecordedDataUrl = await blobToDataUrl(trimmedWavBlob);
+          } catch (err) {
+            console.warn('Trim wav error, fallback to rawBlob:', err);
+            _prefixDraftRecordedDataUrl = await blobToDataUrl(rawBlob);
+          }
+
+          if (btn) {
+            btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+            btn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+          }
+          if (statusText) statusText.innerHTML = '✅ <span style="color:#22c55e;">Запись готова!</span> (до 2.0 сек)';
+          if (progEl) progEl.style.width = '100%';
+          if (resultBox) resultBox.style.display = 'flex';
+
+          const durationSec = Math.min(2.0, ((Date.now() - _prefixRecordStartTime) / 1000)).toFixed(1);
+          setSelectedModalPrefixSound(_prefixDraftRecordedDataUrl, 'Голосовая запись (' + durationSec + 'с)');
+        };
+
+        _prefixMediaRecorder.start(100);
+        _prefixRecordStartTime = Date.now();
+
+        if (btn) {
+          btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          btn.innerHTML = '<i class="fa-solid fa-stop"></i>';
+        }
+        if (statusText) statusText.innerHTML = '🔴 <span style="color:#ef4444;font-weight:800;">Идёт запись...</span> (макс. 2.0 сек)';
+
+        _prefixRecordTimerInterval = setInterval(() => {
+          const elapsedMs = Date.now() - _prefixRecordStartTime;
+          const elapsedSec = (elapsedMs / 1000);
+          if (timerEl) timerEl.textContent = Math.min(2.0, elapsedSec).toFixed(1) + ' / 2.0 сек';
+          if (progEl) progEl.style.width = Math.min(100, (elapsedMs / 2000) * 100) + '%';
+
+          if (elapsedMs >= 2000) {
+            stopPrefixMicRecording();
+          }
+        }, 50);
+
+      } catch (err) {
+        console.error('Microphone error:', err);
+        showToast('Ошибка микрофона', 'Не удалось получить доступ к микрофону: ' + (err.message || err), 'error');
+      }
+    }
+    window.togglePrefixMicRecording = togglePrefixMicRecording;
+
+    function stopPrefixMicRecording() {
+      if (_prefixMediaRecorder && _prefixMediaRecorder.state === 'recording') {
+        try { _prefixMediaRecorder.stop(); } catch (_) {}
+      }
+      if (_prefixRecordTimerInterval) {
+        clearInterval(_prefixRecordTimerInterval);
+        _prefixRecordTimerInterval = null;
+      }
+    }
+    window.stopPrefixMicRecording = stopPrefixMicRecording;
+
+    function resetPrefixMicRecording() {
+      _prefixDraftRecordedDataUrl = null;
+      const resultBox = document.getElementById('prefixMicResultBox');
+      const statusText = document.getElementById('prefixMicStatusText');
+      const timerEl = document.getElementById('prefixMicTimer');
+      const progEl = document.getElementById('prefixMicProgress');
+
+      if (resultBox) resultBox.style.display = 'none';
+      if (statusText) statusText.textContent = 'Нажмите кнопку для записи звука';
+      if (timerEl) timerEl.textContent = '0.0 / 2.0 сек';
+      if (progEl) progEl.style.width = '0%';
+
+      setSelectedModalPrefixSound('', 'Без звука');
+    }
+    window.resetPrefixMicRecording = resetPrefixMicRecording;
+
+    function playDraftMicRecord() {
+      if (_prefixDraftRecordedDataUrl) {
+        playRawPrefixAudio(_prefixDraftRecordedDataUrl);
+      }
+    }
+    window.playDraftMicRecord = playDraftMicRecord;
 
     /* ══════════════════════════════════════════════════════════════
        PIROZHKI GIFTING & TRANSFER SYSTEM
@@ -37850,16 +38897,33 @@ document.addEventListener('click', function(e) {
 
       <!-- TAB 2: PREFIXES CATALOG & CUSTOM CREATOR -->
       <div id="storeTabContentPrefixes" style="display:none;">
-        <div class="my-active-prefix-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-          <div>
-            <div style="font-size:11px;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:0.5px;">Ваш текущий префикс</div>
-            <div id="myCurrentPrefixDisplay" style="margin-top:4px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;">
-              <span style="color:var(--text2,#94a3b8);font-style:italic;">Не установлен</span>
+        <div class="my-active-prefix-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-size:11px;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:0.5px;">Ваш текущий префикс</div>
+              <div id="myCurrentPrefixDisplay" style="margin-top:4px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;">
+                <span style="color:var(--text2,#94a3b8);font-style:italic;">Не установлен</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <button type="button" id="managePrefixSoundBtn" class="notif-btn secondary" style="font-size:11px;padding:6px 12px;display:none;color:#f59e0b;border-color:rgba(245,158,11,0.35);background:rgba(245,158,11,0.08);" onclick="openPrefixSoundModal('existing')">
+                <i class="fa-solid fa-volume-high"></i> <span id="managePrefixSoundBtnText">Звук префикса</span>
+              </button>
+              <button type="button" id="removePrefixBtn" class="notif-btn secondary" style="font-size:11px;padding:6px 12px;display:none;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="removeMyPrefix()">
+                <i class="fa-solid fa-trash-can"></i> Снять префикс
+              </button>
             </div>
           </div>
-          <button type="button" id="removePrefixBtn" class="notif-btn secondary" style="font-size:11px;padding:6px 12px;display:none;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="removeMyPrefix()">
-            <i class="fa-solid fa-trash-can"></i> Снять префикс
-          </button>
+          <div id="myCurrentPrefixSoundInfo" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2,#94a3b8);">
+              <i class="fa-solid fa-music" style="color:#f59e0b;"></i>
+              <span>Звук при клике: <b id="myPrefixSoundTitle" style="color:#fff;">Не выбран</b></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="notif-btn secondary" style="font-size:11px;padding:4px 9px;" onclick="playMyCurrentPrefixSound()" title="Прослушать"><i class="fa-solid fa-play"></i> Тест</button>
+              <button type="button" class="notif-btn secondary" style="font-size:11px;padding:4px 9px;color:#ef4444;" onclick="removeMyPrefixSound()" title="Удалить звук"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+          </div>
         </div>
 
         <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
@@ -37960,11 +39024,36 @@ document.addEventListener('click', function(e) {
             <button type="button" class="prefix-style-pill" data-style="legend" onclick="selectCustomPrefixStyle('legend', this)">Радуга</button>
           </div>
 
+          <!-- Sound selector row for custom prefix -->
+          <div style="margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+              <span>ЗВУК ПРИ НАЖАТИИ (ДО 2 СЕК, НЕОБЯЗАТЕЛЬНО):</span>
+              <span style="font-size:10.5px;color:#f59e0b;"><i class="fa-solid fa-clock"></i> макс. 2.0 сек</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 12px;">
+              <div style="flex:1;display:flex;align-items:center;gap:8px;min-width:0;">
+                <i class="fa-solid fa-volume-high" style="color:#f59e0b;font-size:14px;"></i>
+                <span id="customPrefixSelectedSoundName" style="font-size:12.5px;color:var(--text,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Без звука</span>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <button type="button" id="customPrefixSoundTestBtn" class="notif-btn secondary" style="font-size:11px;padding:5px 9px;display:none;" onclick="testDraftCustomPrefixSound()" title="Прослушать">
+                  <i class="fa-solid fa-play"></i>
+                </button>
+                <button type="button" id="customPrefixSoundClearBtn" class="notif-btn secondary" style="font-size:11px;padding:5px 9px;display:none;color:#ef4444;" onclick="clearDraftCustomPrefixSound()" title="Убрать звук">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+                <button type="button" class="notif-btn secondary" style="font-size:11.5px;padding:5px 12px;background:rgba(245,158,11,0.15);color:#f59e0b;border-color:rgba(245,158,11,0.35);" onclick="openPrefixSoundModal('custom')">
+                  <i class="fa-solid fa-sliders"></i> Выбрать / Записать
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <div style="font-size:12px;color:var(--text2,#94a3b8);">Предпросмотр:</div>
+            <div style="font-size:12px;color:var(--text2,#94a3b8);">Предпросмотр (кликните для звука):</div>
             <div style="display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--text,#fff);">
               <span id="customPrefixPreviewNick">@вы</span>
-              <span id="customPrefixPreviewBadge" class="user-custom-prefix prefix-gold">МАЖОР</span>
+              <span id="customPrefixPreviewBadge" class="user-custom-prefix prefix-gold" onclick="testCustomPrefixPreviewClick(event)">МАЖОР</span>
             </div>
           </div>
 
@@ -38011,6 +39100,110 @@ document.addEventListener('click', function(e) {
   </div>
 
   <!-- MODAL: DIRECT GIFT PIROZHKI (From Profile or Context Menu) -->
+  <!-- MODAL: PREFIX SOUND SELECTOR & RECORDER -->
+  <div class="modal hidden" id="modal-prefix-sound" style="z-index:100000;">
+    <div class="pirozhki-modal-box" style="max-width:540px;">
+      <div class="pirozhki-store-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,158,11,0.18);display:flex;align-items:center;justify-content:center;">
+            <i class="fa-solid fa-volume-high" style="color:#f59e0b;font-size:17px;"></i>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:800;color:var(--text,#fff);">Звук для префикса</div>
+            <div style="font-size:11.5px;color:var(--text2,#94a3b8);">Длительность: <b>не более 2 секунд</b> (воспроизводится при клике)</div>
+          </div>
+        </div>
+        <button type="button" class="notif-btn secondary" style="width:32px;height:32px;padding:0;min-width:unset;border-radius:50%;display:flex;align-items:center;justify-content:center;" onclick="closeModal('modal-prefix-sound')">✕</button>
+      </div>
+
+      <!-- Sound Tabs -->
+      <div class="pirozhki-tabs" style="margin-bottom:14px;display:grid;grid-template-columns:repeat(3, 1fr);gap:6px;">
+        <button type="button" class="pirozhki-tab-btn active" id="pSoundTabBtnPresets" onclick="switchPrefixSoundTab('presets')">
+          <i class="fa-solid fa-music"></i> Готовые звуки
+        </button>
+        <button type="button" class="pirozhki-tab-btn" id="pSoundTabBtnUpload" onclick="switchPrefixSoundTab('upload')">
+          <i class="fa-solid fa-upload"></i> Загрузить файл
+        </button>
+        <button type="button" class="pirozhki-tab-btn" id="pSoundTabBtnMic" onclick="switchPrefixSoundTab('mic')">
+          <i class="fa-solid fa-microphone"></i> Микрофон (до 2с)
+        </button>
+      </div>
+
+      <!-- TAB 1: PRESET SOUNDS -->
+      <div id="pSoundTabPresets">
+        <div style="font-size:11.5px;color:var(--text2,#94a3b8);margin-bottom:10px;">
+          Нажмите на карточку, чтобы выбрать эффект, или на кнопку <i class="fa-solid fa-play" style="font-size:9px;"></i> для прослушивания:
+        </div>
+        <div id="prefixSoundPresetsGrid" style="display:grid;grid-template-columns:repeat(2, 1fr);gap:8px;max-height:260px;overflow-y:auto;padding-right:4px;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- TAB 2: UPLOAD CUSTOM AUDIO -->
+      <div id="pSoundTabUpload" style="display:none;">
+        <div style="border:2px dashed rgba(245,158,11,0.35);border-radius:14px;padding:26px 16px;text-align:center;background:rgba(245,158,11,0.04);cursor:pointer;transition:border-color 0.2s;" onclick="document.getElementById('prefixAudioFileInput').click()">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:32px;color:#f59e0b;margin-bottom:8px;"></i>
+          <div style="font-size:13.5px;font-weight:700;color:var(--text,#fff);margin-bottom:4px;">Выберите аудиофайл на устройстве</div>
+          <div style="font-size:11px;color:var(--text2,#94a3b8);">Поддерживаются MP3, WAV, OGG, M4A, WEBM</div>
+          <div style="font-size:11px;color:#f59e0b;margin-top:8px;font-weight:600;">⚡ Если файл длиннее 2 сек — он будет автоматически обрезан до 2.0 секунд!</div>
+        </div>
+        <input type="file" id="prefixAudioFileInput" accept="audio/*" style="display:none;" onchange="handlePrefixAudioFileSelect(event)">
+
+        <div id="prefixAudioFileStatus" style="display:none;margin-top:12px;background:rgba(0,0,0,0.3);border-radius:10px;padding:12px;align-items:center;justify-content:space-between;">
+          <div>
+            <div id="prefixAudioFileName" style="font-size:13px;font-weight:700;color:#fff;">Файл выбран</div>
+            <div id="prefixAudioFileMeta" style="font-size:11px;color:var(--text2,#94a3b8);">Обработка...</div>
+          </div>
+          <button type="button" class="notif-btn secondary" onclick="playSelectedModalPrefixSound()" style="font-size:11.5px;padding:5px 10px;">
+            <i class="fa-solid fa-play"></i> Прослушать
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 3: MICROPHONE RECORD -->
+      <div id="pSoundTabMic" style="display:none;">
+        <div style="text-align:center;padding:18px 12px;background:rgba(0,0,0,0.25);border-radius:14px;border:1px solid rgba(255,255,255,0.06);">
+          <div id="prefixMicStatusText" style="font-size:13px;font-weight:700;color:var(--text,#fff);margin-bottom:14px;">Нажмите кнопку для записи звука</div>
+
+          <button type="button" id="prefixMicRecordBtn" onclick="togglePrefixMicRecording()" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg, #ef4444, #dc2626);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 0 20px rgba(239,68,68,0.4);transition:transform 0.15s, box-shadow 0.15s;margin-bottom:12px;">
+            <i class="fa-solid fa-microphone"></i>
+          </button>
+
+          <div id="prefixMicTimer" style="font-size:20px;font-weight:800;color:#f59e0b;font-family:monospace;margin-bottom:6px;">0.0 / 2.0 сек</div>
+          <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:9999px;overflow:hidden;max-width:240px;margin:0 auto 12px;">
+            <div id="prefixMicProgress" style="width:0%;height:100%;background:linear-gradient(90deg, #f59e0b, #ef4444);transition:width 0.1s linear;"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text2,#94a3b8);">Запись автоматически остановится ровно через 2 секунды</div>
+
+          <div id="prefixMicResultBox" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);align-items:center;justify-content:center;gap:10px;">
+            <button type="button" class="notif-btn secondary" onclick="playDraftMicRecord()"><i class="fa-solid fa-play"></i> Послушать запись</button>
+            <button type="button" class="notif-btn secondary" style="color:#ef4444;" onclick="resetPrefixMicRecording()"><i class="fa-solid fa-rotate-left"></i> Заново</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Choice Summary Box -->
+      <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-top:14px;margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--text2,#94a3b8);">Выбранный звук:</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="prefixSoundModalSelectedLabel" style="font-size:13px;font-weight:700;color:#fbbf24;">Не выбран</span>
+          <button type="button" id="prefixSoundModalPreviewBtn" class="notif-btn secondary" style="padding:4px 8px;font-size:11px;display:none;" onclick="playSelectedModalPrefixSound()" title="Прослушать"><i class="fa-solid fa-play"></i></button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="notif-btn secondary" onclick="clearAndSavePrefixSound()" style="color:#ef4444;border-color:rgba(239,68,68,0.3);">
+          <i class="fa-solid fa-trash-can"></i> Без звука
+        </button>
+        <button type="button" class="notif-btn secondary" onclick="closeModal('modal-prefix-sound')">Отмена</button>
+        <button type="button" class="auth-btn" id="savePrefixSoundModalBtn" onclick="applyPrefixSoundChoice()" style="margin:0;width:auto;padding:8px 18px;background:linear-gradient(135deg, #f59e0b, #d97706);font-size:13px;font-weight:800;">
+          Применить звук
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal hidden" id="modal-gift-pirozhki" style="z-index:99999;">
     <div class="pirozhki-modal-box" style="max-width:440px;">
       <div class="pirozhki-store-header">
