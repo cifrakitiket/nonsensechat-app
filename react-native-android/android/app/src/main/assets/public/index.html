@@ -1647,7 +1647,34 @@
     .steam-frame-opt.active {
       border-color: #ffd700;
       background: rgba(255, 215, 0, 0.12);
-      color: #fff;
+      color: #ffd700;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    }
+    .steam-item-price-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-top: 4px;
+      letter-spacing: 0.2px;
+      user-select: none;
+    }
+    .steam-item-price-tag.free {
+      background: rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+    }
+    .steam-item-price-tag.owned {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .steam-item-price-tag.price {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
     }
     .steam-frame-preview {
       width: 44px;
@@ -14790,7 +14817,7 @@
     </div>
   </div>
 
-  <!-- Modal Steam Profile Customizer -->
+  <!-- Modal Profile Customizer -->
   <div class="modal hidden" id="modal-steam-customizer" style="z-index:99999;">
     <div class="steam-customizer-card">
       <div class="steam-top-bar">
@@ -14802,67 +14829,47 @@
       </div>
 
       <div class="steam-customizer-body">
+        <!-- Current Balance Bar -->
+        <div class="pirozhki-balance-card" style="margin-bottom:14px;padding:9px 14px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <img src="pirozhok.png" class="pirozhok-coin-icon md" alt="Пирожки">
+            <div>
+              <div style="font-size:10.5px;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:0.4px;">Ваш баланс:</div>
+              <div style="font-size:14px;font-weight:800;color:#fbbf24;"><span id="custModalPirozhkiBal">0</span> 🥟</div>
+            </div>
+          </div>
+          <button type="button" class="notif-btn secondary" style="font-size:11px;padding:5px 12px;color:#f59e0b;border-color:rgba(245,158,11,0.35);background:rgba(245,158,11,0.08);" onclick="closeModal('modal-steam-customizer');openModal('modal-pirozhki-store');if(typeof switchStoreTab==='function')switchStoreTab('buy');">
+            <i class="fa-solid fa-plus"></i> Пополнить
+          </button>
+        </div>
+
         <div style="font-size:12px;color:#8f98a0;margin-bottom:14px;">
-          Настройте стильный фон карточки и рамку аватара:
+          Настройте стильный фон карточки и рамку аватара. Покупка осуществляется за пирожки и остаётся на аккаунте навсегда:
         </div>
 
         <!-- 1. Theme Background Selection -->
-        <div class="steam-cust-section-title">ВЫБЕРИТЕ ФОН ПРОФИЛЯ:</div>
-        <div class="steam-theme-grid">
-          <div class="steam-theme-opt active" data-theme="classic" onclick="selectSteamTheme('classic', this)">
-            <div class="steam-theme-preview theme-classic"></div>
-            <span>Тёмный графит</span>
-          </div>
-          <div class="steam-theme-opt" data-theme="cyberpunk" onclick="selectSteamTheme('cyberpunk', this)">
-            <div class="steam-theme-preview theme-cyberpunk"></div>
-            <span>Cyberpunk Neon</span>
-          </div>
-          <div class="steam-theme-opt" data-theme="galaxy" onclick="selectSteamTheme('galaxy', this)">
-            <div class="steam-theme-preview theme-galaxy"></div>
-            <span>Deep Space</span>
-          </div>
-          <div class="steam-theme-opt" data-theme="bakery" onclick="selectSteamTheme('bakery', this)">
-            <div class="steam-theme-preview theme-bakery"></div>
-            <span>Пекарня Пирожков</span>
-          </div>
-          <div class="steam-theme-opt" data-theme="matrix" onclick="selectSteamTheme('matrix', this)">
-            <div class="steam-theme-preview theme-matrix"></div>
-            <span>Matrix Green</span>
-          </div>
-          <div class="steam-theme-opt" data-theme="crimson" onclick="selectSteamTheme('crimson', this)">
-            <div class="steam-theme-preview theme-crimson"></div>
-            <span>Crimson Fire</span>
-          </div>
+        <div class="steam-cust-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>ВЫБЕРИТЕ ФОН ПРОФИЛЯ:</span>
+          <span style="font-size:11px;color:#fbbf24;"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> Оплата пирожками</span>
+        </div>
+        <div class="steam-theme-grid" id="steamThemeGrid">
+          <!-- Dynamically populated via renderCustomizerGrids() -->
         </div>
 
         <!-- 2. Avatar Frame Selection -->
-        <div class="steam-cust-section-title" style="margin-top:16px;">ВЫБЕРИТЕ РАМКУ АВАТАРА:</div>
-        <div class="steam-frame-grid">
-          <div class="steam-frame-opt active" data-frame="none" onclick="selectSteamFrame('none', this)">
-            <div class="steam-frame-preview frame-none"><div class="mini-ava"></div></div>
-            <span>Обычная</span>
-          </div>
-          <div class="steam-frame-opt" data-frame="gold" onclick="selectSteamFrame('gold', this)">
-            <div class="steam-frame-preview frame-gold"><div class="mini-ava"></div></div>
-            <span>Золото</span>
-          </div>
-          <div class="steam-frame-opt" data-frame="neon" onclick="selectSteamFrame('neon', this)">
-            <div class="steam-frame-preview frame-neon"><div class="mini-ava"></div></div>
-            <span>Неон</span>
-          </div>
-          <div class="steam-frame-opt" data-frame="fire" onclick="selectSteamFrame('fire', this)">
-            <div class="steam-frame-preview frame-fire"><div class="mini-ava"></div></div>
-            <span>Пламя</span>
-          </div>
-          <div class="steam-frame-opt" data-frame="rainbow" onclick="selectSteamFrame('rainbow', this)">
-            <div class="steam-frame-preview frame-rainbow"><div class="mini-ava"></div></div>
-            <span>Радуга</span>
-          </div>
+        <div class="steam-cust-section-title" style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;">
+          <span>ВЫБЕРИТЕ РАМКУ АВАТАРА:</span>
+          <span style="font-size:11px;color:#fbbf24;"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> Анимированные эффекты</span>
+        </div>
+        <div class="steam-frame-grid" id="steamFrameGrid">
+          <!-- Dynamically populated via renderCustomizerGrids() -->
         </div>
 
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+        <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:20px;flex-wrap:wrap;">
           <button type="button" class="steam-btn secondary" onclick="closeModal('modal-steam-customizer')">Отмена</button>
-          <button type="button" class="steam-btn primary" onclick="saveSteamCustomization()">Сохранить оформление</button>
+          <div id="steamCustActionBtnContainer">
+            <button type="button" class="steam-btn primary" id="saveSteamCustomizationBtn" onclick="saveSteamCustomization()">Сохранить оформление</button>
+          </div>
         </div>
       </div>
     </div>
@@ -16101,7 +16108,9 @@
           prefixSound: profile.prefixSound || '',
           prefixSoundName: profile.prefixSoundName || '',
           steamTheme: profile.steamTheme || 'classic',
-          steamFrame: profile.steamFrame || 'none'
+          steamFrame: profile.steamFrame || 'none',
+          unlockedThemes: profile.unlockedThemes || ['classic'],
+          unlockedFrames: profile.unlockedFrames || ['none']
         };
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(all));
       } catch (_) { }
@@ -16129,6 +16138,8 @@
         prefixSoundName: (data && data.prefixSoundName) || '',
         steamTheme: (data && data.steamTheme) || 'classic',
         steamFrame: (data && data.steamFrame) || 'none',
+        unlockedThemes: (data && data.unlockedThemes) || ['classic'],
+        unlockedFrames: (data && data.unlockedFrames) || ['none'],
 
         lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
         online: true
@@ -19793,6 +19804,18 @@
               me.prefixSoundName = val || '';
             }
           });
+          _fbDb.ref('users/' + user.uid + '/unlockedThemes').on('value', snap => {
+            const val = snap.val();
+            if (typeof me !== 'undefined' && me) {
+              me.unlockedThemes = Array.isArray(val) ? val : ['classic'];
+            }
+          });
+          _fbDb.ref('users/' + user.uid + '/unlockedFrames').on('value', snap => {
+            const val = snap.val();
+            if (typeof me !== 'undefined' && me) {
+              me.unlockedFrames = Array.isArray(val) ? val : ['none'];
+            }
+          });
         }
       } catch (errPirozhki) {
         console.warn('Pirozhki listener error:', errPirozhki);
@@ -21273,42 +21296,265 @@
     }
     window.deleteSteamComment = deleteSteamComment;
 
-    /* ═══ STEAM CUSTOMIZER (Themes & Frames) ═══ */
+    const PROFILE_THEMES_CATALOG = [
+      { id: 'classic', name: 'Тёмный графит', cost: 0, desc: 'Классический стиль' },
+      { id: 'cyberpunk', name: 'Cyberpunk Neon', cost: 60, desc: 'Неоновый киберпанк' },
+      { id: 'galaxy', name: 'Deep Space', cost: 80, desc: 'Космическая бездна' },
+      { id: 'bakery', name: 'Пекарня Пирожков', cost: 50, desc: 'Тёплый уют' },
+      { id: 'matrix', name: 'Matrix Green', cost: 75, desc: 'Цифровой код' },
+      { id: 'crimson', name: 'Crimson Fire', cost: 90, desc: 'Багровое пламя' }
+    ];
+
+    const PROFILE_FRAMES_CATALOG = [
+      { id: 'none', name: 'Обычная', cost: 0, desc: 'Без рамки' },
+      { id: 'gold', name: 'Золото', cost: 75, desc: 'Золотое свечение' },
+      { id: 'neon', name: 'Неон', cost: 100, desc: 'Кибер-пульс' },
+      { id: 'fire', name: 'Пламя', cost: 100, desc: 'Огненная аура' },
+      { id: 'rainbow', name: 'Радуга', cost: 150, desc: 'Переливы' }
+    ];
+
     let _selectedSteamTheme = 'classic';
     let _selectedSteamFrame = 'none';
 
+    function isThemeUnlocked(themeId) {
+      if (themeId === 'classic') return true;
+      if (typeof me === 'undefined' || !me) return false;
+      if (me.steamTheme === themeId) return true;
+      const list = me.unlockedThemes || [];
+      return Array.isArray(list) && list.includes(themeId);
+    }
+    window.isThemeUnlocked = isThemeUnlocked;
+
+    function isFrameUnlocked(frameId) {
+      if (frameId === 'none') return true;
+      if (typeof me === 'undefined' || !me) return false;
+      if (me.steamFrame === frameId) return true;
+      const list = me.unlockedFrames || [];
+      return Array.isArray(list) && list.includes(frameId);
+    }
+    window.isFrameUnlocked = isFrameUnlocked;
+
+    function renderCustomizerGrids() {
+      const tGrid = document.getElementById('steamThemeGrid');
+      if (tGrid) {
+        tGrid.innerHTML = PROFILE_THEMES_CATALOG.map(t => {
+          const isAct = (_selectedSteamTheme === t.id);
+          const unlocked = isThemeUnlocked(t.id);
+          let priceTag = '';
+          if (t.cost === 0) {
+            priceTag = '<div class="steam-item-price-tag free">Бесплатно</div>';
+          } else if (unlocked) {
+            priceTag = '<div class="steam-item-price-tag owned"><i class="fa-solid fa-check"></i> Куплено</div>';
+          } else {
+            priceTag = '<div class="steam-item-price-tag price"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> ' + t.cost + '</div>';
+          }
+
+          return '<div class="steam-theme-opt' + (isAct ? ' active' : '') + '" data-theme="' + t.id + '" onclick="selectSteamTheme(\'' + t.id + '\', this)">' +
+            '<div class="steam-theme-preview theme-' + t.id + '"></div>' +
+            '<span>' + t.name + '</span>' +
+            priceTag +
+          '</div>';
+        }).join('');
+      }
+
+      const fGrid = document.getElementById('steamFrameGrid');
+      if (fGrid) {
+        fGrid.innerHTML = PROFILE_FRAMES_CATALOG.map(f => {
+          const isAct = (_selectedSteamFrame === f.id);
+          const unlocked = isFrameUnlocked(f.id);
+          let priceTag = '';
+          if (f.cost === 0) {
+            priceTag = '<div class="steam-item-price-tag free">Бесплатно</div>';
+          } else if (unlocked) {
+            priceTag = '<div class="steam-item-price-tag owned"><i class="fa-solid fa-check"></i> Куплено</div>';
+          } else {
+            priceTag = '<div class="steam-item-price-tag price"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> ' + f.cost + '</div>';
+          }
+
+          return '<div class="steam-frame-opt' + (isAct ? ' active' : '') + '" data-frame="' + f.id + '" onclick="selectSteamFrame(\'' + f.id + '\', this)">' +
+            '<div class="steam-frame-preview frame-' + f.id + '"><div class="mini-ava"></div></div>' +
+            '<span>' + f.name + '</span>' +
+            priceTag +
+          '</div>';
+        }).join('');
+      }
+
+      updateCustomizerActionBtn();
+    }
+    window.renderCustomizerGrids = renderCustomizerGrids;
+
     function openSteamCustomizer() {
-      if (!me) return;
+      if (typeof me === 'undefined' || !me) return;
       _selectedSteamTheme = me.steamTheme || 'classic';
       _selectedSteamFrame = me.steamFrame || 'none';
 
-      document.querySelectorAll('.steam-theme-opt').forEach(el => {
-        el.classList.toggle('active', el.dataset.theme === _selectedSteamTheme);
-      });
-      document.querySelectorAll('.steam-frame-opt').forEach(el => {
-        el.classList.toggle('active', el.dataset.frame === _selectedSteamFrame);
-      });
+      const balEl = document.getElementById('custModalPirozhkiBal');
+      if (balEl) balEl.textContent = Number(me.pirozhki || 0).toLocaleString('ru-RU');
 
+      renderCustomizerGrids();
       openModal('modal-steam-customizer');
     }
     window.openSteamCustomizer = openSteamCustomizer;
 
     function selectSteamTheme(theme, el) {
       _selectedSteamTheme = theme;
-      document.querySelectorAll('.steam-theme-opt').forEach(b => b.classList.remove('active'));
-      if (el) el.classList.add('active');
+      document.querySelectorAll('.steam-theme-opt').forEach(b => {
+        b.classList.toggle('active', b.dataset.theme === theme);
+      });
+      updateCustomizerActionBtn();
     }
     window.selectSteamTheme = selectSteamTheme;
 
     function selectSteamFrame(frame, el) {
       _selectedSteamFrame = frame;
-      document.querySelectorAll('.steam-frame-opt').forEach(b => b.classList.remove('active'));
-      if (el) el.classList.add('active');
+      document.querySelectorAll('.steam-frame-opt').forEach(b => {
+        b.classList.toggle('active', b.dataset.frame === frame);
+      });
+      updateCustomizerActionBtn();
     }
     window.selectSteamFrame = selectSteamFrame;
 
+    function updateCustomizerActionBtn() {
+      const container = document.getElementById('steamCustActionBtnContainer');
+      if (!container) return;
+
+      const needTheme = !isThemeUnlocked(_selectedSteamTheme);
+      const themeItem = PROFILE_THEMES_CATALOG.find(x => x.id === _selectedSteamTheme);
+      const themeCost = needTheme ? (themeItem ? themeItem.cost : 0) : 0;
+
+      const needFrame = !isFrameUnlocked(_selectedSteamFrame);
+      const frameItem = PROFILE_FRAMES_CATALOG.find(x => x.id === _selectedSteamFrame);
+      const frameCost = needFrame ? (frameItem ? frameItem.cost : 0) : 0;
+
+      const totalCost = themeCost + frameCost;
+
+      if (totalCost === 0) {
+        container.innerHTML = '<button type="button" class="steam-btn primary" id="saveSteamCustomizationBtn" onclick="saveSteamCustomization()">Сохранить оформление</button>';
+      } else if (needTheme && !needFrame) {
+        container.innerHTML = '<button type="button" class="steam-btn primary" style="background:linear-gradient(135deg, #f59e0b, #d97706);box-shadow:0 4px 14px rgba(245,158,11,0.4);" onclick="buyAndApplyCustomization(\'theme\', \'' + _selectedSteamTheme + '\', ' + themeCost + ')"><i class="fa-solid fa-cart-shopping"></i> Купить тему за ' + themeCost + ' 🥟</button>';
+      } else if (needFrame && !needTheme) {
+        container.innerHTML = '<button type="button" class="steam-btn primary" style="background:linear-gradient(135deg, #f59e0b, #d97706);box-shadow:0 4px 14px rgba(245,158,11,0.4);" onclick="buyAndApplyCustomization(\'frame\', \'' + _selectedSteamFrame + '\', ' + frameCost + ')"><i class="fa-solid fa-cart-shopping"></i> Купить рамку за ' + frameCost + ' 🥟</button>';
+      } else {
+        container.innerHTML = '<button type="button" class="steam-btn primary" style="background:linear-gradient(135deg, #f59e0b, #d97706);box-shadow:0 4px 14px rgba(245,158,11,0.4);" onclick="buyAndApplyCustomization(\'both\', \'' + _selectedSteamTheme + ',' + _selectedSteamFrame + '\', ' + totalCost + ')"><i class="fa-solid fa-cart-shopping"></i> Купить комплект за ' + totalCost + ' 🥟</button>';
+      }
+    }
+    window.updateCustomizerActionBtn = updateCustomizerActionBtn;
+
+    async function buyAndApplyCustomization(type, ids, totalCost) {
+      if (typeof me === 'undefined' || !me || !me.uid) {
+        showToast('Внимание', 'Пожалуйста, авторизуйтесь в аккаунте', 'warning');
+        return;
+      }
+      const myBal = Number(me.pirozhki || 0);
+      if (myBal < totalCost) {
+        showToast('Недостаточно пирожков', 'Для покупки требуется ' + totalCost + ' 🥟 (у вас ' + myBal + ' 🥟). Пополните баланс в магазине!', 'warning');
+        closeModal('modal-steam-customizer');
+        openModal('modal-pirozhki-store');
+        if (typeof switchStoreTab === 'function') switchStoreTab('buy');
+        return;
+      }
+
+      let itemName = '';
+      if (type === 'theme') {
+        const t = PROFILE_THEMES_CATALOG.find(x => x.id === ids);
+        itemName = 'тему "' + (t ? t.name : ids) + '"';
+      } else if (type === 'frame') {
+        const f = PROFILE_FRAMES_CATALOG.find(x => x.id === ids);
+        itemName = 'рамку "' + (f ? f.name : ids) + '"';
+      } else {
+        itemName = 'выбранные тему и рамку';
+      }
+
+      const ok = confirm('Купить ' + itemName + ' за ' + totalCost + ' пирожков?');
+      if (!ok) return;
+
+      const newBal = myBal - totalCost;
+      me.pirozhki = newBal;
+      updateUserPirozhkiUI(newBal);
+
+      const curUnlockedThemes = Array.isArray(me.unlockedThemes) ? [...me.unlockedThemes] : ['classic'];
+      if (me.steamTheme && !curUnlockedThemes.includes(me.steamTheme)) curUnlockedThemes.push(me.steamTheme);
+
+      const curUnlockedFrames = Array.isArray(me.unlockedFrames) ? [...me.unlockedFrames] : ['none'];
+      if (me.steamFrame && !curUnlockedFrames.includes(me.steamFrame)) curUnlockedFrames.push(me.steamFrame);
+
+      if (type === 'theme' || type === 'both') {
+        const thId = (type === 'both') ? ids.split(',')[0] : ids;
+        if (!curUnlockedThemes.includes(thId)) curUnlockedThemes.push(thId);
+        me.steamTheme = thId;
+        _selectedSteamTheme = thId;
+      }
+      if (type === 'frame' || type === 'both') {
+        const frId = (type === 'both') ? ids.split(',')[1] : ids;
+        if (!curUnlockedFrames.includes(frId)) curUnlockedFrames.push(frId);
+        me.steamFrame = frId;
+        _selectedSteamFrame = frId;
+      }
+
+      me.unlockedThemes = curUnlockedThemes;
+      me.unlockedFrames = curUnlockedFrames;
+
+      if (window.db) {
+        try {
+          await db.collection('users').doc(me.uid).set({
+            pirozhki: newBal,
+            steamTheme: me.steamTheme,
+            steamFrame: me.steamFrame,
+            unlockedThemes: curUnlockedThemes,
+            unlockedFrames: curUnlockedFrames,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (e) {
+          console.warn('Firestore customization buy error:', e);
+        }
+      }
+
+      if (window._fbDb) {
+        try {
+          await _fbDb.ref('users/' + me.uid + '/pirozhki').set(newBal);
+          await _fbDb.ref('users/' + me.uid + '/steamTheme').set(me.steamTheme);
+          await _fbDb.ref('users/' + me.uid + '/steamFrame').set(me.steamFrame);
+          await _fbDb.ref('users/' + me.uid + '/unlockedThemes').set(curUnlockedThemes);
+          await _fbDb.ref('users/' + me.uid + '/unlockedFrames').set(curUnlockedFrames);
+          await _fbDb.ref('users/' + me.uid + '/pirozhki_history/' + Date.now()).set({
+            amount: -totalCost,
+            timestamp: Date.now(),
+            type: 'buy_customization',
+            note: 'Покупка оформления: ' + itemName
+          });
+        } catch (e) {
+          console.warn('RTDB customization buy error:', e);
+        }
+      }
+
+      if (typeof uCache !== 'undefined' && uCache[me.uid]) {
+        uCache[me.uid].pirozhki = newBal;
+        uCache[me.uid].steamTheme = me.steamTheme;
+        uCache[me.uid].steamFrame = me.steamFrame;
+        uCache[me.uid].unlockedThemes = curUnlockedThemes;
+        uCache[me.uid].unlockedFrames = curUnlockedFrames;
+      }
+      if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
+
+      if (typeof launchPirozhkiBurst === 'function') launchPirozhkiBurst();
+
+      closeModal('modal-steam-customizer');
+      if (typeof vpUid !== 'undefined' && vpUid === me.uid && typeof renderSteamProfile === 'function') {
+        renderSteamProfile(me, me.uid);
+      }
+      showToast('Поздравляем! 🎉', itemName.charAt(0).toUpperCase() + itemName.slice(1) + ' успешно куплено и применено!', 'success');
+    }
+    window.buyAndApplyCustomization = buyAndApplyCustomization;
+
     async function saveSteamCustomization() {
-      if (!me || !me.uid) return;
+      if (typeof me === 'undefined' || !me || !me.uid) return;
+
+      if (!isThemeUnlocked(_selectedSteamTheme) || !isFrameUnlocked(_selectedSteamFrame)) {
+        updateCustomizerActionBtn();
+        showToast('Внимание', 'Пожалуйста, сначала приобретите выбранное оформление', 'warning');
+        return;
+      }
+
       me.steamTheme = _selectedSteamTheme;
       me.steamFrame = _selectedSteamFrame;
 
@@ -21322,6 +21568,13 @@
         } catch (e) { console.warn('Firestore steam save error:', e); }
       }
 
+      if (window._fbDb) {
+        try {
+          await _fbDb.ref('users/' + me.uid + '/steamTheme').set(_selectedSteamTheme);
+          await _fbDb.ref('users/' + me.uid + '/steamFrame').set(_selectedSteamFrame);
+        } catch (e) { console.warn('RTDB steam save error:', e); }
+      }
+
       if (typeof uCache !== 'undefined' && uCache[me.uid]) {
         uCache[me.uid].steamTheme = _selectedSteamTheme;
         uCache[me.uid].steamFrame = _selectedSteamFrame;
@@ -21329,13 +21582,12 @@
       if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
 
       closeModal('modal-steam-customizer');
-      if (vpUid === me.uid) {
+      if (typeof vpUid !== 'undefined' && vpUid === me.uid && typeof renderSteamProfile === 'function') {
         renderSteamProfile(me, me.uid);
       }
       showToast('Оформление', 'Оформление профиля успешно обновлено!', 'success');
     }
     window.saveSteamCustomization = saveSteamCustomization;
-
 
     async function viewProfile(uid) {
       if (!uid) return;
