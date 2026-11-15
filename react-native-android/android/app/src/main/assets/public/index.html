@@ -487,13 +487,55 @@
       max-height: 88vh;
       display: flex;
       flex-direction: column;
-      padding: 24px;
+      padding: 22px 24px 28px;
       box-sizing: border-box;
       background: var(--bg2, #18222d);
       border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
       border-radius: 18px;
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
       color: var(--text, #e2e8f0);
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .pirozhki-modal-box::-webkit-scrollbar {
+      width: 6px;
+    }
+    .pirozhki-modal-box::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .pirozhki-modal-box::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.16);
+      border-radius: 9999px;
+    }
+    .pirozhki-modal-box::-webkit-scrollbar-thumb:hover {
+      background: rgba(245, 158, 11, 0.45);
+    }
+    .pirozhki-input,
+    .pirozhki-modal-box input[type="text"],
+    .pirozhki-modal-box input[type="number"] {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.4) !important;
+      border: 1px solid rgba(255, 255, 255, 0.14) !important;
+      border-radius: 10px !important;
+      padding: 10px 14px !important;
+      color: #fff !important;
+      font-size: 13.5px !important;
+      font-family: inherit !important;
+      outline: none !important;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    .pirozhki-input:focus,
+    .pirozhki-modal-box input[type="text"]:focus,
+    .pirozhki-modal-box input[type="number"]:focus {
+      border-color: #f59e0b !important;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22) !important;
+    }
+    .pirozhki-input::placeholder,
+    .pirozhki-modal-box input::placeholder {
+      color: var(--text2, #94a3b8) !important;
+      opacity: 0.75 !important;
     }
     .pirozhki-store-header {
       display: flex;
@@ -36157,70 +36199,70 @@ document.addEventListener('click', function(e) {
 
         <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
           <span>КАТАЛОГ СТИЛЬНЫХ ПРЕФИКСОВ:</span>
-          <span style="color:#fbbf24;font-size:11px;">Оплата пирожками 🥟</span>
+          <span style="color:#fbbf24;font-size:11px;display:inline-flex;align-items:center;gap:4px;">Оплата пирожками <img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""></span>
         </div>
 
-        <div class="prefix-catalog-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:8px;margin-bottom:16px;">
+        <div class="prefix-catalog-grid" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;margin-bottom:16px;">
           <!-- 1. VIP -->
           <div class="prefix-card" onclick="buyPresetPrefix('👑 VIP', 'gold', 50)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-gold">👑 VIP</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 50 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 50</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
 
           <!-- 2. PRO -->
           <div class="prefix-card" onclick="buyPresetPrefix('⚡ PRO', 'pro', 75)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-pro">⚡ PRO</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 75 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 75</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
 
           <!-- 3. ОГОНЬ -->
           <div class="prefix-card" onclick="buyPresetPrefix('🔥 ОГОНЬ', 'fire', 75)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-fire">🔥 ОГОНЬ</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 75 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 75</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
 
           <!-- 4. LUX -->
           <div class="prefix-card" onclick="buyPresetPrefix('💎 LUX', 'lux', 100)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-lux">💎 LUX</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 100 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 100</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
 
           <!-- 5. ПИРОЖОК -->
           <div class="prefix-card" onclick="buyPresetPrefix('🥐 ПИРОЖОК', 'amber', 50)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-amber">🥐 ПИРОЖОК</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 50 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 50</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
 
           <!-- 6. КРАШ -->
           <div class="prefix-card" onclick="buyPresetPrefix('😈 КРАШ', 'crush', 100)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-crush">😈 КРАШ</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 100 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 100</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
 
           <!-- 7. БОСС -->
           <div class="prefix-card" onclick="buyPresetPrefix('🚀 БОСС', 'boss', 150)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-boss">🚀 БОСС</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 150 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 150</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
 
           <!-- 8. ХАКЕР -->
           <div class="prefix-card" onclick="buyPresetPrefix('👾 ХАКЕР', 'hacker', 150)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-hacker">👾 ХАКЕР</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 150 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 150</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
 
           <!-- 9. ЛЕГЕНДА -->
           <div class="prefix-card" onclick="buyPresetPrefix('✨ ЛЕГЕНДА', 'legend', 200)">
             <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-legend">✨ ЛЕГЕНДА</span></div>
-            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 200 🥟</div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 200</div>
             <button type="button" class="prefix-buy-btn">Купить</button>
           </div>
         </div>
@@ -36230,7 +36272,7 @@ document.addEventListener('click', function(e) {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div style="font-size:13px;font-weight:800;color:var(--text,#fff);">🛠️ Создать свой уникальный префикс</div>
             <div style="font-size:12px;font-weight:700;color:#fbbf24;display:flex;align-items:center;gap:4px;">
-              <img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 250 🥟
+              <img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 250
             </div>
           </div>
           <div style="font-size:11.5px;color:var(--text2,#94a3b8);margin-bottom:10px;">
@@ -36238,7 +36280,7 @@ document.addEventListener('click', function(e) {
           </div>
 
           <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <input type="text" id="customPrefixInput" class="auth-input" maxlength="12" placeholder="Например: МАЖОР" oninput="updateCustomPrefixLivePreview()" style="margin:0;flex:1;">
+            <input type="text" id="customPrefixInput" class="pirozhki-input" maxlength="12" placeholder="Например: МАЖОР" oninput="updateCustomPrefixLivePreview()" style="margin:0;flex:1;">
           </div>
 
           <div style="font-size:11px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">ВЫБЕРИТЕ СТИЛЬ:</div>
@@ -36276,7 +36318,7 @@ document.addEventListener('click', function(e) {
 
         <div style="margin-bottom:12px;">
           <div style="font-size:11.5px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">ЮЗЕРНЕЙМ ПОЛУЧАТЕЛЯ (@логин):</div>
-          <input type="text" id="storeGiftNickInput" class="auth-input" placeholder="@username" style="margin:0;">
+          <input type="text" id="storeGiftNickInput" class="pirozhki-input" placeholder="@username" style="margin:0;">
         </div>
 
         <div style="font-size:11.5px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">КОЛИЧЕСТВО ПИРОЖКОВ:</div>
@@ -36288,11 +36330,11 @@ document.addEventListener('click', function(e) {
           <button type="button" class="gift-count-pill" onclick="setStoreGiftCount(100)">100 🥟</button>
         </div>
 
-        <input type="number" id="storeGiftCountInput" class="auth-input" min="1" max="10000" value="10" placeholder="Свое количество" style="margin-bottom:12px;">
+        <input type="number" id="storeGiftCountInput" class="pirozhki-input" min="1" max="10000" value="10" placeholder="Свое количество" style="margin-bottom:12px;">
 
         <div style="margin-bottom:14px;">
           <div style="font-size:11.5px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">КОММЕНТАРИЙ К УГОЩЕНИЮ (НЕОБЯЗАТЕЛЬНО):</div>
-          <input type="text" id="storeGiftCommentInput" class="auth-input" maxlength="100" placeholder="Угощайся пирожками! 🥟" style="margin:0;">
+          <input type="text" id="storeGiftCommentInput" class="pirozhki-input" maxlength="100" placeholder="Угощайся пирожками! 🥟" style="margin:0;">
         </div>
 
         <button type="button" class="auth-btn" id="storeSendGiftBtn" onclick="submitStoreGiftToFriend()" style="margin:0;background:linear-gradient(135deg, #f59e0b, #d97706);font-size:14px;font-weight:800;padding:11px;">
@@ -36347,7 +36389,7 @@ document.addEventListener('click', function(e) {
       <!-- Custom Count Input -->
       <div style="margin-bottom:12px;">
         <div style="position:relative;">
-          <input type="number" id="giftPirozhkiCount" class="auth-input" min="1" max="50000" value="10" placeholder="Количество пирожков" style="padding-right:45px;">
+          <input type="number" id="giftPirozhkiCount" class="pirozhki-input" min="1" max="50000" value="10" placeholder="Количество пирожков" style="padding-right:45px;">
           <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:16px;">🥟</span>
         </div>
       </div>
@@ -36355,7 +36397,7 @@ document.addEventListener('click', function(e) {
       <!-- Message / Wish -->
       <div style="margin-bottom:16px;">
         <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">СООБЩЕНИЕ К ПОДАРКУ (НЕОБЯЗАТЕЛЬНО):</div>
-        <input type="text" id="giftPirozhkiComment" class="auth-input" maxlength="100" placeholder="На чай 🥟 / Спасибо за помощь!">
+        <input type="text" id="giftPirozhkiComment" class="pirozhki-input" maxlength="100" placeholder="На чай 🥟 / Спасибо за помощь!">
       </div>
 
       <!-- Action Button -->
