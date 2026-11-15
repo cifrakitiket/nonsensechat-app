@@ -1922,62 +1922,8 @@
       color: var(--acc3);
     }
 
-    /* ═══ VERIFIED BADGE ═══ */
-    .verified-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 15px;
-      height: 15px;
-      background: linear-gradient(135deg, #1da1f2, #0d8ecf);
-      border-radius: 50%;
-      font-size: 9px;
-      color: #fff;
-      margin-left: 3px;
-      vertical-align: middle;
-      flex-shrink: 0;
-      cursor: default;
-      position: relative;
-    }
-
-    .verified-badge::after {
-      content: '✓';
-      font-weight: 900;
-      font-size: 9px;
-      line-height: 1;
-    }
-
-    .verified-badge-lg {
-      width: 20px;
-      height: 20px;
-      font-size: 12px;
-      margin-left: 5px;
-    }
-
-    .verified-badge[title]:hover::before {
-      content: attr(title);
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--card2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 4px 8px;
-      font-size: 11px;
-      color: var(--text);
-      white-space: nowrap;
-      z-index: 9999;
-      pointer-events: none;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, .3);
-    }
-
-    .chat-name .verified-badge,
-    .msg-author .verified-badge {
-      width: 14px;
-      height: 14px;
-      font-size: 8px;
-    }
+    /* ═══ VERIFIED BADGE (REMOVED) ═══ */
+    .verified-badge { display: none !important; }
 
     .dev-badge {
       display: inline-flex;
@@ -13665,8 +13611,7 @@
           <div class="tgp-head-grad"></div>
           <button class="tgp-head-close" onclick="closeModal('modal-viewprofile')">✕</button>
           <div class="tgp-head-info">
-            <div class="tgp-head-name" id="vpName"><span id="vpVerifiedBadge" style="display:none"
-                class="verified-badge verified-badge-lg" title="Верифицированный аккаунт"></span></div>
+            <div class="tgp-head-name" id="vpName"></div>
             <div class="tgp-head-status" id="vpStatus" data-i18n="loading">Загрузка...</div>
           </div>
         </div>
@@ -13695,15 +13640,7 @@
         </div>
         <!-- Вложения в переписке (фото, файлы, музыка в ЛС) -->
         <div class="tgp-section" id="vpSharedMediaSection" style="display:none"></div>
-        <!-- Verified badge management — only shown to creator -->
-        <div class="tgp-section" id="vpVerifySection" style="display:none">
-          <div class="tgme-card-title" style="padding-top:10px" data-i18n="manageVerification">Управление верификацией
-          </div>
-          <div class="tgp-actions">
-            <button id="vpVerifyBtn" class="tgp-action" onclick="toggleVerify()" data-i18n="grantVerification">Выдать
-              верификацию</button>
-          </div>
-        </div>
+
       </div>
     </div>
   </div>
@@ -14936,7 +14873,6 @@
           bday: profile.bday || '',
           phone: profile.phone || '',
           hideLastSeen: !!profile.hideLastSeen,
-          verified: !!profile.verified,
           prefix: profile.prefix || '',
           prefixStyle: profile.prefixStyle || 'gold'
         };
@@ -15093,7 +15029,7 @@
           const oldPrefix = nameEl.querySelector('.user-custom-prefix');
           if (oldPrefix) oldPrefix.remove();
           if (prefixBadge) {
-            const ver = nameEl.querySelector('.verified-badge, .dev-badge, .female-badge');
+            const ver = nameEl.querySelector('.dev-badge, .female-badge');
             if (ver) {
               ver.insertAdjacentHTML('beforebegin', prefixBadge);
             } else {
@@ -15443,10 +15379,7 @@
         "yourUid": "Ваш UID",
         "language": "Язык интерфейса",
         "save": "Сохранить",
-        "logout": "Выйти из аккаунта",
-        "manageVerification": "Управление верификацией",
-        "grantVerification": "Выдать верификацию",
-        "groupTitle": "Группа",
+        "logout": "Выйти из аккаунта",        "groupTitle": "Группа",
         "groupName": "НАЗВАНИЕ",
         "groupNamePh": "Название группы",
         "groupDesc": "ОПИСАНИЕ",
@@ -15690,10 +15623,7 @@
         "yourUid": "Your UID",
         "language": "Interface language",
         "save": "Save",
-        "logout": "Log out",
-        "manageVerification": "Manage verification",
-        "grantVerification": "Grant verification",
-        "groupTitle": "Group",
+        "logout": "Log out",        "groupTitle": "Group",
         "groupName": "GROUP NAME",
         "groupNamePh": "Group name",
         "groupDesc": "DESCRIPTION",
@@ -15946,10 +15876,7 @@
         "yourUid": "Ваш UID",
         "language": "Мова інтерфейсу",
         "save": "Зберегти",
-        "logout": "Вийти з акаунту",
-        "manageVerification": "Керування верифікацією",
-        "grantVerification": "Надати верифікацію",
-        "groupTitle": "Група",
+        "logout": "Вийти з акаунту",        "groupTitle": "Група",
         "groupName": "НАЗВА",
         "groupNamePh": "Назва групи",
         "groupDesc": "ОПИС",
@@ -16175,10 +16102,7 @@
         "yourUid": "Вашъ UID",
         "language": "Языкъ интерфейса",
         "save": "Сохранить",
-        "logout": "Выйти изъ аккаунта",
-        "manageVerification": "Управленіе верификаціей",
-        "grantVerification": "Выдать верификацію",
-        "groupTitle": "Группа",
+        "logout": "Выйти изъ аккаунта",        "groupTitle": "Группа",
         "groupName": "НАЗВАНІЕ",
         "groupNamePh": "Названіе группы",
         "groupDesc": "ОПИСАНІЕ",
@@ -16413,10 +16337,7 @@
         "yourUid": "Вашият UID:",
         "language": "Език на интерфейса:",
         "save": "Запази",
-        "logout": "Изход от профила",
-        "manageVerification": "Управление на верификацията",
-        "grantVerification": "Дай верификация (галочка)",
-        "groupTitle": "Групов чат",
+        "logout": "Изход от профила",        "groupTitle": "Групов чат",
         "groupName": "Име на групата",
         "groupNamePh": "Въведете име на групата...",
         "groupDesc": "Описание на групата",
@@ -19778,10 +19699,9 @@
       // Name with verified badge
       const nameEl = document.getElementById('vpName');
       const _devBadge = u.uid === CREATOR_UID ? ' <span class="dev-badge dev-badge-lg" title="Разработчик">&lt;/&gt;</span>' : '';
-      const _verBadge = u.verified ? ' <span class="verified-badge verified-badge-lg" title="Верифицированный аккаунт"></span>' : '';
       const _femaleBadge = isFemaleUser(u, uid) ? ' <span class="female-badge female-badge-lg" title="Девушка"></span>' : '';
       const _prefixBadge = typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u, true) : '';
-      nameEl.innerHTML = dispName + _prefixBadge + _verBadge + _devBadge + _femaleBadge;
+      nameEl.innerHTML = dispName + _prefixBadge + _devBadge + _femaleBadge;
       // Юзернейм — строка с копированием
       const unameRow = document.getElementById('vpUsernameRow');
       const unameText = '@' + u.nick;
@@ -19814,21 +19734,7 @@
         f += `<div class="tgp-row" onclick="navigator.clipboard.writeText('${uid}');if(typeof showToast==='function')showToast('UID','Скопирован UID: ${uid}','info');" title="Нажмите чтобы скопировать UID" style="cursor:pointer"><span class="tgp-row-icon">🆔</span><div class="tgp-row-body"><div class="tgp-row-val" style="font-family:monospace;font-size:12px;user-select:all">${uid}</div><div class="tgp-row-lbl">UID пользователя (только создатель)</div></div></div>`;
       }
       document.getElementById('vpFields').innerHTML = f;
-      // Show verify section only to creator and not for self
-      const verifySection = document.getElementById('vpVerifySection');
-      const verifyBtn = document.getElementById('vpVerifyBtn');
-      if (me && me.uid === CREATOR_UID && uid !== me.uid) {
-        verifySection.style.display = 'block';
-        if (u.verified) {
-          verifyBtn.textContent = 'Убрать верификацию';
-          verifyBtn.className = 'tgp-action red';
-        } else {
-          verifyBtn.textContent = 'Выдать верификацию';
-          verifyBtn.className = 'tgp-action';
-        }
-      } else {
-        verifySection.style.display = 'none';
-      }
+      // Verify section removed
       const msgBtn = document.getElementById('vpMsgBtn');
       if (msgBtn) {
         msgBtn.innerHTML = '<span class="tgp-row-icon">💬</span><span data-i18n="sendMsgBtn">Написать сообщение</span>';
@@ -19922,8 +19828,7 @@
       }
       const friendBtn = document.getElementById('vpAddFriendBtn');
       if (friendBtn) friendBtn.style.display = 'none';
-      const verifySection = document.getElementById('vpVerifySection');
-      if (verifySection) verifySection.style.display = 'none';
+
 
       // 7. Загружаем медиа, музыку и файлы
       loadFavSharedMedia();
@@ -20209,25 +20114,6 @@
       }
     }
 
-    async function toggleVerify() {
-      if (!vpUid || !me || me.uid !== CREATOR_UID) return;
-      const u = await getUser(vpUid);
-      const newVal = !u?.verified;
-      await db.collection('users').doc(vpUid).update({ verified: newVal });
-      uCache[vpUid] = null; // clear cache
-      const verifyBtn = document.getElementById('vpVerifyBtn');
-      if (newVal) {
-        verifyBtn.textContent = 'Убрать верификацию';
-        verifyBtn.className = 'tgp-action red';
-        document.getElementById('vpName').innerHTML = (u.fname ? u.fname + ' ' + (u.lname || '') : u.nick) + ' <span class="verified-badge verified-badge-lg" title="Верифицированный аккаунт"></span>' + (vpUid === CREATOR_UID ? ' <span class="dev-badge dev-badge-lg" title="Разработчик">&lt;/&gt;</span>' : '');
-        const _fBadge = isFemaleUser(u, vpUid) ? ' <span class="female-badge female-badge-lg" title="Девушка"></span>' : '';
-        document.getElementById('vpName').innerHTML += _fBadge;
-      } else {
-        verifyBtn.textContent = 'Выдать верификацию';
-        verifyBtn.className = 'tgp-action';
-        document.getElementById('vpName').innerHTML = (u.fname ? u.fname + ' ' + (u.lname || '') : u.nick) + (vpUid === CREATOR_UID ? ' <span class="dev-badge dev-badge-lg" title="Разработчик">&lt;/&gt;</span>' : '');
-      }
-    }
     function fmtLastSeen(d) {
       const now = new Date(), diff = now - d;
       if (diff < 60000) return 'только что';
@@ -21425,11 +21311,11 @@
     })();
 
     function renderChatItem(c, q, list, isArchived = false, renderedKeys = null) {
-      let name = '', ava = '', isOnline = false, uid = '', isVerified = false;
+      let name = '', ava = '', isOnline = false, uid = '';
       if (c.type === 'dm') {
         uid = c.members.find(m => m !== me.uid);
         const u = uCache[uid] || null;
-        name = u?.nick || '?'; ava = u?.avatar || ''; isOnline = userIsOnline(u); isVerified = !!u?.verified;
+        name = u?.nick || '?'; ava = u?.avatar || ''; isOnline = userIsOnline(u);
       } else if (c.type === 'channel') {
         name = c.name || 'Канал'; ava = c.avatar || '';
       } else {
@@ -21450,7 +21336,6 @@
       const time = lastMsgAt ? fmtTime(lastMsgAt) : '';
       const hasActiveCall = activeCallChats.has(c.id);
       const prefixBadgeHtml = (uid && uCache[uid]) ? renderUserPrefixBadge(uCache[uid]) : '';
-      const verifiedBadgeHtml = isVerified ? '<span class="verified-badge" title="Верифицированный аккаунт"></span>' : '';
       const devBadgeHtml = (uid === CREATOR_UID) ? '<span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '';
       const femaleBadgeHtml = (uid && isFemaleUser(uCache[uid], uid)) ? '<span class="female-badge" title="Девушка"></span>' : '';
       el.innerHTML = `
@@ -21458,7 +21343,7 @@
       <img src="${ava}" class="chat-ava" alt="${name || ''}" onerror="this.src=''">
       ${isOnline ? '<div class="chat-online-dot"></div>' : ''}
     </div>
-    <div class="chat-info"><div class="chat-name">${c.type === 'dm' ? '@' + name : (c.type === 'channel' ? '<i class="fa-solid fa-bullhorn" style="font-size:11px;color:#38bdf8;margin-right:4px"></i> ' + name : name)}${prefixBadgeHtml}${verifiedBadgeHtml}${devBadgeHtml}${femaleBadgeHtml}</div><div class="chat-preview">${(function() {
+    <div class="chat-info"><div class="chat-name">${c.type === 'dm' ? '@' + name : (c.type === 'channel' ? '<i class="fa-solid fa-bullhorn" style="font-size:11px;color:#38bdf8;margin-right:4px"></i> ' + name : name)}${prefixBadgeHtml}${devBadgeHtml}${femaleBadgeHtml}</div><div class="chat-preview">${(function() {
       if (pendingDeletedChats[c.id]) return '…';
       let prev = c.lastMsg || 'Нажмите чтобы открыть';
       if (prev.includes('Зашифрованное сообщение') || prev.includes('[Зашифрованное сообщение]') || prev.includes('🔒')) {
@@ -22741,11 +22626,10 @@
       const hdrAiBtn = document.getElementById('hdrAiSettingsBtn');
       if (hdrAiBtn) hdrAiBtn.style.display = (data.type === 'ai_hub' || id.startsWith('aihub_')) ? 'inline-flex' : 'none';
       const peerPartner = dmPartnerUid ? uCache[dmPartnerUid] : null;
-      const peerVerHtml = (data.type === 'dm' && peerPartner?.verified) ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : '';
       const peerDevHtml = (data.type === 'dm' && dmPartnerUid === CREATOR_UID) ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '';
       const peerFemHtml = (data.type === 'dm' && isFemaleUser(peerPartner, dmPartnerUid)) ? ' <span class="female-badge" title="Девушка"></span>' : '';
       const peerPrefixHtml = (data.type === 'dm' && peerPartner) ? renderUserPrefixBadge(peerPartner) : '';
-      const fullHeaderHtml = (typeof escUp === 'function' ? escUp(name) : name) + peerPrefixHtml + peerVerHtml + peerDevHtml + peerFemHtml;
+      const fullHeaderHtml = (typeof escUp === 'function' ? escUp(name) : name) + peerPrefixHtml + peerDevHtml + peerFemHtml;
       document.getElementById('chName').innerHTML = fullHeaderHtml;
       const dtChatInfo = document.getElementById('dtChatInfo');
       const dtChatName = document.getElementById('dtChatName');
@@ -22787,11 +22671,10 @@
             if (seq !== openChatSeq || activeId !== id) return;
             if (u) {
               window._chatPeerUser = u;
-              const uVerHtml = u.verified ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : '';
               const uDevHtml = (dmPartnerUid === CREATOR_UID) ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '';
               const uFemHtml = isFemaleUser(u, dmPartnerUid) ? ' <span class="female-badge" title="Девушка"></span>' : '';
               const uPrefixHtml = renderUserPrefixBadge(u);
-              const uFullHeaderHtml = (typeof escUp === 'function' ? escUp(u.nick || name) : (u.nick || name)) + uPrefixHtml + uVerHtml + uDevHtml + uFemHtml;
+              const uFullHeaderHtml = (typeof escUp === 'function' ? escUp(u.nick || name) : (u.nick || name)) + uPrefixHtml + uDevHtml + uFemHtml;
               document.getElementById('chName').innerHTML = uFullHeaderHtml;
               const dtName = document.getElementById('dtChatName');
               if (dtName) dtName.innerHTML = uFullHeaderHtml;
@@ -22807,11 +22690,10 @@
           const u2 = d.data(); if (!u2) return;
           uCache[dmPartnerUid] = u2;
           window._chatPeerUser = u2;
-          const u2VerHtml = u2.verified ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : '';
           const u2DevHtml = (dmPartnerUid === CREATOR_UID) ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '';
           const u2FemHtml = isFemaleUser(u2, dmPartnerUid) ? ' <span class="female-badge" title="Девушка"></span>' : '';
           const u2PrefixHtml = renderUserPrefixBadge(u2);
-          const u2FullHtml = (typeof escUp === 'function' ? escUp(u2.nick || name) : (u2.nick || name)) + u2PrefixHtml + u2VerHtml + u2DevHtml + u2FemHtml;
+          const u2FullHtml = (typeof escUp === 'function' ? escUp(u2.nick || name) : (u2.nick || name)) + u2PrefixHtml + u2DevHtml + u2FemHtml;
           document.getElementById('chName').innerHTML = u2FullHtml;
           const dtName = document.getElementById('dtChatName');
           if (dtName) dtName.innerHTML = u2FullHtml;
@@ -23054,7 +22936,7 @@
           row.innerHTML = `
         <img src="${isAiMsg ? AI_HUB_AVA : (optImg(u?.avatar, 80) || '')}" class="msg-mini-ava${isAiMsg ? ' ai-mini-ava' : ''}" alt="${(m.author || '').replace(/"/g, '')}" onclick="${isAiMsg ? 'openAiHubSettings()' : `viewProfile('${m.uid}')`}" onerror="this.src=''">
         <div class="msg-content">
-          <div class="msg-author" onclick="viewProfile('${m.uid}')">${(data.type === 'channel' || m.isChannelPost) ? `<span style="color:#38bdf8;font-weight:700"><i class="fa-solid fa-bullhorn" style="font-size:11px;margin-right:4px"></i> ${m.author || data.name || 'Канал'}</span>` : (isOut ? 'Вы' : '@' + (m.author || ''))}${typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u || m) : ''}${u?.verified && !isOut ? '<span class="verified-badge" title="Верифицированный аккаунт"></span>' : ''}${m.uid === CREATOR_UID && !isOut ? '<span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}${isFemaleUser(u, m.uid) && !isOut ? '<span class="female-badge" title="Девушка"></span>' : ''}</div>
+          <div class="msg-author" onclick="viewProfile('${m.uid}')">${(data.type === 'channel' || m.isChannelPost) ? `<span style="color:#38bdf8;font-weight:700"><i class="fa-solid fa-bullhorn" style="font-size:11px;margin-right:4px"></i> ${m.author || data.name || 'Канал'}</span>` : (isOut ? 'Вы' : '@' + (m.author || ''))}${typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u || m) : ''}${m.uid === CREATOR_UID && !isOut ? '<span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}${isFemaleUser(u, m.uid) && !isOut ? '<span class="female-badge" title="Девушка"></span>' : ''}</div>
           <div class="msg ${isOut ? 'out' : 'in'}${m.type === 'sticker' ? ' sticker-msg' : ''}${isPhotoMsg ? ' photo-msg' : ''}${(m.type === 'round' || m.type === 'circle') ? ' round-msg' : ''}${m.type === 'voice' ? ' voice-msg' : ''}" data-id="${d.id}" data-author="${m.author || ''}" data-uid="${m.uid}">
             ${replyHtml}${fwdHtml}${content}${reactHtml}
           </div>
@@ -27194,7 +27076,7 @@
           }
         }
         el.innerHTML = `<img src="${u.avatar || ''}" class="member-ava" onerror="this.src=''">
-      <div style="flex:1"><div class="member-name">@${u.nick}${typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u) : ''}${u.verified ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : ''}${uid === CREATOR_UID ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}${isFemaleUser(u, uid) ? ' <span class="female-badge" title="Девушка"></span>' : ''}</div><div class="role-badge ${roleCls[role]}" style="display:inline-block;margin-top:2px">${roleLabels[role]}</div></div>
+      <div style="flex:1"><div class="member-name">@${u.nick}${typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u) : ''}${uid === CREATOR_UID ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}${isFemaleUser(u, uid) ? ' <span class="female-badge" title="Девушка"></span>' : ''}</div><div class="role-badge ${roleCls[role]}" style="display:inline-block;margin-top:2px">${roleLabels[role]}</div></div>
       ${roleBtn}
       ${uid !== me.uid && isAdmin && uid !== data.admin ? `<button class="member-kick" onclick="kickMember('${uid}')" title="Исключить">✕</button>` : ''}`;
         ml.appendChild(el);
