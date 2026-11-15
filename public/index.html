@@ -697,7 +697,901 @@
       color: #f59e0b;
     }
 
-</style>
+
+    /* ═══════════════════════════════════════════════════════════════════
+       STEAM PROFILE SYSTEM (High Fidelity Steam UI & Showcases)
+       ═══════════════════════════════════════════════════════════════════ */
+    #modal-viewprofile .mcard.steam-modal-card {
+      width: 720px;
+      max-width: 95vw;
+      max-height: 92vh;
+      border-radius: 8px;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-family: -apple-system, BlinkMacSystemFont, "Motiva Sans", "Segoe UI", Roboto, sans-serif;
+    }
+
+    .steam-profile-card {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      color: #c6d4df;
+      transition: background 0.3s ease;
+    }
+
+    /* Steam Themes */
+    .steam-profile-card.theme-classic {
+      background: radial-gradient(circle at 50% 0%, #1b2838 0%, #171a21 55%, #0e141b 100%);
+    }
+    .steam-profile-card.theme-cyberpunk {
+      background: radial-gradient(circle at 50% 0%, #2e0854 0%, #160326 55%, #0a0112 100%);
+    }
+    .steam-profile-card.theme-galaxy {
+      background: radial-gradient(circle at 50% 0%, #1a1040 0%, #0d0926 55%, #050414 100%);
+    }
+    .steam-profile-card.theme-bakery {
+      background: radial-gradient(circle at 50% 0%, #3d2208 0%, #211204 55%, #120902 100%);
+    }
+    .steam-profile-card.theme-matrix {
+      background: radial-gradient(circle at 50% 0%, #052615 0%, #03140b 55%, #010804 100%);
+    }
+    .steam-profile-card.theme-crimson {
+      background: radial-gradient(circle at 50% 0%, #3b0914 0%, #21050b 55%, #120206 100%);
+    }
+
+    /* Steam Top Window Bar */
+    .steam-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: rgba(0, 0, 0, 0.35);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .steam-top-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      color: #8f98a0;
+      text-transform: uppercase;
+    }
+    .steam-top-acts {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .steam-icon-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: #c6d4df;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s ease;
+    }
+    .steam-icon-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .steam-icon-btn.close-btn:hover {
+      background: #ef4444;
+      border-color: #ef4444;
+      color: #fff;
+    }
+
+    /* Scrollable Steam Profile Body */
+    .steam-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 22px 28px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .steam-content::-webkit-scrollbar {
+      width: 8px;
+    }
+    .steam-content::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .steam-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    .steam-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Hero Header */
+    .steam-hero {
+      position: relative;
+      background: rgba(0, 0, 0, 0.42);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 18px 20px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    .steam-hero-main {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    /* Avatar with Steam Frames */
+    .steam-ava-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .steam-ava-frame {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      border-radius: 5px;
+      padding: 3px;
+      box-sizing: border-box;
+      background: #171a21;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s ease;
+    }
+    .steam-ava-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 4px;
+      object-fit: cover;
+      display: block;
+      background: #1e2837;
+    }
+    .steam-ava-ph {
+      position: absolute;
+      inset: 3px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, #1f2937, #374151);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      font-weight: 800;
+      color: #94a3b8;
+    }
+
+    /* Steam Frame Presets */
+    .steam-ava-frame.frame-none {
+      border: 2px solid #3d4450;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .steam-ava-frame.frame-gold {
+      border: 2px solid #ffd700;
+      background: linear-gradient(135deg, #ffd700, #b45309, #ffd700);
+      box-shadow: 0 0 16px rgba(255, 215, 0, 0.45);
+      animation: steamFrameGoldGlow 3s ease infinite alternate;
+    }
+    .steam-ava-frame.frame-neon {
+      border: 2px solid #00f2fe;
+      background: linear-gradient(135deg, #00f2fe, #4facfe, #ec4899);
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.45);
+      animation: steamFrameNeonGlow 3s ease infinite alternate;
+    }
+    .steam-ava-frame.frame-fire {
+      border: 2px solid #f97316;
+      background: linear-gradient(135deg, #ef4444, #f97316, #eab308);
+      box-shadow: 0 0 18px rgba(249, 115, 22, 0.5);
+      animation: steamFrameFireGlow 2.5s ease infinite alternate;
+    }
+    .steam-ava-frame.frame-rainbow {
+      border: 2px solid #8b5cf6;
+      background: linear-gradient(135deg, #ef4444, #f59e0b, #10b981, #06b6d4, #8b5cf6);
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+      animation: steamFrameRainbow 5s linear infinite;
+    }
+
+    @keyframes steamFrameGoldGlow {
+      from { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+      to { box-shadow: 0 0 22px rgba(255, 215, 0, 0.65); }
+    }
+    @keyframes steamFrameNeonGlow {
+      from { box-shadow: 0 0 10px rgba(0, 242, 254, 0.3); }
+      to { box-shadow: 0 0 22px rgba(236, 72, 153, 0.65); }
+    }
+    @keyframes steamFrameFireGlow {
+      from { box-shadow: 0 0 12px rgba(239, 68, 68, 0.35); }
+      to { box-shadow: 0 0 24px rgba(249, 115, 22, 0.7); }
+    }
+    @keyframes steamFrameRainbow {
+      0% { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
+    }
+
+    /* Status Pill */
+    .steam-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      white-space: nowrap;
+    }
+    .steam-status-pill.online {
+      color: #90ba3c;
+      background: rgba(144, 186, 60, 0.15);
+      border: 1px solid rgba(144, 186, 60, 0.35);
+    }
+    .steam-status-pill.offline {
+      color: #898989;
+      background: rgba(137, 137, 137, 0.12);
+      border: 1px solid rgba(137, 137, 137, 0.25);
+    }
+    .steam-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    /* User Info Column */
+    .steam-info-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .steam-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .steam-user-nick {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      word-break: break-word;
+    }
+    .steam-realname-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12.5px;
+      color: #8f98a0;
+    }
+    .steam-country {
+      display: inline-flex;
+      align-items: center;
+      color: #66c0f4;
+    }
+
+    /* Steam Summary / Bio Quote Box */
+    .steam-summary-box {
+      margin-top: 6px;
+      background: rgba(0, 0, 0, 0.38);
+      border-left: 3px solid #66c0f4;
+      border-radius: 0 5px 5px 0;
+      padding: 8px 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #acb2b8;
+    }
+    .steam-summary-title {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #66c0f4;
+      margin-bottom: 3px;
+    }
+    .steam-summary-text {
+      word-break: break-word;
+    }
+
+    /* Steam Level Column (Top Right) */
+    .steam-level-col {
+      flex-shrink: 0;
+      width: 140px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .steam-level-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .steam-level-lbl {
+      font-size: 12px;
+      font-weight: 700;
+      color: #8f98a0;
+      text-transform: uppercase;
+    }
+    .steam-level-badge {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+      color: #fff;
+      user-select: none;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    .steam-level-badge.tier-grey {
+      border: 2px solid #8f98a0;
+      background: radial-gradient(circle, #4a525d 0%, #2b3038 100%);
+      box-shadow: 0 0 10px rgba(143, 152, 160, 0.3);
+    }
+    .steam-level-badge.tier-red {
+      border: 2px solid #ef4444;
+      background: radial-gradient(circle, #991b1b 0%, #450a0a 100%);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+    }
+    .steam-level-badge.tier-yellow {
+      border: 2px solid #eab308;
+      background: radial-gradient(circle, #854d0e 0%, #422006 100%);
+      box-shadow: 0 0 12px rgba(234, 179, 8, 0.4);
+    }
+    .steam-level-badge.tier-cyan {
+      border: 2px solid #06b6d4;
+      background: radial-gradient(circle, #0e7490 0%, #083344 100%);
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+    }
+    .steam-level-badge.tier-blue {
+      border: 2px solid #3b82f6;
+      background: radial-gradient(circle, #1d4ed8 0%, #172554 100%);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    }
+    .steam-level-badge.tier-purple {
+      border: 2px solid #a855f7;
+      background: radial-gradient(circle, #6b21a8 0%, #3b0764 100%);
+      box-shadow: 0 0 14px rgba(168, 85, 247, 0.45);
+    }
+    .steam-level-badge.tier-rainbow {
+      border: 2px solid #f59e0b;
+      background: radial-gradient(circle, #8b5cf6 0%, #1e1b4b 100%);
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.5);
+      animation: steamFrameRainbow 5s linear infinite;
+    }
+
+    /* XP Progress Bar */
+    .steam-xp-box {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .steam-xp-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #8f98a0;
+      font-weight: 700;
+    }
+    .steam-xp-bar-wrap {
+      width: 100%;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .steam-xp-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3d7cb8, #66c0f4);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    /* Featured Badge Mini */
+    .steam-featured-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      padding: 6px 8px;
+    }
+    .steam-fbadge-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .steam-fbadge-details {
+      min-width: 0;
+      line-height: 1.2;
+    }
+    .steam-fbadge-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .steam-fbadge-xp {
+      font-size: 9.5px;
+      color: #66c0f4;
+      font-weight: 600;
+    }
+
+    /* Steam Action Buttons Bar */
+    .steam-actions-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .steam-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      border: 1px solid transparent;
+      outline: none;
+    }
+    .steam-btn.primary {
+      background: linear-gradient(to bottom, #2b5c8f 5%, #183e66 95%);
+      border-color: #3d7cb8;
+      color: #ffffff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .steam-btn.primary:hover {
+      background: linear-gradient(to bottom, #3974b3 5%, #225184 95%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 10px rgba(61, 124, 184, 0.4);
+    }
+    .steam-btn.gold {
+      background: linear-gradient(to bottom, #b45309 5%, #78350f 95%);
+      border-color: #f59e0b;
+      color: #fef08a;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .steam-btn.gold:hover {
+      background: linear-gradient(to bottom, #d97706 5%, #92400e 95%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 12px rgba(245, 158, 11, 0.4);
+    }
+    .steam-btn.secondary {
+      background: linear-gradient(to bottom, #2d3540 5%, #1c222a 95%);
+      border-color: #424c5a;
+      color: #c6d4df;
+    }
+    .steam-btn.secondary:hover {
+      background: linear-gradient(to bottom, #3a4553 5%, #252d37 95%);
+      color: #ffffff;
+    }
+
+    /* Steam Showcases */
+    .steam-showcases-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .steam-showcase {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 14px 16px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+    .steam-showcase-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ebebeb;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 8px;
+    }
+    .steam-showcase-count {
+      font-size: 11px;
+      color: #66c0f4;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 600;
+    }
+
+    /* 1. Stats Grid */
+    .steam-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .steam-stat-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 5px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .steam-stat-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 2px;
+    }
+    .steam-stat-lbl {
+      font-size: 10.5px;
+      color: #8f98a0;
+      line-height: 1.25;
+    }
+
+    /* 2. Badges Showcase */
+    .steam-badges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+    .steam-badge-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 5px;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .steam-badge-card:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+    .steam-badge-icon {
+      font-size: 26px;
+      margin-bottom: 2px;
+    }
+    .steam-badge-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .steam-badge-xp {
+      font-size: 10px;
+      color: #66c0f4;
+      font-weight: 600;
+    }
+
+    /* 3. Achievements Showcase */
+    .steam-ach-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .steam-ach-card {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 5px;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 5px;
+      cursor: default;
+      transition: all 0.15s ease;
+    }
+    .steam-ach-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: #66c0f4;
+    }
+    .steam-ach-icon {
+      font-size: 28px;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+    }
+    .steam-ach-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .steam-ach-desc {
+      font-size: 9.5px;
+      color: #8f98a0;
+      line-height: 1.25;
+    }
+
+    /* 4. Steam Comments Section */
+    .steam-comments-box {
+      margin-top: 4px;
+    }
+    .steam-comment-post {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 5px;
+      padding: 8px 10px;
+    }
+    .steam-comment-my-ava {
+      width: 34px;
+      height: 34px;
+      border-radius: 3px;
+      object-fit: cover;
+      background: #1e2837;
+      flex-shrink: 0;
+    }
+    .steam-comment-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+    .steam-comment-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 12.5px;
+      outline: none;
+      font-family: inherit;
+    }
+    .steam-comment-input:focus {
+      border-color: #66c0f4;
+    }
+    .steam-comments-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .steam-comment-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      padding: 8px 12px;
+      transition: background 0.15s ease;
+    }
+    .steam-comment-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .steam-c-ava {
+      width: 36px;
+      height: 36px;
+      border-radius: 3px;
+      object-fit: cover;
+      background: #1e2837;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .steam-c-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .steam-c-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+    .steam-c-author {
+      font-size: 12px;
+      font-weight: 700;
+      color: #66c0f4;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .steam-c-date {
+      font-size: 10px;
+      color: #8f98a0;
+    }
+    .steam-c-text {
+      font-size: 12px;
+      color: #acb2b8;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+    .steam-c-del {
+      background: none;
+      border: none;
+      color: #ef4444;
+      opacity: 0.6;
+      cursor: pointer;
+      font-size: 11px;
+      padding: 0 4px;
+    }
+    .steam-c-del:hover {
+      opacity: 1;
+    }
+    .steam-comments-empty {
+      text-align: center;
+      padding: 16px;
+      color: #8f98a0;
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    /* Modal Steam Customizer */
+    .steam-customizer-card {
+      width: 520px;
+      max-width: 95vw;
+      background: #171a21;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8);
+      color: #c6d4df;
+    }
+    .steam-customizer-body {
+      padding: 18px 20px;
+    }
+    .steam-cust-section-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: #66c0f4;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .steam-theme-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .steam-theme-opt {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .steam-theme-opt:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .steam-theme-opt.active {
+      border-color: #66c0f4;
+      background: rgba(102, 192, 244, 0.12);
+      box-shadow: 0 0 10px rgba(102, 192, 244, 0.3);
+      color: #fff;
+    }
+    .steam-theme-preview {
+      width: 100%;
+      height: 36px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .steam-frame-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .steam-frame-opt {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .steam-frame-opt:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .steam-frame-opt.active {
+      border-color: #ffd700;
+      background: rgba(255, 215, 0, 0.12);
+      color: #fff;
+    }
+    .steam-frame-preview {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .steam-frame-preview .mini-ava {
+      width: 32px;
+      height: 32px;
+      background: #374151;
+      border-radius: 3px;
+    }
+
+    @media (max-width: 640px) {
+      #modal-viewprofile .mcard.steam-modal-card {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100% !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        border-radius: 0 !important;
+      }
+      .steam-hero-main {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .steam-info-col {
+        align-items: center;
+      }
+      .steam-name-row {
+        justify-content: center;
+      }
+      .steam-level-col {
+        width: 100%;
+      }
+      .steam-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .steam-ach-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .steam-actions-bar {
+        justify-content: center;
+      }
+    }
+
+  </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     crossorigin="anonymous">
   <style>
@@ -13268,6 +14162,11 @@
           </div>
           <input type="hidden" id="mpAvaUrl">
 
+          <button type="button" class="steam-btn primary" onclick="closeModal('modal-myprofile');if(me)viewProfile(me.uid);" style="width:100%;margin-bottom:14px;padding:11px 16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;box-shadow:0 4px 14px rgba(43,92,143,0.4);">
+            <i class="fa-brands fa-steam" style="font-size:17px;color:#66c0f4;"></i>
+            <span>Открыть мой профиль Steam</span>
+          </button>
+
           <div class="tgme-card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><div class="tgme-card-title" style="margin-bottom:0" data-i18n="username">Юзернейм / Имя</div><span id="mpPrefixBadge"></span></div>
             <div class="tgme-field"><input id="mpUsername" maxlength="32" placeholder="Юзернейм (до 32 символов)" autocomplete="off"></div>
@@ -13600,8 +14499,10 @@
   </div>
 
   <!-- View Profile — Telegram style -->
+  <!-- View Profile Modal: Steam-style for users, Favorites-style for Saved Messages -->
   <div class="modal hidden" id="modal-viewprofile">
-    <div class="mcard">
+    <!-- 1. FAVORITES VIEW (Only for fav_me.uid) -->
+    <div id="vpFavView" class="mcard" style="display:none">
       <div class="mbody">
         <div class="tgp-head">
           <img class="tgp-head-ava" id="vpAva" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
@@ -13612,35 +14513,302 @@
           <button class="tgp-head-close" onclick="closeModal('modal-viewprofile')">✕</button>
           <div class="tgp-head-info">
             <div class="tgp-head-name" id="vpName"></div>
-            <div class="tgp-head-status" id="vpStatus" data-i18n="loading">Загрузка...</div>
+            <div class="tgp-head-status" id="vpStatus">Загрузка...</div>
           </div>
         </div>
         <div class="tgp-section" id="vpInfoSection">
           <div id="vpBio" class="hidden"></div>
           <div class="tgp-row" id="vpUsernameRow" style="display:none"
-            onclick="navigator.clipboard.writeText(this.dataset.copy||'')" title="Нажмите чтобы скопировать"
-            data-i18n-title="clickToCopy">
+            onclick="navigator.clipboard.writeText(this.dataset.copy||'')" title="Нажмите чтобы скопировать">
             <span class="tgp-row-icon">@</span>
             <div class="tgp-row-body">
               <div class="tgp-row-val" id="vpUsername"></div>
-              <div class="tgp-row-lbl" data-i18n="username">Юзернейм</div>
+              <div class="tgp-row-lbl">Юзернейм</div>
             </div>
           </div>
           <div id="vpFields"></div>
         </div>
         <div class="tgp-section">
           <div class="tgp-actions">
-            <button class="tgp-action" id="vpMsgBtn" onclick="dmFromProfile()"><span class="tgp-row-icon">💬</span><span
-                data-i18n="sendMsgBtn">Написать сообщение</span></button>
-            <button class="tgp-action" id="vpGiftPirozhkiBtn" style="display:none;background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(217,119,6,0.28));border:1px solid rgba(245,158,11,0.45);color:#fbbf24;" onclick="openGiftPirozhkiModal(vpUid)"><span class="tgp-row-icon"><img src="pirozhok.png" style="width:18px;height:18px;vertical-align:middle;" alt="🥟"></span><span>Угостить пирожками</span></button>
-            <button class="tgp-action" id="vpFavAttachBtn" style="display:none" onclick="vpSendFavFile()"><span class="tgp-row-icon">📎</span><span>Прикрепить файл</span></button>
-            <button class="tgp-action" id="vpAddFriendBtn" style="display:none" onclick="addFriendFromProfile()"><span
-                class="tgp-row-icon">👤</span><span data-i18n="addFriendBtn">Добавить в друзья</span></button>
+            <button class="tgp-action" id="vpFavAttachBtn" onclick="vpSendFavFile()"><span class="tgp-row-icon">📎</span><span>Прикрепить файл</span></button>
           </div>
         </div>
-        <!-- Вложения в переписке (фото, файлы, музыка в ЛС) -->
         <div class="tgp-section" id="vpSharedMediaSection" style="display:none"></div>
+      </div>
+    </div>
 
+    <!-- 2. STEAM USER PROFILE VIEW (For all users) -->
+    <div id="vpSteamView" class="mcard steam-modal-card steam-profile-card theme-classic" style="display:none;">
+      <!-- Steam Window Header Bar -->
+      <div class="steam-top-bar">
+        <div class="steam-top-brand">
+          <i class="fa-brands fa-steam" style="font-size:17px;color:#66c0f4;"></i>
+          <span>ПРОФИЛЬ STEAM</span>
+        </div>
+        <div class="steam-top-acts">
+          <button type="button" class="steam-icon-btn" onclick="copySteamProfileLink()" title="Скопировать ссылку на профиль"><i class="fa-solid fa-link"></i></button>
+          <button type="button" class="steam-icon-btn close-btn" onclick="closeModal('modal-viewprofile')" title="Закрыть">✕</button>
+        </div>
+      </div>
+
+      <!-- Steam Profile Scrollable Content -->
+      <div class="steam-content">
+        <!-- Hero Header -->
+        <div class="steam-hero">
+          <div class="steam-hero-main">
+            <!-- Avatar with Frame -->
+            <div class="steam-ava-col">
+              <div class="steam-ava-frame frame-none" id="spAvaFrame">
+                <img id="spAva" src="" class="steam-ava-img" alt="" onerror="this.style.display='none';document.getElementById('spAvaPh').style.display='flex';" onload="this.style.display='block';document.getElementById('spAvaPh').style.display='none';">
+                <div id="spAvaPh" class="steam-ava-ph">?</div>
+              </div>
+              <div class="steam-status-pill online" id="spStatusBadge">
+                <span class="steam-status-dot"></span>
+                <span id="spStatusText">В сети</span>
+              </div>
+            </div>
+
+            <!-- User Info Details -->
+            <div class="steam-info-col">
+              <div class="steam-name-row">
+                <span class="steam-user-nick" id="spNick">Пользователь</span>
+                <span id="spPrefixBadge"></span>
+                <span id="spDevBadge"></span>
+                <span id="spFemaleBadge"></span>
+              </div>
+              <div class="steam-realname-row" id="spRealnameRow">
+                <span id="spRealName"></span>
+                <span class="steam-country" id="spCountry"><i class="fa-solid fa-location-dot" style="margin-right:4px;font-size:11px;"></i>Россия</span>
+              </div>
+
+              <!-- Steam Bio Quote Box («Сводка») -->
+              <div class="steam-summary-box" id="spBioBox">
+                <div class="steam-summary-title">Сводка</div>
+                <div class="steam-summary-text" id="spBioText">Информация не указана</div>
+              </div>
+            </div>
+
+            <!-- Steam Level & Featured Badge Widget (Top Right) -->
+            <div class="steam-level-col">
+              <div class="steam-level-header">
+                <span class="steam-level-lbl">Уровень</span>
+                <div class="steam-level-badge tier-grey" id="spLevelBadge">
+                  <span id="spLevelNum">1</span>
+                </div>
+              </div>
+              <div class="steam-xp-box">
+                <div class="steam-xp-info">
+                  <span id="spXpCur">0 XP</span>
+                  <span id="spXpNext">100 XP</span>
+                </div>
+                <div class="steam-xp-bar-wrap">
+                  <div class="steam-xp-bar-fill" id="spXpBarFill" style="width: 20%;"></div>
+                </div>
+              </div>
+
+              <!-- Featured Badge Mini -->
+              <div class="steam-featured-badge" id="spFeaturedBadge">
+                <div class="steam-fbadge-icon" id="spFBadgeIcon">🥟</div>
+                <div class="steam-fbadge-details">
+                  <div class="steam-fbadge-name" id="spFBadgeName">Пекарь</div>
+                  <div class="steam-fbadge-xp" id="spFBadgeXp">+100 XP</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Steam Action Buttons Row -->
+          <div class="steam-actions-bar">
+            <!-- Other user buttons -->
+            <button type="button" class="steam-btn primary" id="spMsgBtn" onclick="dmFromProfile()">
+              <i class="fa-solid fa-comment"></i> <span>Написать сообщение</span>
+            </button>
+            <button type="button" class="steam-btn gold" id="spGiftBtn" onclick="openGiftPirozhkiFromSteam()">
+              <img src="pirozhok.png" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;" alt="🥟">
+              <span>Угостить пирожками</span>
+            </button>
+            <button type="button" class="steam-btn secondary" id="spFriendBtn" onclick="addFriendFromProfile()">
+              <i class="fa-solid fa-user-plus"></i> <span id="spFriendBtnText">В друзья</span>
+            </button>
+            <button type="button" class="steam-btn secondary" id="spCallBtn" onclick="callUserFromSteam()">
+              <i class="fa-solid fa-phone"></i> <span>Позвонить</span>
+            </button>
+
+            <!-- Self buttons -->
+            <button type="button" class="steam-btn secondary" id="spEditBtn" style="display:none;" onclick="openMyProfile()">
+              <i class="fa-solid fa-pen-to-square"></i> <span>Редактировать</span>
+            </button>
+            <button type="button" class="steam-btn gold" id="spCustomizeBtn" style="display:none;" onclick="openSteamCustomizer()">
+              <i class="fa-solid fa-palette"></i> <span>Оформить профиль</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEAM SHOWCASES -->
+        <div class="steam-showcases-wrap">
+          <!-- 1. Stats Showcase -->
+          <div class="steam-showcase">
+            <div class="steam-showcase-title">
+              <i class="fa-solid fa-chart-simple" style="color:#66c0f4;margin-right:6px;"></i> Статистика игрока
+            </div>
+            <div class="steam-stats-grid">
+              <div class="steam-stat-card">
+                <div class="steam-stat-val" id="spStatPirozhki">0 🥟</div>
+                <div class="steam-stat-lbl">Пирожков на балансе</div>
+              </div>
+              <div class="steam-stat-card">
+                <div class="steam-stat-val" id="spStatLevel">Ур. 1</div>
+                <div class="steam-stat-lbl">Ранг аккаунта</div>
+              </div>
+              <div class="steam-stat-card">
+                <div class="steam-stat-val" id="spStatDays">1 дн.</div>
+                <div class="steam-stat-lbl">Выслуга лет / Стаж</div>
+              </div>
+              <div class="steam-stat-card">
+                <div class="steam-stat-val" id="spStatFriends">0</div>
+                <div class="steam-stat-lbl">Друзей в сети</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Badges Showcase -->
+          <div class="steam-showcase">
+            <div class="steam-showcase-title">
+              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                <span><i class="fa-solid fa-award" style="color:#ffd700;margin-right:6px;"></i> Витрина значков</span>
+                <span class="steam-showcase-count" id="spBadgesCount">4 значка</span>
+              </div>
+            </div>
+            <div class="steam-badges-grid" id="spBadgesGrid">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- 3. Achievements Showcase -->
+          <div class="steam-showcase">
+            <div class="steam-showcase-title">
+              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                <span><i class="fa-solid fa-trophy" style="color:#f59e0b;margin-right:6px;"></i> Витрина достижений</span>
+                <span class="steam-showcase-count" id="spAchCount">4 из 4 (100%)</span>
+              </div>
+            </div>
+            <div class="steam-ach-row" id="spAchRow">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- 4. Shared Media Showcase (when chatting with user) -->
+          <div class="steam-showcase" id="spMediaShowcase" style="display:none;">
+            <div class="steam-showcase-title">
+              <i class="fa-solid fa-images" style="color:#38bdf8;margin-right:6px;"></i> Вложения в переписке
+            </div>
+            <div id="spMediaContent" style="padding:10px 0;"></div>
+          </div>
+
+          <!-- 5. Steam Comments Wall (Стена профиля) -->
+          <div class="steam-showcase steam-comments-box">
+            <div class="steam-showcase-title">
+              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                <span><i class="fa-solid fa-comments" style="color:#66c0f4;margin-right:6px;"></i> Комментарии профиля</span>
+                <span class="steam-showcase-count" id="spCommentsCount">0 комментариев</span>
+              </div>
+            </div>
+
+            <!-- Post Comment Input -->
+            <div class="steam-comment-post">
+              <img id="spMyCommentAva" class="steam-comment-my-ava" src="" alt="" onerror="this.src='';">
+              <div class="steam-comment-input-wrap">
+                <input type="text" id="spCommentInput" class="steam-comment-input" maxlength="240" placeholder="Оставить комментарий (+rep, отзыв или пожелание)..." onkeydown="if(event.key==='Enter')postSteamComment()">
+                <button type="button" class="steam-btn primary" onclick="postSteamComment()" style="padding:7px 14px;font-size:12px;">
+                  <span>Опубликовать</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Comments List -->
+            <div class="steam-comments-list" id="spCommentsList">
+              <div class="steam-comments-empty">Пока нет комментариев. Будьте первым, кто оставит +rep!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Steam Profile Customizer -->
+  <div class="modal hidden" id="modal-steam-customizer" style="z-index:99999;">
+    <div class="steam-customizer-card">
+      <div class="steam-top-bar">
+        <div class="steam-top-brand">
+          <i class="fa-solid fa-palette" style="color:#ffd700;font-size:16px;"></i>
+          <span>ОФОРМЛЕНИЕ ПРОФИЛЯ STEAM</span>
+        </div>
+        <button type="button" class="steam-icon-btn close-btn" onclick="closeModal('modal-steam-customizer')">✕</button>
+      </div>
+
+      <div class="steam-customizer-body">
+        <div style="font-size:12px;color:#8f98a0;margin-bottom:14px;">
+          Настройте фон и анимированную рамку аватара в стиле Магазина Очков Steam:
+        </div>
+
+        <!-- 1. Theme Background Selection -->
+        <div class="steam-cust-section-title">ВЫБЕРИТЕ ФОН ПРОФИЛЯ:</div>
+        <div class="steam-theme-grid">
+          <div class="steam-theme-opt active" data-theme="classic" onclick="selectSteamTheme('classic', this)">
+            <div class="steam-theme-preview theme-classic"></div>
+            <span>Классический Steam</span>
+          </div>
+          <div class="steam-theme-opt" data-theme="cyberpunk" onclick="selectSteamTheme('cyberpunk', this)">
+            <div class="steam-theme-preview theme-cyberpunk"></div>
+            <span>Cyberpunk Neon</span>
+          </div>
+          <div class="steam-theme-opt" data-theme="galaxy" onclick="selectSteamTheme('galaxy', this)">
+            <div class="steam-theme-preview theme-galaxy"></div>
+            <span>Deep Space</span>
+          </div>
+          <div class="steam-theme-opt" data-theme="bakery" onclick="selectSteamTheme('bakery', this)">
+            <div class="steam-theme-preview theme-bakery"></div>
+            <span>Пекарня Пирожков</span>
+          </div>
+          <div class="steam-theme-opt" data-theme="matrix" onclick="selectSteamTheme('matrix', this)">
+            <div class="steam-theme-preview theme-matrix"></div>
+            <span>Matrix Green</span>
+          </div>
+          <div class="steam-theme-opt" data-theme="crimson" onclick="selectSteamTheme('crimson', this)">
+            <div class="steam-theme-preview theme-crimson"></div>
+            <span>Crimson Fire</span>
+          </div>
+        </div>
+
+        <!-- 2. Avatar Frame Selection -->
+        <div class="steam-cust-section-title" style="margin-top:16px;">ВЫБЕРИТЕ РАМКУ АВАТАРА:</div>
+        <div class="steam-frame-grid">
+          <div class="steam-frame-opt active" data-frame="none" onclick="selectSteamFrame('none', this)">
+            <div class="steam-frame-preview frame-none"><div class="mini-ava"></div></div>
+            <span>Обычная</span>
+          </div>
+          <div class="steam-frame-opt" data-frame="gold" onclick="selectSteamFrame('gold', this)">
+            <div class="steam-frame-preview frame-gold"><div class="mini-ava"></div></div>
+            <span>Золото</span>
+          </div>
+          <div class="steam-frame-opt" data-frame="neon" onclick="selectSteamFrame('neon', this)">
+            <div class="steam-frame-preview frame-neon"><div class="mini-ava"></div></div>
+            <span>Неон</span>
+          </div>
+          <div class="steam-frame-opt" data-frame="fire" onclick="selectSteamFrame('fire', this)">
+            <div class="steam-frame-preview frame-fire"><div class="mini-ava"></div></div>
+            <span>Пламя</span>
+          </div>
+          <div class="steam-frame-opt" data-frame="rainbow" onclick="selectSteamFrame('rainbow', this)">
+            <div class="steam-frame-preview frame-rainbow"><div class="mini-ava"></div></div>
+            <span>Радуга</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+          <button type="button" class="steam-btn secondary" onclick="closeModal('modal-steam-customizer')">Отмена</button>
+          <button type="button" class="steam-btn primary" onclick="saveSteamCustomization()">Сохранить оформление</button>
+        </div>
       </div>
     </div>
   </div>
@@ -14874,7 +16042,9 @@
           phone: profile.phone || '',
           hideLastSeen: !!profile.hideLastSeen,
           prefix: profile.prefix || '',
-          prefixStyle: profile.prefixStyle || 'gold'
+          prefixStyle: profile.prefixStyle || 'gold',
+          steamTheme: profile.steamTheme || 'classic',
+          steamFrame: profile.steamFrame || 'none'
         };
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(all));
       } catch (_) { }
@@ -14898,6 +16068,8 @@
         pirozhki: Number((data && data.pirozhki) || 0),
         prefix: (data && data.prefix) || '',
         prefixStyle: (data && data.prefixStyle) || 'gold',
+        steamTheme: (data && data.steamTheme) || 'classic',
+        steamFrame: (data && data.steamFrame) || 'none',
 
         lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
         online: true
@@ -19682,7 +20854,513 @@
       }
     }
 
+    
+    /* ═══════════════════════════════════════════════════════════════════
+       STEAM PROFILE JAVASCRIPT SYSTEM
+       ═══════════════════════════════════════════════════════════════════ */
+
+    function getSteamProfileData(u) {
+      if (!u) return { xp: 100, level: 1, currentLevelXp: 0, nextLevelXp: 100, tierClass: 'tier-grey', daysOld: 1, yearsOld: 1, pirozhki: 0, badges: [], achievements: [] };
+      const pirozhki = Number(u.pirozhki || 0);
+      let createdMs = 0;
+      if (u.createdAt) {
+        if (typeof u.createdAt.toMillis === 'function') createdMs = u.createdAt.toMillis();
+        else if (u.createdAt.seconds) createdMs = u.createdAt.seconds * 1000;
+        else createdMs = new Date(u.createdAt).getTime();
+      }
+      if (!createdMs || isNaN(createdMs)) createdMs = Date.now() - (86400000 * 20);
+
+      const daysOld = Math.max(1, Math.floor((Date.now() - createdMs) / 86400000));
+      const yearsOld = Math.max(1, Math.floor(daysOld / 365) + 1);
+
+      let xp = 100;
+      xp += pirozhki * 14;
+      xp += Math.min(daysOld * 4, 1200);
+      if (u.prefix) xp += 250;
+      if (u.bio) xp += 80;
+      if (u.avatar) xp += 60;
+      if (u.uid === CREATOR_UID) xp += 3500;
+
+      const level = Math.max(1, Math.floor(xp / 100));
+      const currentLevelXp = xp % 100;
+      const nextLevelXp = 100;
+
+      let tierClass = 'tier-grey';
+      if (level >= 100) tierClass = 'tier-rainbow';
+      else if (level >= 50) tierClass = 'tier-purple';
+      else if (level >= 40) tierClass = 'tier-blue';
+      else if (level >= 30) tierClass = 'tier-cyan';
+      else if (level >= 20) tierClass = 'tier-yellow';
+      else if (level >= 10) tierClass = 'tier-red';
+
+      // Featured Badge
+      let featuredBadge = { icon: '🛡️', name: 'Пионер сообщества', xp: '+100 XP' };
+      if (pirozhki >= 150) featuredBadge = { icon: '🥟', name: 'Пирожковый магнат', xp: '+500 XP' };
+      else if (pirozhki >= 50) featuredBadge = { icon: '🥟', name: 'Пирожковый барон', xp: '+250 XP' };
+      else if (u.prefix) featuredBadge = { icon: '👑', name: 'Икона стиля', xp: '+200 XP' };
+      else if (daysOld >= 365) featuredBadge = { icon: '⏳', name: 'Выслуга лет: ' + yearsOld, xp: '+300 XP' };
+
+      // Badges
+      const badges = [
+        { icon: '🥟', title: pirozhki >= 50 ? 'Пирожковый барон' : 'Пекарь', desc: pirozhki + ' пирожков', xp: (pirozhki * 10 + 50) + ' XP' },
+        { icon: '⏳', title: 'Выслуга лет', desc: yearsOld + ' года службы', xp: (yearsOld * 50) + ' XP' },
+        { icon: '👑', title: 'Стильный статус', desc: u.prefix ? ('Префикс: ' + u.prefix) : 'Базовый ранг', xp: (u.prefix ? '150 XP' : '50 XP') },
+        { icon: '🔒', title: 'Signal Защита', desc: 'E2EE шифрование', xp: '100 XP' },
+        { icon: '💬', title: 'Собеседник', desc: 'Участник диалогов', xp: '100 XP' }
+      ];
+      if (u.uid === CREATOR_UID) {
+        badges.unshift({ icon: '⚡', title: 'Создатель сети', desc: 'Разработчик NonsenseChat', xp: '1000 XP' });
+      }
+
+      // Achievements
+      const achievements = [
+        { icon: '🏆', name: 'Новобранец', desc: 'Вход в NonsenseChat' },
+        { icon: '🥟', name: 'Вкусная валюта', desc: 'Пирожки на балансе' },
+        { icon: '💬', name: 'Связной', desc: 'Общение с друзьями' },
+        { icon: '🎨', name: 'Индивидуальность', desc: 'Оформление профиля' }
+      ];
+
+      return { xp, level, currentLevelXp, nextLevelXp, tierClass, daysOld, yearsOld, pirozhki, featuredBadge, badges, achievements };
+    }
+    window.getSteamProfileData = getSteamProfileData;
+
+    function renderSteamProfile(u, uid) {
+      if (!u) return;
+      const data = getSteamProfileData(u);
+
+      // 1. Theme and Frame
+      const steamCard = document.getElementById('vpSteamView');
+      if (steamCard) {
+        steamCard.className = 'mcard steam-modal-card steam-profile-card theme-' + (u.steamTheme || 'classic');
+      }
+      const avaFrame = document.getElementById('spAvaFrame');
+      if (avaFrame) {
+        avaFrame.className = 'steam-ava-frame frame-' + (u.steamFrame || 'none');
+      }
+
+      // 2. Avatar
+      const avaImg = document.getElementById('spAva');
+      const avaPh = document.getElementById('spAvaPh');
+      if (avaImg && avaPh) {
+        if (u.avatar) {
+          avaImg.src = u.avatar;
+          avaImg.style.display = 'block';
+          avaPh.style.display = 'none';
+        } else {
+          avaImg.style.display = 'none';
+          avaPh.style.display = 'flex';
+          avaPh.innerText = (u.nick || '?').charAt(0).toUpperCase();
+        }
+      }
+
+      // 3. User Info
+      const spNick = document.getElementById('spNick');
+      if (spNick) spNick.innerText = u.nick || 'Пользователь';
+
+      const spPrefix = document.getElementById('spPrefixBadge');
+      if (spPrefix) spPrefix.innerHTML = (typeof renderUserPrefixBadge === 'function') ? renderUserPrefixBadge(u, true) : '';
+
+      const spDev = document.getElementById('spDevBadge');
+      if (spDev) spDev.innerHTML = (uid === CREATOR_UID) ? '<span class="dev-badge dev-badge-lg" title="Разработчик">&lt;/&gt;</span>' : '';
+
+      const spFemale = document.getElementById('spFemaleBadge');
+      if (spFemale) spFemale.innerHTML = (typeof isFemaleUser === 'function' && isFemaleUser(u, uid)) ? '<span class="female-badge female-badge-lg" title="Девушка"></span>' : '';
+
+      const spRealName = document.getElementById('spRealName');
+      if (spRealName) {
+        const full = (u.fname ? (u.fname + ' ' + (u.lname || '')) : '').trim();
+        spRealName.innerText = full ? full + ' • ' : '';
+      }
+
+      // 4. Bio / Summary
+      const spBioText = document.getElementById('spBioText');
+      if (spBioText) {
+        spBioText.innerHTML = u.bio ? (typeof formatMentionsHtml === 'function' ? formatMentionsHtml(u.bio) : u.bio) : 'Информация о себе не указана.';
+      }
+
+      // 5. Level & XP
+      const spLevelNum = document.getElementById('spLevelNum');
+      if (spLevelNum) spLevelNum.innerText = data.level;
+
+      const spLevelBadge = document.getElementById('spLevelBadge');
+      if (spLevelBadge) spLevelBadge.className = 'steam-level-badge ' + data.tierClass;
+
+      const spXpCur = document.getElementById('spXpCur');
+      if (spXpCur) spXpCur.innerText = data.currentLevelXp + ' XP';
+
+      const spXpNext = document.getElementById('spXpNext');
+      if (spXpNext) spXpNext.innerText = data.nextLevelXp + ' XP';
+
+      const spXpBarFill = document.getElementById('spXpBarFill');
+      if (spXpBarFill) spXpBarFill.style.width = Math.min(100, Math.max(8, data.currentLevelXp)) + '%';
+
+      // Featured Badge
+      const spFBadgeIcon = document.getElementById('spFBadgeIcon');
+      if (spFBadgeIcon) spFBadgeIcon.innerText = data.featuredBadge.icon;
+
+      const spFBadgeName = document.getElementById('spFBadgeName');
+      if (spFBadgeName) spFBadgeName.innerText = data.featuredBadge.name;
+
+      const spFBadgeXp = document.getElementById('spFBadgeXp');
+      if (spFBadgeXp) spFBadgeXp.innerText = data.featuredBadge.xp;
+
+      // 6. Stats Showcase
+      const spStatPirozhki = document.getElementById('spStatPirozhki');
+      if (spStatPirozhki) spStatPirozhki.innerText = data.pirozhki + ' 🥟';
+
+      const spStatLevel = document.getElementById('spStatLevel');
+      if (spStatLevel) spStatLevel.innerText = 'Ур. ' + data.level;
+
+      const spStatDays = document.getElementById('spStatDays');
+      if (spStatDays) spStatDays.innerText = data.daysOld + ' дн.';
+
+      const spStatFriends = document.getElementById('spStatFriends');
+      if (spStatFriends) {
+        const count = Array.isArray(allChats) ? allChats.filter(c => c.type === 'dm').length : 0;
+        spStatFriends.innerText = count;
+      }
+
+      // 7. Badges Showcase
+      const spBadgesGrid = document.getElementById('spBadgesGrid');
+      const spBadgesCount = document.getElementById('spBadgesCount');
+      if (spBadgesCount) spBadgesCount.innerText = data.badges.length + ' значков';
+      if (spBadgesGrid) {
+        spBadgesGrid.innerHTML = data.badges.map(b => `
+          <div class="steam-badge-card" title="${b.desc}">
+            <div class="steam-badge-icon">${b.icon}</div>
+            <div class="steam-badge-title">${b.title}</div>
+            <div class="steam-badge-xp">${b.xp}</div>
+          </div>
+        `).join('');
+      }
+
+      // 8. Achievements Showcase
+      const spAchRow = document.getElementById('spAchRow');
+      const spAchCount = document.getElementById('spAchCount');
+      if (spAchCount) spAchCount.innerText = data.achievements.length + ' из ' + data.achievements.length + ' (100%)';
+      if (spAchRow) {
+        spAchRow.innerHTML = data.achievements.map(a => `
+          <div class="steam-ach-card" title="${a.desc}">
+            <div class="steam-ach-icon">${a.icon}</div>
+            <div class="steam-ach-name">${a.name}</div>
+            <div class="steam-ach-desc">${a.desc}</div>
+          </div>
+        `).join('');
+      }
+
+      // 9. Status
+      renderSteamProfileStatus(u);
+
+      // 10. Action Buttons (Self vs Others)
+      const isSelf = (uid === me?.uid);
+      const spMsgBtn = document.getElementById('spMsgBtn');
+      const spGiftBtn = document.getElementById('spGiftBtn');
+      const spFriendBtn = document.getElementById('spFriendBtn');
+      const spCallBtn = document.getElementById('spCallBtn');
+      const spEditBtn = document.getElementById('spEditBtn');
+      const spCustomizeBtn = document.getElementById('spCustomizeBtn');
+
+      if (spMsgBtn) spMsgBtn.style.display = isSelf ? 'none' : 'inline-flex';
+      if (spGiftBtn) spGiftBtn.style.display = isSelf ? 'none' : 'inline-flex';
+      if (spFriendBtn) spFriendBtn.style.display = isSelf ? 'none' : 'inline-flex';
+      if (spCallBtn) spCallBtn.style.display = isSelf ? 'none' : 'inline-flex';
+      if (spEditBtn) spEditBtn.style.display = isSelf ? 'inline-flex' : 'none';
+      if (spCustomizeBtn) spCustomizeBtn.style.display = isSelf ? 'inline-flex' : 'none';
+
+      // My avatar in comment input
+      const spMyCommentAva = document.getElementById('spMyCommentAva');
+      if (spMyCommentAva && me) {
+        spMyCommentAva.src = me.avatar || '';
+      }
+    }
+    window.renderSteamProfile = renderSteamProfile;
+
+    function renderSteamProfileStatus(u) {
+      const badge = document.getElementById('spStatusBadge');
+      const text = document.getElementById('spStatusText');
+      if (!badge || !text || !u) return;
+      const isOnline = (typeof userIsOnline === 'function') ? userIsOnline(u) : !!u.online;
+      if (isOnline) {
+        badge.className = 'steam-status-pill online';
+        text.innerText = 'В игре: NonsenseChat';
+      } else {
+        badge.className = 'steam-status-pill offline';
+        const lastSeen = (typeof asDate === 'function') ? asDate(u.lastSeen) : null;
+        text.innerText = lastSeen ? ('Не в сети (' + fmtLastSeen(lastSeen) + ')') : 'Не в сети';
+      }
+    }
+    window.renderSteamProfileStatus = renderSteamProfileStatus;
+
+    function copySteamProfileLink() {
+      if (!vpUid) return;
+      const u = window._vpUser || (uCache && uCache[vpUid]) || null;
+      const name = u ? (u.nick || 'user') : 'user';
+      const url = window.location.origin + window.location.pathname + '#user=' + vpUid;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('Профиль Steam', 'Ссылка на профиль @' + name + ' скопирована в буфер!', 'info');
+        }).catch(() => {
+          showToast('Профиль Steam', 'UID: ' + vpUid, 'info');
+        });
+      } else {
+        showToast('Профиль Steam', 'UID: ' + vpUid, 'info');
+      }
+    }
+    window.copySteamProfileLink = copySteamProfileLink;
+
+    function openGiftPirozhkiFromSteam() {
+      if (!vpUid) return;
+      const u = window._vpUser || (uCache && uCache[vpUid]);
+      if (typeof openGiftPirozhkiModal === 'function') {
+        openGiftPirozhkiModal(vpUid, u?.nick || 'Пользователь');
+      }
+    }
+    window.openGiftPirozhkiFromSteam = openGiftPirozhkiFromSteam;
+
+    function callUserFromSteam() {
+      if (!vpUid) return;
+      const u = window._vpUser || (uCache && uCache[vpUid]);
+      if (typeof startDirectCallWithUser === 'function') {
+        startDirectCallWithUser(vpUid, u?.nick || 'Пользователь', u?.avatar || '');
+      }
+    }
+    window.callUserFromSteam = callUserFromSteam;
+
+    /* ═══ STEAM COMMENTS WALL SYSTEM ═══ */
+    let _steamCommentsCache = {};
+
+    async function loadSteamComments(targetUid) {
+      if (!targetUid) return;
+      const listEl = document.getElementById('spCommentsList');
+      const countEl = document.getElementById('spCommentsCount');
+      if (!listEl) return;
+
+      let comments = [];
+      try {
+        if (window.db) {
+          const snap = await db.collection('users').doc(targetUid).collection('profile_comments').orderBy('createdAt', 'desc').limit(25).get();
+          snap.forEach(doc => {
+            const data = doc.data();
+            comments.push({ id: doc.id, ...data });
+          });
+        }
+      } catch (e) {
+        console.warn('Firestore comments fetch error, falling back to local:', e);
+      }
+
+      if (!comments.length) {
+        try {
+          const local = JSON.parse(localStorage.getItem('steam_comments_' + targetUid) || '[]');
+          if (Array.isArray(local)) comments = local;
+        } catch (_) {}
+      }
+
+      _steamCommentsCache[targetUid] = comments;
+      if (countEl) countEl.innerText = comments.length + ' комментариев';
+
+      if (!comments.length) {
+        listEl.innerHTML = '<div class="steam-comments-empty">Пока нет комментариев. Будьте первым, кто оставит +rep!</div>';
+        return;
+      }
+
+      listEl.innerHTML = comments.map(c => {
+        const canDel = (me && (me.uid === c.authorUid || me.uid === targetUid || me.uid === CREATOR_UID));
+        const dateStr = c.createdAt ? (c.createdAt.toMillis ? new Date(c.createdAt.toMillis()).toLocaleDateString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : new Date(c.createdAt).toLocaleDateString('ru', { day: 'numeric', month: 'short' })) : 'недавно';
+        const prefixHtml = (c.authorPrefix && typeof renderUserPrefixBadge === 'function') ? renderUserPrefixBadge({ prefix: c.authorPrefix, prefixStyle: c.authorPrefixStyle || 'gold' }) : '';
+        const delBtn = canDel ? `<button type="button" class="steam-c-del" onclick="deleteSteamComment('${c.id}', '${c.authorUid}')" title="Удалить комментарий">✕</button>` : '';
+
+        return `
+          <div class="steam-comment-item" id="steam-comment-${c.id}">
+            <img src="${c.authorAva || ''}" class="steam-c-ava" onerror="this.src='';">
+            <div class="steam-c-body">
+              <div class="steam-c-head">
+                <div class="steam-c-author">@${c.authorNick || 'Пользователь'}${prefixHtml}</div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span class="steam-c-date">${dateStr}</span>
+                  ${delBtn}
+                </div>
+              </div>
+              <div class="steam-c-text">${(typeof escUp === 'function' ? escUp(c.text || '') : (c.text || '')).replace(/</g, '&lt;')}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    window.loadSteamComments = loadSteamComments;
+
+    async function postSteamComment() {
+      if (!me || !me.uid) {
+        showToast('Внимание', 'Пожалуйста, войдите в аккаунт, чтобы комментировать', 'warning');
+        return;
+      }
+      if (!vpUid) return;
+      const inp = document.getElementById('spCommentInput');
+      const text = (inp ? inp.value.trim() : '');
+      if (!text) return;
+
+      const commentData = {
+        authorUid: me.uid,
+        authorNick: me.nick || 'Пользователь',
+        authorAva: me.avatar || '',
+        authorPrefix: me.prefix || '',
+        authorPrefixStyle: me.prefixStyle || 'gold',
+        text: text,
+        createdAt: new Date().toISOString()
+      };
+
+      if (inp) inp.value = '';
+
+      let newId = 'c_' + Date.now();
+      if (window.db) {
+        try {
+          const docRef = await db.collection('users').doc(vpUid).collection('profile_comments').add({
+            ...commentData,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          newId = docRef.id;
+        } catch (e) {
+          console.warn('Firestore comment write error:', e);
+        }
+      }
+
+      // Update local cache
+      const local = _steamCommentsCache[vpUid] || [];
+      local.unshift({ id: newId, ...commentData });
+      _steamCommentsCache[vpUid] = local;
+      try { localStorage.setItem('steam_comments_' + vpUid, JSON.stringify(local.slice(0, 30))); } catch (_) {}
+
+      loadSteamComments(vpUid);
+      showToast('Стена Steam', 'Комментарий опубликован!', 'success');
+    }
+    window.postSteamComment = postSteamComment;
+
+    async function deleteSteamComment(commentId, authorUid) {
+      if (!vpUid || !commentId) return;
+      if (!confirm('Удалить этот комментарий?')) return;
+
+      if (window.db) {
+        try {
+          await db.collection('users').doc(vpUid).collection('profile_comments').doc(commentId).delete();
+        } catch (e) { console.warn('Firestore comment delete error:', e); }
+      }
+
+      let local = _steamCommentsCache[vpUid] || [];
+      local = local.filter(c => c.id !== commentId);
+      _steamCommentsCache[vpUid] = local;
+      try { localStorage.setItem('steam_comments_' + vpUid, JSON.stringify(local)); } catch (_) {}
+
+      loadSteamComments(vpUid);
+      showToast('Стена Steam', 'Комментарий удален', 'info');
+    }
+    window.deleteSteamComment = deleteSteamComment;
+
+    /* ═══ STEAM CUSTOMIZER (Themes & Frames) ═══ */
+    let _selectedSteamTheme = 'classic';
+    let _selectedSteamFrame = 'none';
+
+    function openSteamCustomizer() {
+      if (!me) return;
+      _selectedSteamTheme = me.steamTheme || 'classic';
+      _selectedSteamFrame = me.steamFrame || 'none';
+
+      document.querySelectorAll('.steam-theme-opt').forEach(el => {
+        el.classList.toggle('active', el.dataset.theme === _selectedSteamTheme);
+      });
+      document.querySelectorAll('.steam-frame-opt').forEach(el => {
+        el.classList.toggle('active', el.dataset.frame === _selectedSteamFrame);
+      });
+
+      openModal('modal-steam-customizer');
+    }
+    window.openSteamCustomizer = openSteamCustomizer;
+
+    function selectSteamTheme(theme, el) {
+      _selectedSteamTheme = theme;
+      document.querySelectorAll('.steam-theme-opt').forEach(b => b.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+    window.selectSteamTheme = selectSteamTheme;
+
+    function selectSteamFrame(frame, el) {
+      _selectedSteamFrame = frame;
+      document.querySelectorAll('.steam-frame-opt').forEach(b => b.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+    window.selectSteamFrame = selectSteamFrame;
+
+    async function saveSteamCustomization() {
+      if (!me || !me.uid) return;
+      me.steamTheme = _selectedSteamTheme;
+      me.steamFrame = _selectedSteamFrame;
+
+      if (window.db) {
+        try {
+          await db.collection('users').doc(me.uid).set({
+            steamTheme: _selectedSteamTheme,
+            steamFrame: _selectedSteamFrame,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (e) { console.warn('Firestore steam save error:', e); }
+      }
+
+      if (typeof uCache !== 'undefined' && uCache[me.uid]) {
+        uCache[me.uid].steamTheme = _selectedSteamTheme;
+        uCache[me.uid].steamFrame = _selectedSteamFrame;
+      }
+      if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
+
+      closeModal('modal-steam-customizer');
+      if (vpUid === me.uid) {
+        renderSteamProfile(me, me.uid);
+      }
+      showToast('Оформление Steam', 'Оформление профиля успешно обновлено!', 'success');
+    }
+    window.saveSteamCustomization = saveSteamCustomization;
+
+
     async function viewProfile(uid) {
+      if (!uid) return;
+      vpUid = uid;
+
+      // If viewing favorites
+      if (uid.startsWith('fav_') || uid === ('fav_' + me?.uid)) {
+        const favV = document.getElementById('vpFavView');
+        const steamV = document.getElementById('vpSteamView');
+        if (favV) favV.style.display = 'block';
+        if (steamV) steamV.style.display = 'none';
+        openFavInfo();
+        return;
+      }
+
+      // Steam Profile View
+      const favV = document.getElementById('vpFavView');
+      const steamV = document.getElementById('vpSteamView');
+      if (favV) favV.style.display = 'none';
+      if (steamV) steamV.style.display = 'flex';
+
+      const u = (uid === me?.uid) ? me : await getUser(uid);
+      if (!u) return;
+      window._vpUser = u;
+
+      renderSteamProfile(u, uid);
+
+      if (vpPresenceUnsub) { vpPresenceUnsub(); vpPresenceUnsub = null; }
+      if (window.db) {
+        vpPresenceUnsub = db.collection('users').doc(uid).onSnapshot(d => {
+          const u2 = d.data(); if (!u2) return;
+          uCache[uid] = u2; window._vpUser = u2;
+          if (vpUid === uid) renderSteamProfileStatus(u2);
+        });
+      }
+
+      loadSteamComments(uid);
+      if (typeof loadVpSharedMedia === 'function') loadVpSharedMedia(uid);
+
+      openModal('modal-viewprofile');
+      return;
+    }
+
+    async function _legacyViewProfile(uid) {
       vpUid = uid; const u = await getUser(uid); if (!u) return;
       const dispName = (u.fname ? u.fname + ' ' + (u.lname || '') : u.nick) || '';
       // Аватар-обложка (как в Telegram)
