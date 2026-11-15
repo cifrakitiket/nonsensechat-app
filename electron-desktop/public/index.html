@@ -238,6 +238,248 @@
       border-color: #fbbf24;
     }
 
+    /* ── Custom Prefixes & Badges ── */
+    .user-custom-prefix {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      line-height: 1.25;
+      vertical-align: middle;
+      margin-left: 6px;
+      white-space: nowrap;
+      user-select: none;
+      cursor: default;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .user-custom-prefix:hover {
+      transform: scale(1.06);
+    }
+    .user-custom-prefix.lg {
+      font-size: 11.5px;
+      padding: 3px 9px;
+      margin-left: 8px;
+    }
+    .user-custom-prefix.prefix-gold {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.35));
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+      text-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
+    }
+    .user-custom-prefix.prefix-cyan,
+    .user-custom-prefix.prefix-pro {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.22), rgba(14, 165, 233, 0.35));
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+      text-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
+    }
+    .user-custom-prefix.prefix-fire {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(249, 115, 22, 0.35));
+      color: #f97316;
+      border: 1px solid rgba(249, 115, 22, 0.55);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+      text-shadow: 0 0 6px rgba(249, 115, 22, 0.4);
+    }
+    .user-custom-prefix.prefix-lux,
+    .user-custom-prefix.prefix-purple {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.22), rgba(147, 51, 234, 0.35));
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.5);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.25);
+      text-shadow: 0 0 6px rgba(192, 132, 252, 0.4);
+    }
+    .user-custom-prefix.prefix-crush,
+    .user-custom-prefix.prefix-pink {
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.22), rgba(244, 63, 94, 0.35));
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.5);
+      box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+      text-shadow: 0 0 6px rgba(251, 113, 133, 0.4);
+    }
+    .user-custom-prefix.prefix-boss,
+    .user-custom-prefix.prefix-emerald {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(5, 150, 105, 0.35));
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+      text-shadow: 0 0 6px rgba(52, 211, 153, 0.4);
+    }
+    .user-custom-prefix.prefix-hacker {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(0, 0, 0, 0.6));
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.55);
+      box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+      font-family: monospace;
+    }
+    .user-custom-prefix.prefix-amber,
+    .user-custom-prefix.prefix-pirozhok {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(180, 83, 9, 0.4));
+      color: #fde68a;
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+    }
+    .user-custom-prefix.prefix-rainbow,
+    .user-custom-prefix.prefix-legend {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(234, 179, 8, 0.22), rgba(34, 197, 94, 0.22), rgba(59, 130, 246, 0.22), rgba(168, 85, 247, 0.22));
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      box-shadow: 0 0 12px rgba(234, 179, 8, 0.35);
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.6);
+      animation: rainbowBorder 4s linear infinite;
+    }
+    @keyframes rainbowBorder {
+      0% { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
+    }
+
+    /* Store Tabs */
+    .store-tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text2, #94a3b8);
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 8px 10px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .store-tab-btn.active {
+      background: rgba(245, 158, 11, 0.22);
+      color: #fbbf24;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .store-tab-btn:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text, #fff);
+    }
+
+    /* Prefix Cards */
+    .prefix-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 10px 8px;
+      text-align: center;
+      transition: all 0.15s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .prefix-card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(245, 158, 11, 0.4);
+      transform: translateY(-2px);
+    }
+    .prefix-card-badge-wrap {
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .prefix-card-cost {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .prefix-buy-btn {
+      width: 100%;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 6px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .prefix-card:hover .prefix-buy-btn {
+      background: #f59e0b;
+      color: #000;
+    }
+    .prefix-style-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text2, #94a3b8);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .prefix-style-pill.active,
+    .prefix-style-pill:hover {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: #f59e0b;
+      color: #fbbf24;
+    }
+
+    /* Gift count pills */
+    .gift-count-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text, #fff);
+      padding: 8px 4px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .gift-count-pill.active,
+    .gift-count-pill:hover {
+      background: rgba(245, 158, 11, 0.22);
+      border-color: rgba(245, 158, 11, 0.5);
+      color: #fbbf24;
+    }
+
+    /* Flying pirozhki particle effects */
+    .pirozhki-flying-particle {
+      position: fixed;
+      pointer-events: none;
+      z-index: 100001;
+      width: 32px;
+      height: 32px;
+      animation: flyPirozhok 2.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+    @keyframes flyPirozhok {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(0.6) rotate(0deg);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(var(--tx), var(--ty)) scale(1.3) rotate(180deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(var(--tx) * 1.3), calc(var(--ty) + 120px)) scale(0.8) rotate(360deg);
+      }
+    }
+
     /* Pirozhki Store Modal */
     .pirozhki-modal-box {
       max-width: 620px;
@@ -12594,6 +12836,7 @@
       </div>
       <div class="ctx-i" onmousedown="ctxReply();return false"><span data-i18n="ctxReply">Ответить</span> <span><i
             class="fa-solid fa-reply"></i></span></div>
+      <div class="ctx-i" id="ctxGiftPirozhki" onmousedown="ctxGiftPirozhki();return false" style="color:#fbbf24;display:none"><span style="display:flex;align-items:center;gap:6px;"><img src="pirozhok.png" style="width:16px;height:16px;" alt="🥟"> Угостить пирожками</span> <span><i class="fa-solid fa-gift"></i></span></div>
       <div class="ctx-i" onmousedown="ctxForward();return false"><span data-i18n="ctxForward">Переслать</span> <span><i
             class="fa-solid fa-share"></i></span></div>
       <div class="ctx-i" onmousedown="ctxCopy();return false" id="ctxCopyText"><span data-i18n="ctxCopyText">Копировать
@@ -13354,6 +13597,7 @@
           <div class="tgp-actions">
             <button class="tgp-action" id="vpMsgBtn" onclick="dmFromProfile()"><span class="tgp-row-icon">💬</span><span
                 data-i18n="sendMsgBtn">Написать сообщение</span></button>
+            <button class="tgp-action" id="vpGiftPirozhkiBtn" style="display:none;background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(217,119,6,0.28));border:1px solid rgba(245,158,11,0.45);color:#fbbf24;" onclick="openGiftPirozhkiModal(vpUid)"><span class="tgp-row-icon"><img src="pirozhok.png" style="width:18px;height:18px;vertical-align:middle;" alt="🥟"></span><span>Угостить пирожками</span></button>
             <button class="tgp-action" id="vpFavAttachBtn" style="display:none" onclick="vpSendFavFile()"><span class="tgp-row-icon">📎</span><span>Прикрепить файл</span></button>
             <button class="tgp-action" id="vpAddFriendBtn" style="display:none" onclick="addFriendFromProfile()"><span
                 class="tgp-row-icon">👤</span><span data-i18n="addFriendBtn">Добавить в друзья</span></button>
@@ -17835,7 +18079,7 @@
       const nickEl = document.getElementById('myNick');
       const subEl = document.getElementById('mySub');
       const avaEl = document.getElementById('myAva');
-      if (nickEl) nickEl.innerHTML = '@' + p.nick + (p.uid === CREATOR_UID ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '') + (isFemaleUser(p, p.uid) ? ' <span class="female-badge" title="Девушка"></span>' : '');
+      if (nickEl) nickEl.innerHTML = '@' + p.nick + (typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(p) : '') + (p.uid === CREATOR_UID ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '') + (isFemaleUser(p, p.uid) ? ' <span class="female-badge" title="Девушка"></span>' : '');
       if (subEl) subEl.innerText = p.bio || 'В сети';
       if (typeof updateUserPirozhkiUI === 'function') {
         updateUserPirozhkiUI(p.pirozhki || 0);
@@ -18249,6 +18493,36 @@
           _fbDb.ref('users/' + user.uid).update({ online: true, lastSeen: firebase.database.ServerValue.TIMESTAMP }).catch(() => { });
         }
       }, 35000);
+
+      // Realtime listener for pirozhki balance & prefix
+      try {
+        if (_fbDb && user && user.uid) {
+          _fbDb.ref('users/' + user.uid + '/pirozhki').on('value', snap => {
+            const val = snap.val();
+            if (val !== null && typeof val !== 'undefined') {
+              const num = Number(val) || 0;
+              if (typeof me !== 'undefined' && me) me.pirozhki = num;
+              if (typeof updateUserPirozhkiUI === 'function') updateUserPirozhkiUI(num);
+            }
+          });
+          _fbDb.ref('users/' + user.uid + '/prefix').on('value', snap => {
+            const val = snap.val();
+            if (typeof me !== 'undefined' && me) {
+              me.prefix = val || '';
+              if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
+            }
+          });
+          _fbDb.ref('users/' + user.uid + '/prefixStyle').on('value', snap => {
+            const val = snap.val();
+            if (typeof me !== 'undefined' && me) {
+              me.prefixStyle = val || 'gold';
+              if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
+            }
+          });
+        }
+      } catch (errPirozhki) {
+        console.warn('Pirozhki listener error:', errPirozhki);
+      }
       chatsLoadedOnce = false;
 
       db.collection('users').doc(user.uid).onSnapshot(async d => {
@@ -19395,7 +19669,8 @@
       const _devBadge = u.uid === CREATOR_UID ? ' <span class="dev-badge dev-badge-lg" title="Разработчик">&lt;/&gt;</span>' : '';
       const _verBadge = u.verified ? ' <span class="verified-badge verified-badge-lg" title="Верифицированный аккаунт"></span>' : '';
       const _femaleBadge = isFemaleUser(u, uid) ? ' <span class="female-badge female-badge-lg" title="Девушка"></span>' : '';
-      nameEl.innerHTML = dispName + _verBadge + _devBadge + _femaleBadge;
+      const _prefixBadge = typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u, true) : '';
+      nameEl.innerHTML = dispName + _prefixBadge + _verBadge + _devBadge + _femaleBadge;
       // Юзернейм — строка с копированием
       const unameRow = document.getElementById('vpUsernameRow');
       const unameText = '@' + u.nick;
@@ -19448,6 +19723,11 @@
         msgBtn.innerHTML = '<span class="tgp-row-icon">💬</span><span data-i18n="sendMsgBtn">Написать сообщение</span>';
         msgBtn.onclick = dmFromProfile;
         msgBtn.style.display = (uid === me.uid) ? 'none' : 'flex';
+      }
+      const giftBtn = document.getElementById('vpGiftPirozhkiBtn');
+      if (giftBtn) {
+        giftBtn.style.display = (uid === me.uid || !me || !me.uid) ? 'none' : 'flex';
+        giftBtn.onclick = () => openGiftPirozhkiModal(uid, u.nick);
       }
       const favAttachBtn = document.getElementById('vpFavAttachBtn');
       if (favAttachBtn) favAttachBtn.style.display = 'none';
@@ -22645,7 +22925,7 @@
           row.innerHTML = `
         <img src="${isAiMsg ? AI_HUB_AVA : (optImg(u?.avatar, 80) || '')}" class="msg-mini-ava${isAiMsg ? ' ai-mini-ava' : ''}" alt="${(m.author || '').replace(/"/g, '')}" onclick="${isAiMsg ? 'openAiHubSettings()' : `viewProfile('${m.uid}')`}" onerror="this.src=''">
         <div class="msg-content">
-          <div class="msg-author" onclick="viewProfile('${m.uid}')">${(data.type === 'channel' || m.isChannelPost) ? `<span style="color:#38bdf8;font-weight:700"><i class="fa-solid fa-bullhorn" style="font-size:11px;margin-right:4px"></i> ${m.author || data.name || 'Канал'}</span>` : (isOut ? 'Вы' : '@' + (m.author || ''))}${u?.verified && !isOut ? '<span class="verified-badge" title="Верифицированный аккаунт"></span>' : ''}${m.uid === CREATOR_UID && !isOut ? '<span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}${isFemaleUser(u, m.uid) && !isOut ? '<span class="female-badge" title="Девушка"></span>' : ''}</div>
+          <div class="msg-author" onclick="viewProfile('${m.uid}')">${(data.type === 'channel' || m.isChannelPost) ? `<span style="color:#38bdf8;font-weight:700"><i class="fa-solid fa-bullhorn" style="font-size:11px;margin-right:4px"></i> ${m.author || data.name || 'Канал'}</span>` : (isOut ? 'Вы' : '@' + (m.author || ''))}${typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u || m) : ''}${u?.verified && !isOut ? '<span class="verified-badge" title="Верифицированный аккаунт"></span>' : ''}${m.uid === CREATOR_UID && !isOut ? '<span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}${isFemaleUser(u, m.uid) && !isOut ? '<span class="female-badge" title="Девушка"></span>' : ''}</div>
           <div class="msg ${isOut ? 'out' : 'in'}${m.type === 'sticker' ? ' sticker-msg' : ''}${isPhotoMsg ? ' photo-msg' : ''}${(m.type === 'round' || m.type === 'circle') ? ' round-msg' : ''}${m.type === 'voice' ? ' voice-msg' : ''}" data-id="${d.id}" data-author="${m.author || ''}" data-uid="${m.uid}">
             ${replyHtml}${fwdHtml}${content}${reactHtml}
           </div>
@@ -22659,6 +22939,10 @@
             selMsgId = d.id; selMsgAuthor = m.author || ''; selMsgText = m.text || ''; selMsgData = m;
             const isPhoto = m.type === 'photo';
             const isSticker = m.type === 'sticker';
+            const ctxGift = document.getElementById('ctxGiftPirozhki');
+            if (ctxGift) {
+              ctxGift.style.display = (m.uid && (!me || m.uid !== me.uid) && !m.isChannelPost && data.type !== 'channel') ? 'flex' : 'none';
+            }
             document.getElementById('ctxCopyText').style.display = (isPhoto || isSticker) ? 'none' : 'flex';
             document.getElementById('ctxCopyPhoto').style.display = isPhoto ? 'flex' : 'none';
             document.getElementById('ctxStickerPack').style.display = (isSticker && m.packId) ? 'flex' : 'none';
@@ -26779,7 +27063,7 @@
           }
         }
         el.innerHTML = `<img src="${u.avatar || ''}" class="member-ava" onerror="this.src=''">
-      <div style="flex:1"><div class="member-name">@${u.nick}${u.verified ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : ''}${uid === CREATOR_UID ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}${isFemaleUser(u, uid) ? ' <span class="female-badge" title="Девушка"></span>' : ''}</div><div class="role-badge ${roleCls[role]}" style="display:inline-block;margin-top:2px">${roleLabels[role]}</div></div>
+      <div style="flex:1"><div class="member-name">@${u.nick}${typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u) : ''}${u.verified ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : ''}${uid === CREATOR_UID ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}${isFemaleUser(u, uid) ? ' <span class="female-badge" title="Девушка"></span>' : ''}</div><div class="role-badge ${roleCls[role]}" style="display:inline-block;margin-top:2px">${roleLabels[role]}</div></div>
       ${roleBtn}
       ${uid !== me.uid && isAdmin && uid !== data.admin ? `<button class="member-kick" onclick="kickMember('${uid}')" title="Исключить">✕</button>` : ''}`;
         ml.appendChild(el);
@@ -34729,9 +35013,479 @@ document.addEventListener('click', function(e) {
     }
     window.updateUserPirozhkiUI = updateUserPirozhkiUI;
 
-    function openPirozhkiStore() {
+    /* ══════════════════════════════════════════════════════════════
+       USER PREFIXES & BADGES SYSTEM
+       ══════════════════════════════════════════════════════════════ */
+    function renderUserPrefixBadge(u, isLg) {
+      if (!u) return '';
+      const prefixText = (typeof u === 'string') ? u : (u.prefix || u.customPrefix || '');
+      if (!prefixText || typeof prefixText !== 'string' || !prefixText.trim()) return '';
+      const styleKey = (u && u.prefixStyle) || 'gold';
+      const esc = (typeof escUp === 'function') ? escUp(prefixText) : prefixText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return '<span class="user-custom-prefix prefix-' + styleKey + (isLg ? ' lg' : '') + '" title="Префикс">' + esc + '</span>';
+    }
+    window.renderUserPrefixBadge = renderUserPrefixBadge;
+
+    let _selectedStoreTab = 'buy';
+    function switchStoreTab(tab) {
+      _selectedStoreTab = tab;
+      const btnBuy = document.getElementById('storeTabBtnBuy');
+      const btnPrefix = document.getElementById('storeTabBtnPrefixes');
+      const btnGift = document.getElementById('storeTabBtnGift');
+      const cBuy = document.getElementById('storeTabContentBuy');
+      const cPrefix = document.getElementById('storeTabContentPrefixes');
+      const cGift = document.getElementById('storeTabContentGift');
+
+      if (btnBuy) btnBuy.classList.toggle('active', tab === 'buy');
+      if (btnPrefix) btnPrefix.classList.toggle('active', tab === 'prefixes');
+      if (btnGift) btnGift.classList.toggle('active', tab === 'gift');
+
+      if (cBuy) cBuy.style.display = (tab === 'buy') ? 'block' : 'none';
+      if (cPrefix) cPrefix.style.display = (tab === 'prefixes') ? 'block' : 'none';
+      if (cGift) cGift.style.display = (tab === 'gift') ? 'block' : 'none';
+
+      if (tab === 'prefixes') {
+        renderActivePrefixInStore();
+        updateCustomPrefixLivePreview();
+      }
+    }
+    window.switchStoreTab = switchStoreTab;
+
+    function renderActivePrefixInStore() {
+      const disp = document.getElementById('myCurrentPrefixDisplay');
+      const remBtn = document.getElementById('removePrefixBtn');
+      if (!disp) return;
+      if (typeof me !== 'undefined' && me && me.prefix) {
+        disp.innerHTML = renderUserPrefixBadge(me, true);
+        if (remBtn) remBtn.style.display = 'inline-flex';
+      } else {
+        disp.innerHTML = '<span style="color:var(--text2,#94a3b8);font-style:italic;">Не установлен</span>';
+        if (remBtn) remBtn.style.display = 'none';
+      }
+    }
+    window.renderActivePrefixInStore = renderActivePrefixInStore;
+
+    async function buyPresetPrefix(prefixText, styleKey, cost) {
+      if (!me || !me.uid) {
+        showToast('Внимание', 'Пожалуйста, авторизуйтесь в аккаунте', 'warning');
+        return;
+      }
+      const myBal = Number(me.pirozhki || 0);
+      if (myBal < cost) {
+        showToast('Недостаточно пирожков', 'Для префикса "' + prefixText + '" требуется ' + cost + ' 🥟 (у вас ' + myBal + ' 🥟). Выберите пакет пополнения!', 'warning');
+        switchStoreTab('buy');
+        return;
+      }
+
+      const ok = confirm('Купить префикс "' + prefixText + '" за ' + cost + ' пирожков?');
+      if (!ok) return;
+
+      const newBal = myBal - cost;
+      me.pirozhki = newBal;
+      me.prefix = prefixText;
+      me.prefixStyle = styleKey;
+      updateUserPirozhkiUI(newBal);
+
+      if (window.db) {
+        try {
+          await db.collection('users').doc(me.uid).set({
+            pirozhki: newBal,
+            prefix: prefixText,
+            prefixStyle: styleKey,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (e) { console.warn('Firestore prefix error:', e); }
+      }
+
+      if (window._fbDb) {
+        try {
+          await _fbDb.ref('users/' + me.uid + '/pirozhki').set(newBal);
+          await _fbDb.ref('users/' + me.uid + '/prefix').set(prefixText);
+          await _fbDb.ref('users/' + me.uid + '/prefixStyle').set(styleKey);
+          await _fbDb.ref('users/' + me.uid + '/pirozhki_history/' + Date.now()).set({
+            amount: -cost,
+            timestamp: Date.now(),
+            type: 'buy_prefix',
+            note: 'Покупка префикса: ' + prefixText
+          });
+        } catch (e) { console.warn('RTDB prefix error:', e); }
+      }
+
+      if (typeof uCache !== 'undefined') {
+        if (!uCache[me.uid]) uCache[me.uid] = {};
+        uCache[me.uid].prefix = prefixText;
+        uCache[me.uid].prefixStyle = styleKey;
+        uCache[me.uid].pirozhki = newBal;
+      }
+      if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
+      if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
+      renderActivePrefixInStore();
+
+      launchPirozhkiBurst();
+      showToast('Поздравляем! 🎉', 'Префикс "' + prefixText + '" успешно активирован!', 'success');
+    }
+    window.buyPresetPrefix = buyPresetPrefix;
+
+    let _selectedCustomPrefixStyle = 'gold';
+    function selectCustomPrefixStyle(styleKey, btn) {
+      _selectedCustomPrefixStyle = styleKey;
+      document.querySelectorAll('.prefix-style-pill').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      updateCustomPrefixLivePreview();
+    }
+    window.selectCustomPrefixStyle = selectCustomPrefixStyle;
+
+    function updateCustomPrefixLivePreview() {
+      const inp = document.getElementById('customPrefixInput');
+      const txt = (inp ? inp.value.trim() : '') || 'МАЖОР';
+      const badge = document.getElementById('customPrefixPreviewBadge');
+      if (badge) {
+        badge.className = 'user-custom-prefix prefix-' + _selectedCustomPrefixStyle;
+        badge.textContent = txt;
+      }
+      const nickEl = document.getElementById('customPrefixPreviewNick');
+      if (nickEl && typeof me !== 'undefined' && me && me.nick) nickEl.textContent = '@' + me.nick;
+    }
+    window.updateCustomPrefixLivePreview = updateCustomPrefixLivePreview;
+
+    async function buyCustomPrefix() {
+      const inp = document.getElementById('customPrefixInput');
+      const txt = (inp ? inp.value.trim() : '');
+      if (!txt) {
+        showToast('Внимание', 'Пожалуйста, введите текст вашего префикса', 'warning');
+        if (inp) inp.focus();
+        return;
+      }
+      if (txt.length > 12) {
+        showToast('Внимание', 'Максимальная длина префикса — 12 символов', 'warning');
+        return;
+      }
+      await buyPresetPrefix(txt, _selectedCustomPrefixStyle, 250);
+    }
+    window.buyCustomPrefix = buyCustomPrefix;
+
+    async function removeMyPrefix() {
+      if (!me || !me.uid) return;
+      const ok = confirm('Вы уверены, что хотите снять свой текущий префикс?');
+      if (!ok) return;
+
+      me.prefix = '';
+      me.prefixStyle = '';
+
+      if (window.db) {
+        try {
+          await db.collection('users').doc(me.uid).set({
+            prefix: '',
+            prefixStyle: '',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (_) {}
+      }
+
+      if (window._fbDb) {
+        try {
+          await _fbDb.ref('users/' + me.uid + '/prefix').set('');
+          await _fbDb.ref('users/' + me.uid + '/prefixStyle').set('');
+        } catch (_) {}
+      }
+
+      if (typeof uCache !== 'undefined' && uCache[me.uid]) {
+        uCache[me.uid].prefix = '';
+        uCache[me.uid].prefixStyle = '';
+      }
+      if (typeof saveProfileCache === 'function') saveProfileCache(me.uid, me);
+      if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
+      renderActivePrefixInStore();
+
+      showToast('Префикс снят', 'Ваш префикс успешно удален', 'info');
+    }
+    window.removeMyPrefix = removeMyPrefix;
+
+    /* ══════════════════════════════════════════════════════════════
+       PIROZHKI GIFTING & TRANSFER SYSTEM
+       ══════════════════════════════════════════════════════════════ */
+    let _giftTargetUid = null;
+    let _giftTargetNick = '';
+
+    async function openGiftPirozhkiModal(targetUid, targetNick) {
+      if (!me || !me.uid) {
+        showToast('Внимание', 'Пожалуйста, авторизуйтесь в аккаунте', 'warning');
+        return;
+      }
+      if (targetUid === me.uid) {
+        showToast('Внимание', 'Нельзя отправить пирожки самому себе', 'info');
+        return;
+      }
+      let target = (typeof uCache !== 'undefined' && uCache[targetUid]) ? uCache[targetUid] : null;
+      if (!target && typeof getUser === 'function') {
+        target = await getUser(targetUid);
+      }
+      const nick = targetNick || (target && target.nick) || 'Пользователь';
+      _giftTargetUid = targetUid;
+      _giftTargetNick = nick;
+
+      const nameEl = document.getElementById('giftTargetName');
+      if (nameEl) nameEl.textContent = '@' + nick;
+      const avaEl = document.getElementById('giftTargetAva');
+      if (avaEl) {
+        if (target && target.avatar) {
+          avaEl.src = target.avatar;
+          avaEl.style.display = 'block';
+        } else {
+          avaEl.src = 'pirozhok.png';
+          avaEl.style.display = 'block';
+        }
+      }
+      const myBalEl = document.getElementById('giftMyBalance');
+      if (myBalEl) myBalEl.textContent = Number(me.pirozhki || 0).toLocaleString('ru-RU');
+
+      const countInput = document.getElementById('giftPirozhkiCount');
+      if (countInput) countInput.value = '10';
+      const commentInput = document.getElementById('giftPirozhkiComment');
+      if (commentInput) commentInput.value = '';
+
+      openModal('modal-gift-pirozhki');
+    }
+    window.openGiftPirozhkiModal = openGiftPirozhkiModal;
+
+    function selectGiftCount(count) {
+      const input = document.getElementById('giftPirozhkiCount');
+      if (input) input.value = count;
+      document.querySelectorAll('#modal-gift-pirozhki .gift-count-pill').forEach(b => {
+        b.classList.toggle('active', parseInt(b.textContent, 10) === count);
+      });
+    }
+    window.selectGiftCount = selectGiftCount;
+
+    function setStoreGiftCount(count) {
+      const input = document.getElementById('storeGiftCountInput');
+      if (input) input.value = count;
+      document.querySelectorAll('#storeTabContentGift .gift-count-pill').forEach(b => {
+        b.classList.toggle('active', parseInt(b.textContent, 10) === count);
+      });
+    }
+    window.setStoreGiftCount = setStoreGiftCount;
+
+    function ctxGiftPirozhki() {
+      if (typeof hideCtx === 'function') hideCtx();
+      if (!selMsgData || !selMsgData.uid) return;
+      openGiftPirozhkiModal(selMsgData.uid, selMsgAuthor);
+    }
+    window.ctxGiftPirozhki = ctxGiftPirozhki;
+
+    function launchPirozhkiBurst() {
+      const container = document.body;
+      const count = 18;
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('img');
+        p.src = 'pirozhok.png';
+        p.className = 'pirozhki-flying-particle';
+        const startX = window.innerWidth / 2 + (Math.random() * 80 - 40);
+        const startY = window.innerHeight / 2 + (Math.random() * 60 - 30);
+        const tx = (Math.random() - 0.5) * window.innerWidth * 0.8;
+        const ty = (Math.random() - 0.7) * window.innerHeight * 0.6;
+        p.style.left = startX + 'px';
+        p.style.top = startY + 'px';
+        p.style.setProperty('--tx', tx + 'px');
+        p.style.setProperty('--ty', ty + 'px');
+        p.style.animationDelay = (Math.random() * 0.3) + 's';
+        container.appendChild(p);
+        setTimeout(() => p.remove(), 2600);
+      }
+    }
+    window.launchPirozhkiBurst = launchPirozhkiBurst;
+
+    async function executePirozhkiTransfer(targetUid, targetNick, count, comment) {
+      if (!me || !me.uid) {
+        showToast('Внимание', 'Пожалуйста, авторизуйтесь в аккаунте', 'warning');
+        return false;
+      }
+      if (targetUid === me.uid) {
+        showToast('Внимание', 'Нельзя отправить пирожки самому себе', 'warning');
+        return false;
+      }
+      const myBal = Number(me.pirozhki || 0);
+      if (count > myBal) {
+        showToast('Недостаточно пирожков', 'У вас ' + myBal + ' 🥟, а вы хотите подарить ' + count + ' 🥟. Пополните баланс в магазине!', 'warning');
+        switchStoreTab('buy');
+        return false;
+      }
+
+      try {
+        const res = await fetch('https://nonsensechat-web-5vve.vercel.app/api/gift-pirozhki', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fromUid: me.uid,
+            fromNick: me.nick || '',
+            toUid: targetUid,
+            toNick: targetNick || '',
+            count: count,
+            comment: comment || 'Угощение пирожками 🥟'
+          })
+        });
+        const resData = await res.json();
+        if (!res.ok || !resData.ok) {
+          throw new Error(resData.error || 'Ошибка при переводе');
+        }
+
+        const newSenderBal = resData.newSenderBalance !== undefined ? resData.newSenderBalance : (myBal - count);
+        me.pirozhki = newSenderBal;
+        updateUserPirozhkiUI(newSenderBal);
+
+        if (window.db) {
+          try {
+            await db.collection('users').doc(me.uid).set({
+              pirozhki: newSenderBal,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+          } catch (_) {}
+        }
+
+        if (typeof activeId !== 'undefined' && activeId && window.db) {
+          try {
+            const giftNotice = {
+              uid: me.uid,
+              author: me.nick || 'Пользователь',
+              type: 'system',
+              text: '🥟 @' + (me.nick || 'Пользователь') + ' угостил @' + targetNick + ' пирожками (' + count + ' шт.)! ' + (comment && comment !== 'Угощение пирожками 🥟' ? '«' + comment + '»' : ''),
+              at: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            await db.collection('chats').doc(activeId).collection('messages').add(giftNotice);
+            await db.collection('chats').doc(activeId).update({
+              lastMsg: '🥟 @' + targetNick + ' получил ' + count + ' пирожков!',
+              lastMsgAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (_) {}
+        }
+
+        launchPirozhkiBurst();
+        showToast('Успешно! 🥟', 'Вы угостили @' + targetNick + ' ' + count + ' пирожками!', 'success');
+        closeModal('modal-gift-pirozhki');
+        closeModal('modal-pirozhki-store');
+        return true;
+      } catch (err) {
+        console.warn('API transfer fallback to RTDB:', err);
+        try {
+          const newSenderBal = myBal - count;
+          me.pirozhki = newSenderBal;
+          updateUserPirozhkiUI(newSenderBal);
+
+          if (window._fbDb) {
+            await _fbDb.ref('users/' + me.uid + '/pirozhki').set(newSenderBal);
+            await _fbDb.ref('users/' + targetUid + '/pirozhki').transaction(c => (c || 0) + count);
+            const txId = 'gift_' + Date.now();
+            await _fbDb.ref('users/' + me.uid + '/pirozhki_history/' + txId).set({
+              amount: -count,
+              timestamp: Date.now(),
+              type: 'gift_sent',
+              toUid: targetUid,
+              toNick: targetNick,
+              note: comment
+            });
+            await _fbDb.ref('users/' + targetUid + '/pirozhki_history/' + txId).set({
+              amount: count,
+              timestamp: Date.now(),
+              type: 'gift_received',
+              fromUid: me.uid,
+              fromNick: me.nick,
+              note: comment
+            });
+          }
+
+          launchPirozhkiBurst();
+          showToast('Успешно! 🥟', 'Вы угостили @' + targetNick + ' ' + count + ' пирожками!', 'success');
+          closeModal('modal-gift-pirozhki');
+          closeModal('modal-pirozhki-store');
+          return true;
+        } catch (fbErr) {
+          showToast('Ошибка', 'Не удалось перевести пирожки: ' + (fbErr.message || fbErr), 'error');
+          return false;
+        }
+      }
+    }
+    window.executePirozhkiTransfer = executePirozhkiTransfer;
+
+    async function submitGiftPirozhki() {
+      const btn = document.getElementById('submitGiftPirozhkiBtn');
+      const countInput = document.getElementById('giftPirozhkiCount');
+      const count = parseInt(countInput ? countInput.value : 0, 10);
+      if (!count || count <= 0) {
+        showToast('Внимание', 'Укажите количество пирожков', 'warning');
+        return;
+      }
+      const commentInput = document.getElementById('giftPirozhkiComment');
+      const comment = (commentInput ? commentInput.value.trim() : '') || 'Угощение пирожками 🥟';
+
+      if (btn) { btn.disabled = true; btn.innerText = 'Отправка...'; }
+      try {
+        await executePirozhkiTransfer(_giftTargetUid, _giftTargetNick, count, comment);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = 'Подарить пирожки 🥟'; }
+      }
+    }
+    window.submitGiftPirozhki = submitGiftPirozhki;
+
+    async function submitStoreGiftToFriend() {
+      const nickInp = document.getElementById('storeGiftNickInput');
+      const nick = nickInp ? nickInp.value.trim().replace(/^@+/, '') : '';
+      if (!nick) {
+        showToast('Внимание', 'Укажите юзернейм получателя (@логин)', 'warning');
+        return;
+      }
+      const countInp = document.getElementById('storeGiftCountInput');
+      const count = parseInt(countInp ? countInp.value : 0, 10);
+      if (!count || count <= 0) {
+        showToast('Внимание', 'Укажите количество пирожков', 'warning');
+        return;
+      }
+
+      const commentInp = document.getElementById('storeGiftCommentInput');
+      const comment = (commentInp ? commentInp.value.trim() : '') || 'Угощение пирожками 🥟';
+
+      const btn = document.getElementById('storeSendGiftBtn');
+      if (btn) { btn.disabled = true; btn.innerText = 'Поиск пользователя...'; }
+
+      let targetUid = null;
+      try {
+        if (window.db) {
+          const q = await db.collection('users').where('nickLower', '==', nick.toLowerCase()).limit(1).get();
+          if (!q.empty) targetUid = q.docs[0].id;
+        }
+      } catch (_) {}
+
+      if (!targetUid && window._fbDb) {
+        try {
+          const snap = await _fbDb.ref('usernames/' + nick.toLowerCase()).once('value');
+          const val = snap.val();
+          if (val && val.uid) targetUid = val.uid;
+        } catch (_) {}
+      }
+
+      if (!targetUid) {
+        if (btn) { btn.disabled = false; btn.innerText = 'Отправить угощение 🥟'; }
+        showToast('Ошибка', 'Пользователь @' + nick + ' не найден', 'error');
+        return;
+      }
+
+      if (btn) btn.innerText = 'Отправка...';
+      try {
+        await executePirozhkiTransfer(targetUid, nick, count, comment);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = 'Отправить угощение 🥟'; }
+      }
+    }
+    window.submitStoreGiftToFriend = submitStoreGiftToFriend;
+
+    function openPirozhkiStore(initialTab) {
       if (typeof me !== 'undefined' && me) {
         updateUserPirozhkiUI(me.pirozhki || 0);
+        renderActivePrefixInStore();
+      }
+      if (initialTab) {
+        switchStoreTab(initialTab);
+      } else {
+        switchStoreTab('buy');
       }
       openModal('modal-pirozhki-store');
     }
@@ -35270,7 +36024,21 @@ document.addEventListener('click', function(e) {
         </button>
       </div>
 
-      <!-- Quick Packs Grid -->
+      <!-- Store Tabs Navigation -->
+      <div class="store-tabs-nav" style="display:flex;gap:6px;margin:12px 0 16px;background:rgba(255,255,255,0.04);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+        <button type="button" class="store-tab-btn active" id="storeTabBtnBuy" onclick="switchStoreTab('buy')">
+          <img src="pirozhok.png" style="width:16px;height:16px;vertical-align:middle" alt=""> Купить пирожки
+        </button>
+        <button type="button" class="store-tab-btn" id="storeTabBtnPrefixes" onclick="switchStoreTab('prefixes')">
+          <i class="fa-solid fa-tag"></i> Префиксы
+        </button>
+        <button type="button" class="store-tab-btn" id="storeTabBtnGift" onclick="switchStoreTab('gift')">
+          <i class="fa-solid fa-gift"></i> Угостить друга
+        </button>
+      </div>
+
+      <!-- TAB 1: BUY PIROZHKI (YOOKASSA) -->
+      <div id="storeTabContentBuy">
       <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>ВЫБЕРИТЕ ПАКЕТ ПИРОЖКОВ:</span>
         <span style="color:#f59e0b;font-size:11px;">1 шт. = 0.42 ₽</span>
@@ -35371,7 +36139,229 @@ document.addEventListener('click', function(e) {
         <span><i class="fa-solid fa-shield-halved"></i> Защищено протоколом SSL и стандартом PCI DSS</span>
         <a onclick="openLegalModal('requisites')" style="color:var(--text2,#94a3b8);text-decoration:underline;cursor:pointer;">Реквизиты продавца</a>
       </div>
+      </div><!-- End of #storeTabContentBuy -->
+
+      <!-- TAB 2: PREFIXES CATALOG & CUSTOM CREATOR -->
+      <div id="storeTabContentPrefixes" style="display:none;">
+        <div class="my-active-prefix-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-size:11px;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:0.5px;">Ваш текущий префикс</div>
+            <div id="myCurrentPrefixDisplay" style="margin-top:4px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;">
+              <span style="color:var(--text2,#94a3b8);font-style:italic;">Не установлен</span>
+            </div>
+          </div>
+          <button type="button" id="removePrefixBtn" class="notif-btn secondary" style="font-size:11px;padding:6px 12px;display:none;color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="removeMyPrefix()">
+            <i class="fa-solid fa-trash-can"></i> Снять префикс
+          </button>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+          <span>КАТАЛОГ СТИЛЬНЫХ ПРЕФИКСОВ:</span>
+          <span style="color:#fbbf24;font-size:11px;">Оплата пирожками 🥟</span>
+        </div>
+
+        <div class="prefix-catalog-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:8px;margin-bottom:16px;">
+          <!-- 1. VIP -->
+          <div class="prefix-card" onclick="buyPresetPrefix('👑 VIP', 'gold', 50)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-gold">👑 VIP</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 50 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+
+          <!-- 2. PRO -->
+          <div class="prefix-card" onclick="buyPresetPrefix('⚡ PRO', 'pro', 75)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-pro">⚡ PRO</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 75 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+
+          <!-- 3. ОГОНЬ -->
+          <div class="prefix-card" onclick="buyPresetPrefix('🔥 ОГОНЬ', 'fire', 75)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-fire">🔥 ОГОНЬ</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 75 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+
+          <!-- 4. LUX -->
+          <div class="prefix-card" onclick="buyPresetPrefix('💎 LUX', 'lux', 100)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-lux">💎 LUX</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 100 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+
+          <!-- 5. ПИРОЖОК -->
+          <div class="prefix-card" onclick="buyPresetPrefix('🥐 ПИРОЖОК', 'amber', 50)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-amber">🥐 ПИРОЖОК</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 50 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+
+          <!-- 6. КРАШ -->
+          <div class="prefix-card" onclick="buyPresetPrefix('😈 КРАШ', 'crush', 100)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-crush">😈 КРАШ</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 100 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+
+          <!-- 7. БОСС -->
+          <div class="prefix-card" onclick="buyPresetPrefix('🚀 БОСС', 'boss', 150)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-boss">🚀 БОСС</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 150 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+
+          <!-- 8. ХАКЕР -->
+          <div class="prefix-card" onclick="buyPresetPrefix('👾 ХАКЕР', 'hacker', 150)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-hacker">👾 ХАКЕР</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 150 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+
+          <!-- 9. ЛЕГЕНДА -->
+          <div class="prefix-card" onclick="buyPresetPrefix('✨ ЛЕГЕНДА', 'legend', 200)">
+            <div class="prefix-card-badge-wrap"><span class="user-custom-prefix prefix-legend">✨ ЛЕГЕНДА</span></div>
+            <div class="prefix-card-cost"><img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 200 🥟</div>
+            <button type="button" class="prefix-buy-btn">Купить</button>
+          </div>
+        </div>
+
+        <!-- Custom Prefix Creator -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:13px;font-weight:800;color:var(--text,#fff);">🛠️ Создать свой уникальный префикс</div>
+            <div style="font-size:12px;font-weight:700;color:#fbbf24;display:flex;align-items:center;gap:4px;">
+              <img src="pirozhok.png" class="pirozhok-coin-icon sm" alt=""> 250 🥟
+            </div>
+          </div>
+          <div style="font-size:11.5px;color:var(--text2,#94a3b8);margin-bottom:10px;">
+            Введите любой текст (до 12 символов) и выберите стиль оформления плашки:
+          </div>
+
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <input type="text" id="customPrefixInput" class="auth-input" maxlength="12" placeholder="Например: МАЖОР" oninput="updateCustomPrefixLivePreview()" style="margin:0;flex:1;">
+          </div>
+
+          <div style="font-size:11px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">ВЫБЕРИТЕ СТИЛЬ:</div>
+          <div class="prefix-style-selector" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;">
+            <button type="button" class="prefix-style-pill active" data-style="gold" onclick="selectCustomPrefixStyle('gold', this)">Золото</button>
+            <button type="button" class="prefix-style-pill" data-style="pro" onclick="selectCustomPrefixStyle('pro', this)">Неон</button>
+            <button type="button" class="prefix-style-pill" data-style="fire" onclick="selectCustomPrefixStyle('fire', this)">Огонь</button>
+            <button type="button" class="prefix-style-pill" data-style="lux" onclick="selectCustomPrefixStyle('lux', this)">Люкс</button>
+            <button type="button" class="prefix-style-pill" data-style="crush" onclick="selectCustomPrefixStyle('crush', this)">Краш</button>
+            <button type="button" class="prefix-style-pill" data-style="boss" onclick="selectCustomPrefixStyle('boss', this)">Босс</button>
+            <button type="button" class="prefix-style-pill" data-style="hacker" onclick="selectCustomPrefixStyle('hacker', this)">Хакер</button>
+            <button type="button" class="prefix-style-pill" data-style="legend" onclick="selectCustomPrefixStyle('legend', this)">Радуга</button>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:12px;color:var(--text2,#94a3b8);">Предпросмотр:</div>
+            <div style="display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--text,#fff);">
+              <span id="customPrefixPreviewNick">@вы</span>
+              <span id="customPrefixPreviewBadge" class="user-custom-prefix prefix-gold">МАЖОР</span>
+            </div>
+          </div>
+
+          <button type="button" class="auth-btn" id="buyCustomPrefixBtn" onclick="buyCustomPrefix()" style="margin:0;background:linear-gradient(135deg, #f59e0b, #d97706);font-size:14px;font-weight:800;padding:10px;">
+            Купить свой префикс за 250 🥟
+          </button>
+        </div>
+      </div><!-- End of #storeTabContentPrefixes -->
+
+      <!-- TAB 3: GIFT PIROZHKI TO FRIEND -->
+      <div id="storeTabContentGift" style="display:none;">
+        <div style="font-size:13px;font-weight:800;color:var(--text,#fff);margin-bottom:6px;">🎁 Угостить друга пирожками</div>
+        <div style="font-size:12px;color:var(--text2,#94a3b8);margin-bottom:14px;line-height:1.5;">
+          Порадуйте друга или собеседника, переведя ему пирожки прямо со своего баланса!
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">ЮЗЕРНЕЙМ ПОЛУЧАТЕЛЯ (@логин):</div>
+          <input type="text" id="storeGiftNickInput" class="auth-input" placeholder="@username" style="margin:0;">
+        </div>
+
+        <div style="font-size:11.5px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">КОЛИЧЕСТВО ПИРОЖКОВ:</div>
+        <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin-bottom:10px;">
+          <button type="button" class="gift-count-pill" onclick="setStoreGiftCount(5)">5 🥟</button>
+          <button type="button" class="gift-count-pill active" onclick="setStoreGiftCount(10)">10 🥟</button>
+          <button type="button" class="gift-count-pill" onclick="setStoreGiftCount(25)">25 🥟</button>
+          <button type="button" class="gift-count-pill" onclick="setStoreGiftCount(50)">50 🥟</button>
+          <button type="button" class="gift-count-pill" onclick="setStoreGiftCount(100)">100 🥟</button>
+        </div>
+
+        <input type="number" id="storeGiftCountInput" class="auth-input" min="1" max="10000" value="10" placeholder="Свое количество" style="margin-bottom:12px;">
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">КОММЕНТАРИЙ К УГОЩЕНИЮ (НЕОБЯЗАТЕЛЬНО):</div>
+          <input type="text" id="storeGiftCommentInput" class="auth-input" maxlength="100" placeholder="Угощайся пирожками! 🥟" style="margin:0;">
+        </div>
+
+        <button type="button" class="auth-btn" id="storeSendGiftBtn" onclick="submitStoreGiftToFriend()" style="margin:0;background:linear-gradient(135deg, #f59e0b, #d97706);font-size:14px;font-weight:800;padding:11px;">
+          Отправить угощение 🥟
+        </button>
+      </div><!-- End of #storeTabContentGift -->
       
+    </div>
+  </div>
+
+  <!-- MODAL: DIRECT GIFT PIROZHKI (From Profile or Context Menu) -->
+  <div class="modal hidden" id="modal-gift-pirozhki" style="z-index:99999;">
+    <div class="pirozhki-modal-box" style="max-width:440px;">
+      <div class="pirozhki-store-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(245,158,11,0.18);display:flex;align-items:center;justify-content:center;">
+            <img src="pirozhok.png" class="pirozhok-coin-icon xl" alt="🥟">
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:800;color:var(--text,#fff);">Угостить пирожками</div>
+            <div style="font-size:12px;color:var(--text2,#94a3b8);">Подарите пирожки пользователю от души</div>
+          </div>
+        </div>
+        <button type="button" class="notif-btn secondary" style="width:34px;height:34px;padding:0;min-width:unset;border-radius:50%;display:flex;align-items:center;justify-content:center;" onclick="closeModal('modal-gift-pirozhki')">✕</button>
+      </div>
+
+      <!-- Recipient Info Card -->
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+        <img id="giftTargetAva" src="pirozhok.png" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid rgba(245,158,11,0.4);" alt="">
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--text2,#94a3b8);text-transform:uppercase;letter-spacing:0.5px;">Получатель</div>
+          <div id="giftTargetName" style="font-size:15px;font-weight:700;color:var(--text,#fff);">@user</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text2,#94a3b8);">Ваш баланс:</div>
+          <div style="font-size:14px;font-weight:800;color:#fbbf24;display:flex;align-items:center;gap:4px;justify-content:flex-end;">
+            <span id="giftMyBalance">0</span> 🥟
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Count Pills -->
+      <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:8px;">СКОЛЬКО ПИРОЖКОВ ПОДАРИТЬ:</div>
+      <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:6px;margin-bottom:12px;">
+        <button type="button" class="gift-count-pill" onclick="selectGiftCount(5)">5 🥟</button>
+        <button type="button" class="gift-count-pill active" onclick="selectGiftCount(10)">10 🥟</button>
+        <button type="button" class="gift-count-pill" onclick="selectGiftCount(25)">25 🥟</button>
+        <button type="button" class="gift-count-pill" onclick="selectGiftCount(50)">50 🥟</button>
+        <button type="button" class="gift-count-pill" onclick="selectGiftCount(100)">100 🥟</button>
+      </div>
+
+      <!-- Custom Count Input -->
+      <div style="margin-bottom:12px;">
+        <div style="position:relative;">
+          <input type="number" id="giftPirozhkiCount" class="auth-input" min="1" max="50000" value="10" placeholder="Количество пирожков" style="padding-right:45px;">
+          <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:16px;">🥟</span>
+        </div>
+      </div>
+
+      <!-- Message / Wish -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text2,#94a3b8);margin-bottom:6px;">СООБЩЕНИЕ К ПОДАРКУ (НЕОБЯЗАТЕЛЬНО):</div>
+        <input type="text" id="giftPirozhkiComment" class="auth-input" maxlength="100" placeholder="На чай 🥟 / Спасибо за помощь!">
+      </div>
+
+      <!-- Action Button -->
+      <button type="button" class="auth-btn" id="submitGiftPirozhkiBtn" onclick="submitGiftPirozhki()" style="background:linear-gradient(135deg, #f59e0b, #d97706);font-size:15px;font-weight:800;padding:12px;">
+        Подарить пирожки 🥟
+      </button>
     </div>
   </div>
 
