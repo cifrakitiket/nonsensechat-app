@@ -9152,6 +9152,54 @@
       font-weight: 600;
     }
 
+    /* ═══ CUSTOM PREFIX BADGES EVERYWHERE ═══ */
+    .msg-row.has-prefix.gf .msg-author,
+    .msg-row.dm.has-prefix.gf .msg-author,
+    .msg-row.out.has-prefix.gf .msg-author {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 3px;
+      padding: 0 4px;
+      cursor: pointer;
+    }
+    .msg-row.out.has-prefix.gf .msg-author {
+      justify-content: flex-end;
+    }
+    .chat-name .user-custom-prefix {
+      font-size: 9px;
+      padding: 1px 5px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .ch-name .user-custom-prefix,
+    #chName .user-custom-prefix,
+    #dtChatName .user-custom-prefix {
+      font-size: 11px;
+      padding: 2px 7px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .tg-item-name .user-custom-prefix {
+      font-size: 9.5px;
+      padding: 1px 6px;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+    .reply-in-msg-author {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .reply-in-msg-author .user-custom-prefix {
+      font-size: 9px;
+      padding: 1px 5px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
     /* ── Разделители дат / системные сообщения → плашка-«пилюля» по центру ── */
     .system-msg {
       align-self: center;
@@ -13275,7 +13323,7 @@
           <input type="hidden" id="mpAvaUrl">
 
           <div class="tgme-card">
-            <div class="tgme-card-title" data-i18n="username">Юзернейм / Имя</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><div class="tgme-card-title" style="margin-bottom:0" data-i18n="username">Юзернейм / Имя</div><span id="mpPrefixBadge"></span></div>
             <div class="tgme-field"><input id="mpUsername" maxlength="32" placeholder="Юзернейм (до 32 символов)" autocomplete="off"></div>
             <div class="tgme-hint" data-i18n="usernameHint">По юзернейму вас смогут находить другие пользователи.</div>
           </div>
@@ -14888,7 +14936,9 @@
           bday: profile.bday || '',
           phone: profile.phone || '',
           hideLastSeen: !!profile.hideLastSeen,
-          verified: !!profile.verified
+          verified: !!profile.verified,
+          prefix: profile.prefix || '',
+          prefixStyle: profile.prefixStyle || 'gold'
         };
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(all));
       } catch (_) { }
@@ -14910,6 +14960,8 @@
         bday: '',
         phone: '',
         pirozhki: Number((data && data.pirozhki) || 0),
+        prefix: (data && data.prefix) || '',
+        prefixStyle: (data && data.prefixStyle) || 'gold',
 
         lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
         online: true
@@ -15034,6 +15086,21 @@
         const dot = el.querySelector('.chat-online-dot');
         if (online && !dot) wrap.insertAdjacentHTML('beforeend', '<div class="chat-online-dot"></div>');
         if (!online && dot) dot.remove();
+
+        const nameEl = el.querySelector('.chat-name');
+        if (nameEl && u) {
+          const prefixBadge = renderUserPrefixBadge(u);
+          const oldPrefix = nameEl.querySelector('.user-custom-prefix');
+          if (oldPrefix) oldPrefix.remove();
+          if (prefixBadge) {
+            const ver = nameEl.querySelector('.verified-badge, .dev-badge, .female-badge');
+            if (ver) {
+              ver.insertAdjacentHTML('beforebegin', prefixBadge);
+            } else {
+              nameEl.insertAdjacentHTML('beforeend', prefixBadge);
+            }
+          }
+        }
       });
     }
     function renderVpStatus(u) {
@@ -19287,6 +19354,8 @@
       document.getElementById('mpBday').value = me.bday || '';
       document.getElementById('mpPhone').value = me.phone || '';
       document.getElementById('mpUsername').value = me.nick || '';
+      const mpPref = document.getElementById('mpPrefixBadge');
+      if (mpPref) mpPref.innerHTML = (me.prefix ? renderUserPrefixBadge(me, true) : '');
       document.getElementById('mpHideLastSeen').checked = !!me.hideLastSeen;
       const lsEl = document.getElementById('mpLastSeenInfo');
       lsEl.innerText = userStatusText(me);
@@ -21380,6 +21449,7 @@
       const lastMsgAt = asDate(c.lastMsgAt);
       const time = lastMsgAt ? fmtTime(lastMsgAt) : '';
       const hasActiveCall = activeCallChats.has(c.id);
+      const prefixBadgeHtml = (uid && uCache[uid]) ? renderUserPrefixBadge(uCache[uid]) : '';
       const verifiedBadgeHtml = isVerified ? '<span class="verified-badge" title="Верифицированный аккаунт"></span>' : '';
       const devBadgeHtml = (uid === CREATOR_UID) ? '<span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '';
       const femaleBadgeHtml = (uid && isFemaleUser(uCache[uid], uid)) ? '<span class="female-badge" title="Девушка"></span>' : '';
@@ -21388,7 +21458,7 @@
       <img src="${ava}" class="chat-ava" alt="${name || ''}" onerror="this.src=''">
       ${isOnline ? '<div class="chat-online-dot"></div>' : ''}
     </div>
-    <div class="chat-info"><div class="chat-name">${c.type === 'dm' ? '@' + name : (c.type === 'channel' ? '<i class="fa-solid fa-bullhorn" style="font-size:11px;color:#38bdf8;margin-right:4px"></i> ' + name : name)}${verifiedBadgeHtml}${devBadgeHtml}${femaleBadgeHtml}</div><div class="chat-preview">${(function() {
+    <div class="chat-info"><div class="chat-name">${c.type === 'dm' ? '@' + name : (c.type === 'channel' ? '<i class="fa-solid fa-bullhorn" style="font-size:11px;color:#38bdf8;margin-right:4px"></i> ' + name : name)}${prefixBadgeHtml}${verifiedBadgeHtml}${devBadgeHtml}${femaleBadgeHtml}</div><div class="chat-preview">${(function() {
       if (pendingDeletedChats[c.id]) return '…';
       let prev = c.lastMsg || 'Нажмите чтобы открыть';
       if (prev.includes('Зашифрованное сообщение') || prev.includes('[Зашифрованное сообщение]') || prev.includes('🔒')) {
@@ -22418,7 +22488,7 @@
         const r = doc.data();
         const el = document.createElement('div'); el.className = 'chat-item';
         el.innerHTML = `<div style="font-size:26px;flex-shrink:0">👤</div>
-      <div class="chat-info"><div class="chat-name">@${r.fromNick}${isFemaleUser(null, r.from) ? ' <span class="female-badge" title="Девушка"></span>' : ''}</div><div class="chat-preview">Хочет добавить вас</div></div>
+      <div class="chat-info"><div class="chat-name">@${r.fromNick}${(typeof renderUserPrefixBadge === 'function' && uCache[r.from]) ? renderUserPrefixBadge(uCache[r.from]) : ''}${isFemaleUser(null, r.from) ? ' <span class="female-badge" title="Девушка"></span>' : ''}</div><div class="chat-preview">Хочет добавить вас</div></div>
       <button style="background:var(--grad);border:none;border-radius:10px;color:#fff;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0" onclick="acceptFriend('${doc.id}','${r.from}')">Принять</button>`;
         list.appendChild(el);
       });
@@ -22674,11 +22744,13 @@
       const peerVerHtml = (data.type === 'dm' && peerPartner?.verified) ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : '';
       const peerDevHtml = (data.type === 'dm' && dmPartnerUid === CREATOR_UID) ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '';
       const peerFemHtml = (data.type === 'dm' && isFemaleUser(peerPartner, dmPartnerUid)) ? ' <span class="female-badge" title="Девушка"></span>' : '';
-      document.getElementById('chName').innerHTML = (typeof escUp === 'function' ? escUp(name) : name) + peerVerHtml + peerDevHtml + peerFemHtml;
+      const peerPrefixHtml = (data.type === 'dm' && peerPartner) ? renderUserPrefixBadge(peerPartner) : '';
+      const fullHeaderHtml = (typeof escUp === 'function' ? escUp(name) : name) + peerPrefixHtml + peerVerHtml + peerDevHtml + peerFemHtml;
+      document.getElementById('chName').innerHTML = fullHeaderHtml;
       const dtChatInfo = document.getElementById('dtChatInfo');
       const dtChatName = document.getElementById('dtChatName');
       if (dtChatInfo && dtChatName) {
-        dtChatName.textContent = name || '';
+        dtChatName.innerHTML = fullHeaderHtml;
         dtChatInfo.style.display = 'inline-flex';
       }
       document.getElementById('chSub').innerText = sub;
@@ -22718,7 +22790,11 @@
               const uVerHtml = u.verified ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : '';
               const uDevHtml = (dmPartnerUid === CREATOR_UID) ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '';
               const uFemHtml = isFemaleUser(u, dmPartnerUid) ? ' <span class="female-badge" title="Девушка"></span>' : '';
-              document.getElementById('chName').innerHTML = (typeof escUp === 'function' ? escUp(u.nick || name) : (u.nick || name)) + uVerHtml + uDevHtml + uFemHtml;
+              const uPrefixHtml = renderUserPrefixBadge(u);
+              const uFullHeaderHtml = (typeof escUp === 'function' ? escUp(u.nick || name) : (u.nick || name)) + uPrefixHtml + uVerHtml + uDevHtml + uFemHtml;
+              document.getElementById('chName').innerHTML = uFullHeaderHtml;
+              const dtName = document.getElementById('dtChatName');
+              if (dtName) dtName.innerHTML = uFullHeaderHtml;
               document.getElementById('chSub').innerText = userStatusText(u, id);
               document.getElementById('chAva').alt = u.nick || '';
               if (u.avatar) document.getElementById('chAva').src = optImg(u.avatar, 150);
@@ -22731,6 +22807,14 @@
           const u2 = d.data(); if (!u2) return;
           uCache[dmPartnerUid] = u2;
           window._chatPeerUser = u2;
+          const u2VerHtml = u2.verified ? ' <span class="verified-badge" title="Верифицированный аккаунт"></span>' : '';
+          const u2DevHtml = (dmPartnerUid === CREATOR_UID) ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : '';
+          const u2FemHtml = isFemaleUser(u2, dmPartnerUid) ? ' <span class="female-badge" title="Девушка"></span>' : '';
+          const u2PrefixHtml = renderUserPrefixBadge(u2);
+          const u2FullHtml = (typeof escUp === 'function' ? escUp(u2.nick || name) : (u2.nick || name)) + u2PrefixHtml + u2VerHtml + u2DevHtml + u2FemHtml;
+          document.getElementById('chName').innerHTML = u2FullHtml;
+          const dtName = document.getElementById('dtChatName');
+          if (dtName) dtName.innerHTML = u2FullHtml;
           document.getElementById('chSub').innerText = userStatusText(u2, id);
           updateChatItemStatus(d.id, u2);
         });
@@ -22828,7 +22912,7 @@
           }
 
           // u is now already in uCache!
-          const u = uCache[m.uid] || null;
+          const u = (m.uid === me?.uid) ? me : (uCache[m.uid] || null);
           const isAiMsg = !!(m.isAi || m.senderRole === 'ai');
           const isOut = isAiMsg ? false : (m.uid === me.uid);
           const ts = msgAt ? msgAt.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -22839,7 +22923,8 @@
           const _sameG = (a, b) => { if (!a || !b || a.uid !== b.uid) return false; const da = asDate(a.at), db2 = asDate(b.at); if (da && db2 && Math.abs(da.getTime() - db2.getTime()) > 300000) return false; if (da && db2 && isDifferentDay(da, db2)) return false; return true; };
           const gf = !_sameG(m, _pm), gl = !_sameG(m, _nm);
           const isGroupChat = data.type !== 'dm' && data.type !== 'fav';
-          let _cls = 'msg-row ' + (isOut ? 'out ' : '') + (gf ? 'gf ' : '') + (gl ? 'gl ' : '') + (isGroupChat ? '' : 'dm ');
+          const hasUserPrefix = !!((u && (u.prefix || u.customPrefix)) || m.prefix);
+          let _cls = 'msg-row ' + (isOut ? 'out ' : '') + (gf ? 'gf ' : '') + (gl ? 'gl ' : '') + (isGroupChat ? '' : 'dm ') + (hasUserPrefix ? 'has-prefix ' : '');
           if (!isOut && isGroupChat && !gl) _cls += 'hide-ava ';
           const row = document.createElement('div'); row.className = _cls.trim();
           row.setAttribute('data-msgid', d.id);
@@ -22944,8 +23029,10 @@
           // Reply block
           let replyHtml = '';
           if (m.replyTo) {
+            const repU = (m.replyTo.uid ? ((m.replyTo.uid === me?.uid) ? me : uCache[m.replyTo.uid]) : null);
+            const repPrefixHtml = repU ? renderUserPrefixBadge(repU) : (m.replyTo.prefix ? renderUserPrefixBadge(m.replyTo) : '');
             replyHtml = `<div class="reply-in-msg" onclick="highlightMsg('${m.replyTo.id || ''}')">
-          <div class="reply-in-msg-author">↩ @${m.replyTo.author || ''}</div>
+          <div class="reply-in-msg-author">↩ @${m.replyTo.author || ''}${repPrefixHtml}</div>
           <div class="reply-in-msg-text">${plainText(m.replyTo.text || '').slice(0, 80)}</div>
         </div>`;
           }
@@ -23867,7 +23954,8 @@
         at: firebase.firestore.FieldValue.serverTimestamp(),
         type: 'text',
         ...(isChanPost ? { isChannelPost: true, views: 1, viewedBy: [me.uid] } : {}),
-        ...(signalPayload ? { signal: signalPayload } : {})
+        ...(signalPayload ? { signal: signalPayload } : {}),
+        ...(me && me.prefix ? { prefix: me.prefix, prefixStyle: me.prefixStyle || 'gold' } : {})
       };
       if (signalPayload) {
         data._localDecrypted = rawText;
@@ -24674,12 +24762,13 @@
 
     function buildUploadRow(e) {
       const row = document.createElement('div');
-      row.className = 'msg-row out gf gl anim-in';
+      const hasPrefix = !!(me && me.prefix);
+      row.className = 'msg-row out gf gl anim-in' + (hasPrefix ? ' has-prefix' : '');
       row.id = 'up-' + e.id;
       row.innerHTML = `
     <img src="${optImg((me && me.avatar), 80) || ''}" class="msg-mini-ava" onerror="this.src=''">
     <div class="msg-content">
-      <div class="msg-author">Вы</div>
+      <div class="msg-author">Вы${hasPrefix ? renderUserPrefixBadge(me) : ''}</div>
       <div class="msg out">${uploadBubbleInner(e)}</div>
       <div class="msg-time-row">отправка…</div>
     </div>`;
@@ -34320,7 +34409,7 @@ document.addEventListener('click', function(e) {
           snap.forEach(doc => {
             const d = doc.data();
             if (d && doc.id !== (me?.uid || '')) {
-              usersMap.set(doc.id, { uid: doc.id, nick: d.nick || 'Пользователь', username: d.username || '', ava: d.ava || d.avatar || '', online: !!d.online, bio: d.bio || '' });
+              usersMap.set(doc.id, { uid: doc.id, nick: d.nick || 'Пользователь', username: d.username || '', ava: d.ava || d.avatar || '', online: !!d.online, bio: d.bio || '', prefix: d.prefix || '', prefixStyle: d.prefixStyle || 'gold' });
             }
           });
           if (Array.isArray(allChats)) {
@@ -34386,7 +34475,7 @@ document.addEventListener('click', function(e) {
               ${u.online ? '<div class="tg-item-online-dot"></div>' : ''}
             </div>
             <div class="tg-item-info">
-              <div class="tg-item-name">${escHtml(u.nick)}</div>
+              <div class="tg-item-name">${escHtml(u.nick)}${typeof renderUserPrefixBadge === 'function' ? renderUserPrefixBadge(u) : ''}</div>
               <div class="tg-item-sub ${subClass}">${subText}</div>
             </div>
             <div class="tg-item-actions" onclick="event.stopPropagation()">
@@ -35164,6 +35253,8 @@ document.addEventListener('click', function(e) {
       renderActivePrefixInStore();
 
       launchPirozhkiBurst();
+      if (typeof renderChatList === 'function') renderChatList();
+      if (typeof activeId !== 'undefined' && activeId && typeof msgsUnsub !== 'undefined' && msgsUnsub && msgsUnsub._run) { try { msgsUnsub._run(); } catch (_) {} }
       showToast('Поздравляем! 🎉', 'Префикс "' + prefixText + '" успешно активирован!', 'success');
     }
     window.buyPresetPrefix = buyPresetPrefix;
@@ -35239,6 +35330,8 @@ document.addEventListener('click', function(e) {
       if (typeof renderMyProfileHeader === 'function') renderMyProfileHeader(me);
       renderActivePrefixInStore();
 
+      if (typeof renderChatList === 'function') renderChatList();
+      if (typeof activeId !== 'undefined' && activeId && typeof msgsUnsub !== 'undefined' && msgsUnsub && msgsUnsub._run) { try { msgsUnsub._run(); } catch (_) {} }
       showToast('Префикс снят', 'Ваш префикс успешно удален', 'info');
     }
     window.removeMyPrefix = removeMyPrefix;
