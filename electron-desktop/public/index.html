@@ -15562,6 +15562,9 @@
       locale: 'ru_RU'
     };
   </script>
+  <!-- Google reCAPTCHA Enterprise -->
+  <script src="https://www.google.com/recaptcha/enterprise.js?render=6Lf3gSMuAAAAAFqoRHwRPrrAR0sHSMm6yvuoTt20" async defer></script>
+
   <!-- Firebase v10 Compat SDK (Local & Offline Ready) -->
   <script src="firebase-app-compat.js"></script>
   <script src="firebase-auth-compat.js"></script>
@@ -18764,7 +18767,47 @@
     }
     window.submitForgotPassword = submitForgotPassword;
 
+    
+    /* ═══ GOOGLE reCAPTCHA ENTERPRISE ═══ */
+    const RECAPTCHA_ENTERPRISE_KEY = '6Lf3gSMuAAAAAFqoRHwRPrrAR0sHSMm6yvuoTt20';
+
+    async function getRecaptchaToken(action = 'LOGIN') {
+      try {
+        if (typeof window !== 'undefined' && window.grecaptcha && window.grecaptcha.enterprise && typeof window.grecaptcha.enterprise.ready === 'function') {
+          return await new Promise((resolve) => {
+            const timeout = setTimeout(() => resolve(null), 3500);
+            window.grecaptcha.enterprise.ready(async () => {
+              try {
+                const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_ENTERPRISE_KEY, { action });
+                clearTimeout(timeout);
+                resolve(token || null);
+              } catch (e) {
+                clearTimeout(timeout);
+                console.warn('[reCAPTCHA Enterprise] execute error:', e);
+                resolve(null);
+              }
+            });
+          });
+        }
+      } catch (err) {
+        console.warn('[reCAPTCHA Enterprise] error:', err);
+      }
+      return null;
+    }
+    window.getRecaptchaToken = getRecaptchaToken;
+
     document.getElementById('abtn').onclick = async () => {
+      // Execute reCAPTCHA Enterprise risk assessment
+      let recaptchaToken = null;
+      try {
+        recaptchaToken = await getRecaptchaToken(isReg ? 'REGISTER' : 'LOGIN');
+        if (recaptchaToken) {
+          window._lastRecaptchaToken = recaptchaToken;
+        }
+      } catch (rcErr) {
+        console.warn('[reCAPTCHA] token error:', rcErr);
+      }
+
       const email = document.getElementById('aemail').value.trim();
       const pass = document.getElementById('apass').value;
       const errEl = document.getElementById('authErr');
