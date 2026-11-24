@@ -160,17 +160,14 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                     MediaStore.Images.Media.MIME_TYPE
                 )
                 val result = Arguments.createArray()
-                val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
-                val cursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val queryArgs = Bundle().apply {
-                        putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(MediaStore.Images.Media.DATE_ADDED))
-                        putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING)
-                        putInt(ContentResolver.QUERY_ARG_LIMIT, cap)
-                    }
-                    cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, queryArgs, null)
-                } else {
-                    cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, null, null, sortOrder)
-                }
+                val sortOrder = "${MediaStore.Images.Media.DATE_MODIFIED} DESC"
+                val cursor = cr.query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    null,
+                    null,
+                    sortOrder
+                )
 
                 cursor?.use { c ->
                     val idCol = c.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
@@ -200,6 +197,11 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                         result.pushMap(item)
                         count++
                     }
+                }
+
+                if (result.size() == 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.READ_MEDIA_IMAGES)) {
+                    promise.reject("PERMISSION_DENIED", "Нет полного доступа к фотографиям")
+                    return@thread
                 }
                 promise.resolve(result)
             } catch (se: SecurityException) {

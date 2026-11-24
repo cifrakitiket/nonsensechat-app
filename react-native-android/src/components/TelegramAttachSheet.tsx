@@ -6,6 +6,7 @@ import {
   FlatList,
   Image,
   InteractionManager,
+  Linking,
   Modal,
   PermissionsAndroid,
   Platform,
@@ -183,15 +184,30 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   const requestPhotoPermission = async () => {
     if (Platform.OS !== 'android') return;
     try {
-      const perm =
-        Platform.Version >= 33
-          ? (PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_IMAGES
-          : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
-      const res = await PermissionsAndroid.request(perm);
-      if (res === PermissionsAndroid.RESULTS.GRANTED) {
-        loadPhotos();
+      if (Platform.Version >= 34) {
+        const res = await PermissionsAndroid.requestMultiple([
+          (PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_IMAGES,
+          'android.permission.READ_MEDIA_VISUAL_USER_SELECTED' as any,
+        ]);
+        const granted =
+          res[(PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_IMAGES] === PermissionsAndroid.RESULTS.GRANTED ||
+          res['android.permission.READ_MEDIA_VISUAL_USER_SELECTED'] === PermissionsAndroid.RESULTS.GRANTED;
+        if (granted) {
+          loadPhotos();
+        } else {
+          showToast('Нет доступа', 'Откройте настройки и разрешите «Фото и видео» → «Разрешить всегда»', 'error');
+        }
       } else {
-        showToast('Нет доступа', 'Разрешите доступ к фото в настройках телефона', 'error');
+        const perm =
+          Platform.Version >= 33
+            ? (PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_IMAGES
+            : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+        const res = await PermissionsAndroid.request(perm);
+        if (res === PermissionsAndroid.RESULTS.GRANTED) {
+          loadPhotos();
+        } else {
+          showToast('Нет доступа', 'Откройте настройки и разрешите доступ к фото', 'error');
+        }
       }
     } catch (_) {}
   };
@@ -441,12 +457,20 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                         <Text style={[styles.emptySub, { color: appTheme.textSub }]}>
                           Чтобы выбирать фото прямо внутри чата без сторонних приложений
                         </Text>
-                        <TouchableOpacity
-                          onPress={requestPhotoPermission}
-                          style={[styles.primaryPill, { backgroundColor: appTheme.accent }]}
-                        >
-                          <Text style={styles.primaryPillText}>Разрешить доступ</Text>
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                          <TouchableOpacity
+                            onPress={requestPhotoPermission}
+                            style={[styles.primaryPill, { backgroundColor: appTheme.accent }]}
+                          >
+                            <Text style={styles.primaryPillText}>Разрешить</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => Linking.openSettings()}
+                            style={[styles.primaryPill, { backgroundColor: 'rgba(255,255,255,0.12)' }]}
+                          >
+                            <Text style={[styles.primaryPillText, { color: appTheme.text }]}>Настройки</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     ) : loadingPhotos && photos.length === 0 ? (
                       <View style={styles.centerBox}>
@@ -459,6 +483,32 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                         numColumns={3}
                         columnWrapperStyle={{ gap: GRID_GAP }}
                         contentContainerStyle={{ gap: GRID_GAP, paddingBottom: selectedUris.length > 0 ? 110 : 12 }}
+                        ListFooterComponent={
+                          !loadingPhotos && photos.length === 0 ? (
+                            <GlassCard radius={18} style={{ padding: 14, marginTop: 12, alignItems: 'center', gap: 8 }}>
+                              <Text style={{ color: appTheme.text, fontWeight: '700', textAlign: 'center' }}>
+                                Фото не найдены или доступ ограничен системой
+                              </Text>
+                              <Text style={{ color: appTheme.textSub, fontSize: 12, textAlign: 'center' }}>
+                                Разрешите «Фото и видео → Разрешить всегда» в настройках приложения
+                              </Text>
+                              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                                <TouchableOpacity
+                                  onPress={requestPhotoPermission}
+                                  style={[styles.primaryPill, { backgroundColor: appTheme.accent, height: 38 }]}
+                                >
+                                  <Text style={[styles.primaryPillText, { fontSize: 13 }]}>Обновить</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => Linking.openSettings()}
+                                  style={[styles.primaryPill, { backgroundColor: 'rgba(255,255,255,0.12)', height: 38 }]}
+                                >
+                                  <Text style={[styles.primaryPillText, { color: appTheme.text, fontSize: 13 }]}>Настройки</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </GlassCard>
+                          ) : null
+                        }
                         renderItem={({ item }) => {
                           if (item.isCamera) {
                             return (
