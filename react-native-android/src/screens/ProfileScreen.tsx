@@ -341,9 +341,9 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
               <Text style={styles.settingIcon}>⚡</Text>
               <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={[styles.settingText, { color: appTheme.text }]}>Фоновая служба 24/7</Text>
+                <Text style={[styles.settingText, { color: appTheme.text }]}>Фоновый приём сообщений</Text>
                 <Text style={{ fontSize: 11.5, color: appTheme.textSub }}>
-                  Работает без пропуска сообщений при выключенном экране
+                  Приём сообщений в спящем режиме без постоянного значка
                 </Text>
               </View>
               <Switch

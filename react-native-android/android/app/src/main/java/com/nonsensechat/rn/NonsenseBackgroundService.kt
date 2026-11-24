@@ -1,18 +1,14 @@
 package com.nonsensechat.rn
 
 import android.app.AlarmManager
-import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
-import androidx.core.app.NotificationCompat
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -22,10 +18,6 @@ import java.util.concurrent.ConcurrentHashMap
 class NonsenseBackgroundService : Service() {
 
     companion object {
-        const val CHANNEL_SYNC_ID = "nonsense_sync_channel"
-        const val CHANNEL_SYNC_NAME = "Фоновая служба сообщений"
-        const val FOREGROUND_NOTIF_ID = 1001
-
         const val ACTION_START = "com.nonsensechat.rn.START_SYNC"
         const val ACTION_STOP = "com.nonsensechat.rn.STOP_SYNC"
         const val EXTRA_UID = "extra_uid"
@@ -46,11 +38,9 @@ class NonsenseBackgroundService : Service() {
                 action = ACTION_START
                 putExtra(EXTRA_UID, uid)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
+            try {
                 context.startService(intent)
-            }
+            } catch (_: Exception) {}
         }
 
         fun stop(context: Context) {
@@ -60,7 +50,9 @@ class NonsenseBackgroundService : Service() {
             val intent = Intent(context, NonsenseBackgroundService::class.java).apply {
                 action = ACTION_STOP
             }
-            context.startService(intent)
+            try {
+                context.startService(intent)
+            } catch (_: Exception) {}
         }
     }
 
@@ -75,45 +67,15 @@ class NonsenseBackgroundService : Service() {
         super.onCreate()
         isServiceRunning = true
         serviceStartTime = System.currentTimeMillis()
-        createSyncChannel()
-    }
 
-    private fun createSyncChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_SYNC_ID,
-                CHANNEL_SYNC_NAME,
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Обеспечивает доставку уведомлений в реальном времени"
-                setShowBadge(false)
-                lockscreenVisibility = Notification.VISIBILITY_SECRET
-            }
+        // Cancel any legacy persistent notifications
+        try {
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            nm?.createNotificationChannel(channel)
-        }
-    }
-
-    private fun buildForegroundNotification(): Notification {
-        val launchIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
-        val pendingIntent = PendingIntent.getActivity(this, 1002, launchIntent, flags)
-
-        return NotificationCompat.Builder(this, CHANNEL_SYNC_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("Беспонтовый Чат")
-            .setContentText("Служба сообщений активна в фоне")
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setOngoing(true)
-            .setContentIntent(pendingIntent)
-            .build()
+            nm?.cancel(1001)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                nm?.deleteNotificationChannel("nonsense_sync_channel")
+            }
+        } catch (_: Exception) {}
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -121,30 +83,10 @@ class NonsenseBackgroundService : Service() {
 
         if (action == ACTION_STOP) {
             stopListening()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
             stopSelf()
             isServiceRunning = false
             return START_NOT_STICKY
         }
-
-        // Start foreground notification immediately
-        try {
-            val notification = buildForegroundNotification()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    FOREGROUND_NOTIF_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                )
-            } else {
-                startForeground(FOREGROUND_NOTIF_ID, notification)
-            }
-        } catch (_: Exception) {}
 
         val uidFromIntent = intent?.getStringExtra(EXTRA_UID)
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

@@ -66,8 +66,7 @@
       </service>
       <service
         android:name=".NonsenseBackgroundService"
-        android:exported="false"
-        android:foregroundServiceType="dataSync" />
+        android:exported="false" />
       <provider
         android:name="androidx.core.content.FileProvider"
         android:authorities="${applicationId}.fileprovider"

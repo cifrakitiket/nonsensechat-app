@@ -29,6 +29,7 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
         const val CHANNEL_ID = "nonsense_chat_messages_v3"
         const val CHANNEL_NAME = "Сообщения NonsenseChat"
         private val notifIdCounter = AtomicInteger(2000)
+        private val recentNotifications = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
         fun createNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -59,6 +60,29 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
         }
 
         fun showNotificationStatic(context: Context, title: String, body: String, chatId: String) {
+            // Cancel legacy persistent notification 1001 if present
+            try {
+                val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                nm?.cancel(1001)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    nm?.deleteNotificationChannel("nonsense_sync_channel")
+                }
+            } catch (_: Exception) {}
+
+            val cleanBody = body.trim()
+            val dedupKey = "$chatId:$cleanBody"
+            val now = System.currentTimeMillis()
+            val lastTime = recentNotifications[dedupKey] ?: 0L
+
+            // Drop duplicate notifications within 3.5 seconds
+            if (now - lastTime < 3500) {
+                return
+            }
+            recentNotifications[dedupKey] = now
+            if (recentNotifications.size > 200) {
+                recentNotifications.clear()
+            }
+
             createNotificationChannel(context)
 
             // Vibrate immediately
@@ -97,7 +121,11 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
                 PendingIntent.FLAG_UPDATE_CURRENT
             }
 
-            val notifId = notifIdCounter.incrementAndGet()
+            val notifId = if (chatId.isNotEmpty()) {
+                (Math.abs(chatId.hashCode()) % 8000) + 2000
+            } else {
+                notifIdCounter.incrementAndGet()
+            }
             val pendingIntent = PendingIntent.getActivity(
                 context,
                 notifId,
