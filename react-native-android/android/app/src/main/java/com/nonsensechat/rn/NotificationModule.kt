@@ -9,6 +9,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.os.VibrationEffect
@@ -20,6 +21,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.google.firebase.messaging.FirebaseMessaging
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -30,6 +32,20 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
         const val CHANNEL_NAME = "Сообщения NonsenseChat"
         private val notifIdCounter = AtomicInteger(2000)
         private val recentNotifications = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+        @Volatile
+        var instance: NotificationModule? = null
+
+        fun emitOpenChatEvent(chatId: String) {
+            val reactContext = instance?.reactApplicationContext
+            if (reactContext != null && reactContext.hasActiveReactInstance()) {
+                try {
+                    reactContext
+                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                        .emit("onOpenChat", chatId)
+                } catch (_: Exception) {}
+            }
+        }
 
         fun createNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -109,7 +125,10 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
                 wakeLock?.acquire(3000)
             } catch (_: Exception) {}
 
+            val chatUri = if (chatId.isNotEmpty()) Uri.parse("nonsensechat://chat/$chatId") else null
             val intent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                if (chatUri != null) data = chatUri
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 putExtra("chatId", chatId)
                 putExtra("openChat", chatId)
@@ -160,10 +179,36 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
     }
 
     init {
+        instance = this
         createNotificationChannel(reactApplicationContext)
     }
 
     override fun getName(): String = "NotificationModule"
+
+    @ReactMethod
+    fun getInitialChatId(promise: Promise) {
+        try {
+            val act = currentActivity
+            val cid = act?.intent?.getStringExtra("chatId")
+                ?: act?.intent?.getStringExtra("openChat")
+                ?: act?.intent?.data?.lastPathSegment
+            act?.intent?.removeExtra("chatId")
+            act?.intent?.removeExtra("openChat")
+            promise.resolve(cid)
+        } catch (e: Exception) {
+            promise.resolve(null)
+        }
+    }
+
+    @ReactMethod
+    fun addListener(eventName: String) {
+        // Required for React Native built-in EventEmitter calls
+    }
+
+    @ReactMethod
+    fun removeListeners(count: Int) {
+        // Required for React Native built-in EventEmitter calls
+    }
 
     @ReactMethod
     fun areNotificationsEnabled(promise: Promise) {

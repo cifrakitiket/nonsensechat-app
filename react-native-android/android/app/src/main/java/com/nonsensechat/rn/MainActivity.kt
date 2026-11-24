@@ -1,5 +1,6 @@
 package com.nonsensechat.rn
 
+import android.content.Intent
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -19,4 +20,15 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+  override fun onNewIntent(intent: Intent?) {
+      super.onNewIntent(intent)
+      setIntent(intent)
+      val chatId = intent?.getStringExtra("chatId")
+          ?: intent?.getStringExtra("openChat")
+          ?: intent?.data?.lastPathSegment
+      if (!chatId.isNullOrEmpty()) {
+          NotificationModule.emitOpenChatEvent(chatId)
+      }
+  }
 }

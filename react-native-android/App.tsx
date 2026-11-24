@@ -1,11 +1,22 @@
 import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator, PermissionsAndroid, Platform, StatusBar, StyleSheet, UIManager } from 'react-native';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  PermissionsAndroid,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  UIManager,
+  DeviceEventEmitter,
+  NativeModules,
+} from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { AppProvider, useApp } from './src/context/AppContext';
@@ -20,10 +31,56 @@ import ProfileCustomizerScreen from './src/screens/ProfileCustomizerScreen';
 import PrefixSoundScreen from './src/screens/PrefixSoundScreen';
 import EditProfileScreen from './src/screens/EditProfileScreen';
 
+export const navigationRef = createNavigationContainerRef<any>();
+
+export function navigateToChat(chatId: string) {
+  if (!chatId) return;
+  if (navigationRef.isReady()) {
+    navigationRef.navigate('ChatRoom', { chatId });
+  } else {
+    setTimeout(() => {
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('ChatRoom', { chatId });
+      }
+    }, 450);
+  }
+}
+
+const linking = {
+  prefixes: ['nonsensechat://', 'https://nonsensechat.ru'],
+  config: {
+    screens: {
+      ChatRoom: 'chat/:chatId',
+    },
+  },
+};
+
 const Stack = createNativeStackNavigator();
 
 function RootNavigator() {
   const { authUser, loadingAuth } = useApp();
+
+  useEffect(() => {
+    if (!authUser) return;
+
+    // 1. Listen for notification click when app is running (foreground or background)
+    const sub = DeviceEventEmitter.addListener('onOpenChat', (chatId: string) => {
+      if (chatId) {
+        navigateToChat(chatId);
+      }
+    });
+
+    // 2. Check notification click on cold start launch
+    if (Platform.OS === 'android') {
+      NativeModules.NotificationModule?.getInitialChatId?.().then((cid: string | null) => {
+        if (cid) {
+          setTimeout(() => navigateToChat(cid), 400);
+        }
+      });
+    }
+
+    return () => sub.remove();
+  }, [authUser]);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -59,7 +116,7 @@ function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       <StatusBar barStyle="light-content" backgroundColor="#080C14" />
       <Stack.Navigator
         screenOptions={{
