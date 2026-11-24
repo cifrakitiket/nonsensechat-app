@@ -1,14 +1,8 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useApp } from '../context/AppContext';
 
 import ChatsScreen from '../screens/ChatsScreen';
 import ContactsScreen from '../screens/ContactsScreen';
@@ -17,23 +11,19 @@ import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
-// Telegram Custom Bottom Tab Bar
-function TelegramTabBar({ state, descriptors, navigation, userAvatar, unreadCount, missedCallsCount }: any) {
+function TelegramTabBar({ state, descriptors, navigation, userAvatar, unreadCount }: any) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 6) }]}>
       {state.routes.map((route: any, index: number) => {
-        const { options } = descriptors[route.key];
         const isFocused = state.index === index;
-
         const onPress = () => {
           const event = navigation.emit({
             type: 'tabPress',
             target: route.key,
             canPreventDefault: true,
           });
-
           if (!isFocused && !event.defaultPrevented) {
             navigation.navigate(route.name);
           }
@@ -49,7 +39,6 @@ function TelegramTabBar({ state, descriptors, navigation, userAvatar, unreadCoun
         } else if (route.name === 'Calls') {
           label = 'Звонки';
           iconChar = '📞';
-          badgeCount = missedCallsCount || 0;
         } else if (route.name === 'Chats') {
           label = 'Чаты';
           iconChar = '💬';
@@ -77,23 +66,17 @@ function TelegramTabBar({ state, descriptors, navigation, userAvatar, unreadCoun
                   style={[styles.profileAvatar, isFocused && styles.profileAvatarActive]}
                 />
               ) : (
-                <Text style={[styles.tabIcon, isFocused && styles.tabIconActive]}>
-                  {iconChar}
-                </Text>
+                <Text style={[styles.tabIcon, isFocused && styles.tabIconActive]}>{iconChar}</Text>
               )}
 
               {badgeCount > 0 && (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {badgeCount > 99 ? '99+' : badgeCount}
-                  </Text>
+                  <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
                 </View>
               )}
             </View>
 
-            <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
-              {label}
-            </Text>
+            <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -101,19 +84,19 @@ function TelegramTabBar({ state, descriptors, navigation, userAvatar, unreadCoun
   );
 }
 
-export default function TelegramBottomNav({ currentUser, unreadCount, missedCallsCount }: any) {
+export default function TelegramBottomNav() {
+  const { me, chats } = useApp();
+  const unreadCount = chats.reduce((acc, c) => acc + (Number(c.unread) || 0), 0);
+
   return (
     <Tab.Navigator
       initialRouteName="Chats"
-      screenOptions={{
-        headerShown: false,
-      }}
+      screenOptions={{ headerShown: false }}
       tabBar={(props) => (
         <TelegramTabBar
           {...props}
-          userAvatar={currentUser?.ava}
+          userAvatar={me?.avatar}
           unreadCount={unreadCount}
-          missedCallsCount={missedCallsCount}
         />
       )}
     >
@@ -130,23 +113,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#0e1420',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: 'rgba(255,255,255,0.08)',
     elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
     paddingTop: 4,
     height: Platform.OS === 'android' ? 62 : 56,
     alignItems: 'center',
     justifyContent: 'space-around',
   },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 2,
-  },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 },
   pillContainer: {
     width: 56,
     height: 30,
@@ -155,36 +129,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  pillActive: {
-    backgroundColor: 'rgba(91, 143, 185, 0.22)',
-  },
-  tabIcon: {
-    fontSize: 18,
-    color: '#8e9aa8',
-  },
-  tabIconActive: {
-    color: '#5b8fb9',
-  },
+  pillActive: { backgroundColor: 'rgba(91,143,185,0.22)' },
+  tabIcon: { fontSize: 18, color: '#8e9aa8' },
+  tabIconActive: { color: '#5b8fb9' },
   profileAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  profileAvatarActive: {
-    borderColor: '#5b8fb9',
-  },
-  tabLabel: {
-    fontSize: 11,
-    color: '#8e9aa8',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  tabLabelActive: {
-    color: '#5b8fb9',
-    fontWeight: '700',
-  },
+  profileAvatarActive: { borderColor: '#5b8fb9' },
+  tabLabel: { fontSize: 11, color: '#8e9aa8', marginTop: 2, fontWeight: '500' },
+  tabLabelActive: { color: '#5b8fb9', fontWeight: '700' },
   badge: {
     position: 'absolute',
     top: -2,
@@ -197,9 +154,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
 });
