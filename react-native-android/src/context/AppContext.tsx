@@ -227,6 +227,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const activeChatIdRef = useRef<string | null>(null);
   const prevLastMsgAtRef = useRef<Record<string, number>>({});
+  const prevLastMsgTextRef = useRef<Record<string, string>>({});
   const chatsInitializedRef = useRef<boolean>(false);
   const reqsInitializedRef = useRef<boolean>(false);
   const prevReqIdsRef = useRef<Set<string>>(new Set());
@@ -239,6 +240,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setActiveChatId = (chatId: string | null) => {
     activeChatIdRef.current = chatId;
     if (chatId) {
+      if (Platform.OS === 'android') {
+        try {
+          NativeModules.NotificationModule?.clearAllNotifications?.();
+        } catch (_) {}
+      }
       setUnreadMap((prev) => {
         if (!prev[chatId]) return prev;
         const next = { ...prev, [chatId]: 0 };
@@ -355,6 +361,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const chatsRef = ref(rtdb, 'chats');
     chatsInitializedRef.current = false;
     prevLastMsgAtRef.current = {};
+    prevLastMsgTextRef.current = {};
 
     const unsubChats = onValue(chatsRef, (snap) => {
       const val = snap.val() || {};
@@ -369,8 +376,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (members.includes(uid) || cid === `aihub_${uid}`) {
           const msgAt = toMs(raw.lastMsgAt || raw.createdAt);
           const prevAt = prevLastMsgAtRef.current[cid] || 0;
+          const cleanBody = String(raw.lastMsg || 'Новое сообщение').replace(/<[^>]+>/g, '').trim();
+          const prevText = prevLastMsgTextRef.current[cid] || '';
+          const hasNewMsg = (msgAt > prevAt) || (cleanBody !== '' && cleanBody !== prevText);
 
-          if (!isInitial && msgAt > prevAt && cid !== activeChatIdRef.current && raw.lastMsgUid !== uid) {
+          if (!isInitial && hasNewMsg && cid !== activeChatIdRef.current && raw.lastMsgUid !== uid) {
             newUnreads[cid] = (newUnreads[cid] || 0) + 1;
             const otherUid = raw.type === 'dm' ? members.find((m) => m !== uid) : undefined;
             const partner = otherUid ? usersMapRef.current[otherUid] : undefined;
@@ -379,7 +389,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               (otherUid ? raw[`${otherUid}_nick`] : '') ||
               raw.name ||
               'Новое сообщение';
-            const cleanBody = String(raw.lastMsg || 'Новое сообщение').replace(/<[^>]+>/g, '').trim();
 
             if (Platform.OS === 'android') {
               try {
@@ -392,6 +401,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
 
           prevLastMsgAtRef.current[cid] = msgAt;
+          prevLastMsgTextRef.current[cid] = cleanBody;
           list.push({
             ...raw,
             id: cid,

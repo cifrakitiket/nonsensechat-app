@@ -1,9 +1,9 @@
 {
-  "version": "4.5.1",
-  "versionCode": 451,
+  "version": "4.5.2",
+  "versionCode": 452,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 23380474,
-  "publishedAt": "2026-11-24T10:45:58.070Z",
-  "releaseNotes": "• 🖼️ Исправлена загрузка фото на Android 14/15 (ColorOS/Realme/MIUI) без QUERY_ARG_LIMIT + кнопка настроек доступа в галерее"
+  "fileSize": 23380978,
+  "publishedAt": "2026-11-24T10:55:12.549Z",
+  "releaseNotes": "• 🔔 Починены уведомления: уникальные ID + новый канал v2 + звук/вибрация для каждого сообщения + кнопка теста в профиле"
 }

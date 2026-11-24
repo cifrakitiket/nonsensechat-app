@@ -1,5 +1,6 @@
 package com.nonsensechat.rn
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -17,12 +18,14 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.google.firebase.messaging.FirebaseMessaging
+import java.util.concurrent.atomic.AtomicInteger
 
 class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
     companion object {
-        const val CHANNEL_ID = "nonsense_chat_channel"
+        const val CHANNEL_ID = "nonsense_chat_messages_v2"
         const val CHANNEL_NAME = "Сообщения NonsenseChat"
+        private val notifIdCounter = AtomicInteger(1000)
 
         fun createNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -37,12 +40,13 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
                     CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
-                    description = "Официальные уведомления Google FCM о сообщениях и звонках"
+                    description = "Уведомления о новых сообщениях и заявках"
                     enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 200, 100, 200)
+                    vibrationPattern = longArrayOf(0, 180, 80, 180)
                     setSound(soundUri, audioAttributes)
                     enableLights(true)
                     setShowBadge(true)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
 
                 val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
@@ -77,9 +81,10 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
                 PendingIntent.FLAG_UPDATE_CURRENT
             }
 
+            val notifId = notifIdCounter.incrementAndGet()
             val pendingIntent = PendingIntent.getActivity(
                 context,
-                if (chatId.isNotEmpty()) chatId.hashCode() else System.currentTimeMillis().toInt(),
+                notifId,
                 intent,
                 flags
             )
@@ -93,14 +98,17 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setSound(soundUri)
+                .setOnlyAlertOnce(false)
+                .setWhen(System.currentTimeMillis())
+                .setShowWhen(true)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
 
             val notificationManager = NotificationManagerCompat.from(context)
             try {
-                val notifId = if (chatId.isNotEmpty()) chatId.hashCode() else (System.currentTimeMillis() % 100000).toInt()
                 notificationManager.notify(notifId, builder.build())
             } catch (_: SecurityException) {
             }
@@ -112,6 +120,13 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
     }
 
     override fun getName(): String = "NotificationModule"
+
+    @ReactMethod
+    fun clearAllNotifications() {
+        try {
+            NotificationManagerCompat.from(reactApplicationContext).cancelAll()
+        } catch (_: Exception) {}
+    }
 
     @ReactMethod
     fun showNotification(title: String, body: String, chatId: String) {

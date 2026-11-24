@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   Image,
-  StyleSheet,
+  NativeModules,
+  Platform,
+  ScrollView,
   Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
@@ -296,6 +298,24 @@ export default function ProfileScreen({ navigation }: any) {
 
         <View style={{ paddingHorizontal: 12 }}>
           <GlassCard radius={RADII.CARD}>
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => {
+                if (Platform.OS === 'android') {
+                  NativeModules.NotificationModule?.showNotification?.(
+                    'Тест уведомлений',
+                    'Уведомления работают отлично! 🔔',
+                    ''
+                  );
+                }
+                showToast('Тест уведомлений', 'Уведомление отправлено в шторку', 'success');
+              }}
+            >
+              <Text style={styles.settingIcon}>🔔</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Проверить уведомления</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => checkForUpdates(false)}
