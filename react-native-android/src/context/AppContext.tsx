@@ -177,6 +177,12 @@ interface AppContextValue {
   equipThemeAndFrame: (themeId: string, frameId: string) => Promise<void>;
   buyPrefix: (prefixText: string, styleKey: string, cost: number, soundUrl?: string, soundName?: string) => Promise<void>;
   savePrefixSound: (soundUrl: string, soundName: string) => Promise<void>;
+  notificationsEnabled: boolean;
+  openNotificationSettings: () => Promise<void>;
+  testNotification: () => Promise<void>;
+  bgSyncEnabled: boolean;
+  setBgSyncEnabled: (enabled: boolean) => Promise<void>;
+  checkNotificationPermission: () => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -195,6 +201,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [bgSyncEnabled, setBgSyncEnabledState] = useState(true);
+
+  const checkNotificationPermission = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true;
+    try {
+      const enabled = await NativeModules.NotificationModule?.areNotificationsEnabled?.();
+      const isOk = enabled !== false;
+      setNotificationsEnabled(isOk);
+      return isOk;
+    } catch (_) {
+      return true;
+    }
+  };
+
+  const openNotificationSettings = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        await NativeModules.NotificationModule?.openNotificationSettings?.();
+      } catch (_) {}
+    }
+  };
+
+  const testNotification = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        await NativeModules.NotificationModule?.testNotification?.();
+        showToast('Тест отправлен', 'Проверьте шторку уведомлений 🔔', 'success');
+      } catch (e: any) {
+        showToast('Ошибка теста', e?.message || 'Не удалось отправить уведомление', 'error');
+      }
+    } else {
+      showToast('Тест уведомлений', 'Тестовое уведомление активно!', 'info');
+    }
+  };
+
+  const setBgSyncEnabled = async (enabled: boolean) => {
+    setBgSyncEnabledState(enabled);
+    if (Platform.OS === 'android') {
+      try {
+        if (enabled && me?.uid) {
+          await NativeModules.NotificationModule?.startBackgroundSync?.(me.uid);
+          showToast('Фоновая служба', 'Служба уведомлений 24/7 активирована', 'success');
+        } else {
+          await NativeModules.NotificationModule?.stopBackgroundSync?.();
+          showToast('Фоновая служба', 'Фоновая служба отключена', 'info');
+        }
+      } catch (_) {}
+    }
+  };
+
+  useEffect(() => {
+    checkNotificationPermission();
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        checkNotificationPermission();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const checkForUpdates = async (silent = true) => {
     if (checkingUpdate) return;
@@ -343,6 +409,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             nick: (authUser.email || uid.slice(0, 8)).split('@')[0],
           })
         );
+      }
+      if (Platform.OS === 'android') {
+        try {
+          NativeModules.NotificationModule?.startBackgroundSync?.(uid);
+        } catch (_) {}
       }
     });
 
@@ -601,6 +672,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        await NativeModules.NotificationModule?.stopBackgroundSync?.();
+      } catch (_) {}
+    }
     if (authUser) {
       try {
         await update(ref(rtdb, `users/${authUser.uid}`), {
@@ -902,6 +978,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         equipThemeAndFrame,
         buyPrefix,
         savePrefixSound,
+        notificationsEnabled,
+        openNotificationSettings,
+        testNotification,
+        bgSyncEnabled,
+        setBgSyncEnabled,
+        checkNotificationPermission,
       }}
     >
       {children}

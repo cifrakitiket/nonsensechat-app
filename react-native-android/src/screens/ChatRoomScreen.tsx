@@ -16,6 +16,7 @@ import {
   Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { ref, onValue, push, set, update, remove } from 'firebase/database';
 import {
   rtdb,
@@ -114,6 +115,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   const [actionMsg, setActionMsg] = useState<any | null>(null);
   const [forwardMsg, setForwardMsg] = useState<any | null>(null);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   // Voice recording & playback state
   const [isRecording, setIsRecording] = useState(false);
@@ -667,10 +669,20 @@ export default function ChatRoomScreen({ route, navigation }: any) {
             </View>
           )}
 
-          <Text style={styles.msgTime}>
-            {item.edited ? 'изм. · ' : ''}
-            {timeStr}
-          </Text>
+          <View style={styles.bubbleFooter}>
+            <Text style={[styles.msgTime, { color: isMine ? 'rgba(255,255,255,0.7)' : appTheme.textSub }]}>
+              {item.edited ? 'изм. · ' : ''}
+              {timeStr}
+            </Text>
+            {isMine && (
+              <Ionicons
+                name="checkmark-done"
+                size={14}
+                color={appTheme.accent}
+                style={{ marginLeft: 3 }}
+              />
+            )}
+          </View>
         </View>
       </ScalePressable>
     );
@@ -762,7 +774,20 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           maxToRenderPerBatch={15}
           windowSize={11}
           contentContainerStyle={styles.feedContent}
+          onScroll={(e) => setShowScrollBottom(e.nativeEvent.contentOffset.y > 140)}
+          scrollEventThrottle={32}
         />
+
+        {/* Floating Scroll to Bottom Button */}
+        {showScrollBottom && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[styles.scrollBottomFab, { backgroundColor: appTheme.glassStrong, borderColor: appTheme.specular }]}
+            onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
+          >
+            <Ionicons name="chevron-down" size={22} color={appTheme.accent} />
+          </TouchableOpacity>
+        )}
 
         {/* Reply / Edit Banner */}
         {(replyTo || editingMsg) && (
@@ -1161,7 +1186,32 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   reactionTxt: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  msgTime: { fontSize: 10.5, color: 'rgba(255,255,255,0.48)', alignSelf: 'flex-end', marginTop: 4 },
+  bubbleFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    alignSelf: 'flex-end',
+    marginTop: 4,
+    gap: 2,
+  },
+  msgTime: { fontSize: 10.5, color: 'rgba(255,255,255,0.48)' },
+  scrollBottomFab: {
+    position: 'absolute',
+    bottom: 84,
+    right: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    zIndex: 99,
+  },
   replyBanner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 },
   replyBannerTitle: { fontSize: 12, fontWeight: '800' },
   replyBannerSub: { fontSize: 12 },

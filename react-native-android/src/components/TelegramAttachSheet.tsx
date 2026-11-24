@@ -28,6 +28,7 @@ import {
   encodeDeviceImage,
   getRecentDeviceFiles,
   getRecentDevicePhotos,
+  pickNativePhotoFromGallery,
   takeNativePhoto,
   triggerHaptic,
 } from '../services/firebase';
@@ -129,10 +130,10 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       speed: 18,
       bounciness: 5,
     }).start();
-    const task = InteractionManager.runAfterInteractions(() => {
+    const timer = setTimeout(() => {
       loadPhotos();
-    });
-    return () => task.cancel();
+    }, 40);
+    return () => clearTimeout(timer);
   }, [visible]);
 
   useEffect(() => {
@@ -145,10 +146,10 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
     }).start();
 
     if (activeTab === 'file' && files.length === 0 && !loadingFiles) {
-      const task = InteractionManager.runAfterInteractions(() => {
+      const timer = setTimeout(() => {
         loadFiles();
-      });
-      return () => task.cancel();
+      }, 40);
+      return () => clearTimeout(timer);
     }
   }, [activeTab, visible]);
 
@@ -226,6 +227,27 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
     } catch (e: any) {
       if (!String(e?.code || '').includes('CANCELLED')) {
         showToast('Камера', e?.message || 'Не удалось сделать фото', 'error');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSystemGallery = async () => {
+    try {
+      setBusy(true);
+      const res = await pickNativePhotoFromGallery();
+      if (!res?.dataUrl) return;
+      if (mode === 'avatar' && onPickAvatar) {
+        await onPickAvatar(res.dataUrl);
+        onClose();
+      } else if (onSendPhotos) {
+        await onSendPhotos([{ dataUrl: res.dataUrl, fileName: res.fileName, fileSize: res.fileSize }], caption.trim());
+        onClose();
+      }
+    } catch (e: any) {
+      if (!String(e?.code || '').includes('CANCELLED')) {
+        showToast('Галерея', e?.message || 'Не удалось выбрать фото', 'error');
       }
     } finally {
       setBusy(false);
@@ -455,20 +477,26 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                           Нужен доступ к галерее
                         </Text>
                         <Text style={[styles.emptySub, { color: appTheme.textSub }]}>
-                          Чтобы выбирать фото прямо внутри чата без сторонних приложений
+                          Разрешите доступ к фото или выберите изображение через системную галерею
                         </Text>
-                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: 8 }}>
                           <TouchableOpacity
-                            onPress={requestPhotoPermission}
+                            onPress={handleSystemGallery}
                             style={[styles.primaryPill, { backgroundColor: appTheme.accent }]}
                           >
-                            <Text style={styles.primaryPillText}>Разрешить</Text>
+                            <Text style={styles.primaryPillText}>Выбрать из галереи</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={requestPhotoPermission}
+                            style={[styles.primaryPill, { backgroundColor: 'rgba(255,255,255,0.12)' }]}
+                          >
+                            <Text style={[styles.primaryPillText, { color: appTheme.text }]}>Разрешить</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             onPress={() => Linking.openSettings()}
-                            style={[styles.primaryPill, { backgroundColor: 'rgba(255,255,255,0.12)' }]}
+                            style={[styles.primaryPill, { backgroundColor: 'rgba(255,255,255,0.08)' }]}
                           >
-                            <Text style={[styles.primaryPillText, { color: appTheme.text }]}>Настройки</Text>
+                            <Text style={[styles.primaryPillText, { color: appTheme.textSub }]}>Настройки</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -478,7 +506,11 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                       </View>
                     ) : (
                       <FlatList
-                        data={[{ id: '__camera__', isCamera: true } as any, ...photos]}
+                        data={[
+                          { id: '__camera__', isCamera: true } as any,
+                          { id: '__gallery__', isGallery: true } as any,
+                          ...photos,
+                        ]}
                         keyExtractor={(item) => item.id}
                         numColumns={3}
                         columnWrapperStyle={{ gap: GRID_GAP }}
@@ -487,17 +519,17 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                           !loadingPhotos && photos.length === 0 ? (
                             <GlassCard radius={18} style={{ padding: 14, marginTop: 12, alignItems: 'center', gap: 8 }}>
                               <Text style={{ color: appTheme.text, fontWeight: '700', textAlign: 'center' }}>
-                                Фото не найдены или доступ ограничен системой
+                                Доступ к фото ограничен или файлов нет
                               </Text>
                               <Text style={{ color: appTheme.textSub, fontSize: 12, textAlign: 'center' }}>
-                                Разрешите «Фото и видео → Разрешить всегда» в настройках приложения
+                                Вы можете выбрать любое фото через системную галерею устройства
                               </Text>
                               <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
                                 <TouchableOpacity
-                                  onPress={requestPhotoPermission}
+                                  onPress={handleSystemGallery}
                                   style={[styles.primaryPill, { backgroundColor: appTheme.accent, height: 38 }]}
                                 >
-                                  <Text style={[styles.primaryPillText, { fontSize: 13 }]}>Обновить</Text>
+                                  <Text style={[styles.primaryPillText, { fontSize: 13 }]}>Выбрать фото</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                   onPress={() => Linking.openSettings()}
@@ -523,6 +555,23 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                               >
                                 <Ionicons name="camera" size={28} color={appTheme.accent} />
                                 <Text style={[styles.cameraLabel, { color: appTheme.textSub }]}>Камера</Text>
+                              </TouchableOpacity>
+                            );
+                          }
+
+                          if (item.isGallery) {
+                            return (
+                              <TouchableOpacity
+                                activeOpacity={0.8}
+                                onPress={handleSystemGallery}
+                                style={[
+                                  styles.photoTile,
+                                  styles.cameraTile,
+                                  { backgroundColor: appTheme.glass, borderColor: appTheme.border },
+                                ]}
+                              >
+                                <Ionicons name="images" size={28} color={appTheme.accent} />
+                                <Text style={[styles.cameraLabel, { color: appTheme.textSub }]}>Галерея</Text>
                               </TouchableOpacity>
                             );
                           }

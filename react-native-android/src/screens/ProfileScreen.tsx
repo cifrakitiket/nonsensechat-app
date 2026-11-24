@@ -6,6 +6,7 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -28,7 +29,24 @@ import { AppThemeKey, LIQUID_THEMES, RADII } from '../theme/liquidGlass';
 
 export default function ProfileScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, logout, grantSelfPirozhki, updateMyProfile, appTheme, appThemeKey, setAppTheme, showToast, showDialog, checkingUpdate, checkForUpdates } = useApp();
+  const {
+    me,
+    logout,
+    grantSelfPirozhki,
+    updateMyProfile,
+    appTheme,
+    appThemeKey,
+    setAppTheme,
+    showToast,
+    showDialog,
+    checkingUpdate,
+    checkForUpdates,
+    notificationsEnabled,
+    openNotificationSettings,
+    testNotification,
+    bgSyncEnabled,
+    setBgSyncEnabled,
+  } = useApp();
   const [showAvatarSheet, setShowAvatarSheet] = useState(false);
 
   if (!me) return null;
@@ -296,26 +314,59 @@ export default function ProfileScreen({ navigation }: any) {
           </GlassCard>
         </View>
 
-        <View style={{ paddingHorizontal: 12 }}>
+        {/* Уведомления и фоновая служба */}
+        <View style={{ paddingHorizontal: 12, marginBottom: 14 }}>
           <GlassCard radius={RADII.CARD}>
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => {
-                if (Platform.OS === 'android') {
-                  NativeModules.NotificationModule?.showNotification?.(
-                    'Тест уведомлений',
-                    'Уведомления работают отлично! 🔔',
-                    ''
-                  );
-                }
-                showToast('Тест уведомлений', 'Уведомление отправлено в шторку', 'success');
-              }}
-            >
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
               <Text style={styles.settingIcon}>🔔</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Проверить уведомления</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingText, { color: appTheme.text }]}>Уведомления в системе</Text>
+                <Text style={{ fontSize: 11.5, color: notificationsEnabled ? '#22c55e' : '#ef4444' }}>
+                  {notificationsEnabled ? 'Разрешены в Android ✓' : 'Отключены в настройках Android ⚠️'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={openNotificationSettings}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                }}
+              >
+                <Text style={{ color: appTheme.accent, fontSize: 12, fontWeight: '700' }}>Настройки</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
+              <Text style={styles.settingIcon}>⚡</Text>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={[styles.settingText, { color: appTheme.text }]}>Фоновая служба 24/7</Text>
+                <Text style={{ fontSize: 11.5, color: appTheme.textSub }}>
+                  Работает без пропуска сообщений при выключенном экране
+                </Text>
+              </View>
+              <Switch
+                value={bgSyncEnabled}
+                onValueChange={(val) => setBgSyncEnabled(val)}
+                trackColor={{ false: 'rgba(255,255,255,0.1)', true: appTheme.accent }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.settingItem, { borderBottomWidth: 0 }]}
+              onPress={testNotification}
+            >
+              <Text style={styles.settingIcon}>🔊</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Проверить звук и вибрацию</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
+          </GlassCard>
+        </View>
 
+        <View style={{ paddingHorizontal: 12, marginBottom: 20 }}>
+          <GlassCard radius={RADII.CARD}>
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => checkForUpdates(false)}

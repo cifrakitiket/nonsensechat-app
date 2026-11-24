@@ -31,6 +31,7 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
 
     companion object {
         private const val REQ_TAKE_PHOTO = 4102
+        private const val REQ_PICK_GALLERY = 4103
     }
 
     private var pendingPromise: Promise? = null
@@ -38,7 +39,7 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
 
     private val activityListener = object : BaseActivityEventListener() {
         override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
-            if (requestCode != REQ_TAKE_PHOTO) return
+            if (requestCode != REQ_TAKE_PHOTO && requestCode != REQ_PICK_GALLERY) return
             val promise = pendingPromise
             val mode = pendingMode
             pendingPromise = null
@@ -46,7 +47,7 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
 
             if (promise == null) return
             if (resultCode != Activity.RESULT_OK || data == null) {
-                promise.reject("CANCELLED", "Съёмка отменена")
+                promise.reject("CANCELLED", "Действие отменено")
                 return
             }
 
@@ -67,6 +68,50 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                             putString("dataUrl", "data:image/jpeg;base64,$b64")
                             putString("fileName", "camera_${System.currentTimeMillis()}.jpg")
                             putInt("fileSize", bytes.size)
+                        }
+                        promise.resolve(map)
+                    } else if (mode == REQ_PICK_GALLERY) {
+                        val uri = data.data
+                        if (uri == null) {
+                            promise.reject("NO_URI", "Фото не выбрано")
+                            return@thread
+                        }
+                        val cr = reactApplicationContext.contentResolver
+                        val rawBytes = cr.openInputStream(uri)?.use { it.readBytes() }
+                        if (rawBytes == null) {
+                            promise.reject("READ_ERROR", "Не удалось прочитать выбранное фото")
+                            return@thread
+                        }
+                        val bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size)
+                        if (bmp == null) {
+                            promise.reject("DECODE_ERROR", "Некорректный формат фото")
+                            return@thread
+                        }
+                        val targetMax = 1280
+                        val curMax = max(bmp.width, bmp.height)
+                        val scaled = if (curMax > targetMax) {
+                            val ratio = targetMax.toFloat() / curMax.toFloat()
+                            Bitmap.createScaledBitmap(
+                                bmp,
+                                (bmp.width * ratio).roundToInt().coerceAtLeast(1),
+                                (bmp.height * ratio).roundToInt().coerceAtLeast(1),
+                                true
+                            )
+                        } else {
+                            bmp
+                        }
+                        val baos = ByteArrayOutputStream()
+                        scaled.compress(Bitmap.CompressFormat.JPEG, 82, baos)
+                        val outBytes = baos.toByteArray()
+                        val b64 = Base64.encodeToString(outBytes, Base64.NO_WRAP)
+                        val fileName = queryFileName(uri) ?: "gallery_${System.currentTimeMillis()}.jpg"
+                        val map = Arguments.createMap().apply {
+                            putString("uri", uri.toString())
+                            putString("dataUrl", "data:image/jpeg;base64,$b64")
+                            putString("fileName", fileName)
+                            putInt("fileSize", outBytes.size)
+                            putInt("width", scaled.width)
+                            putInt("height", scaled.height)
                         }
                         promise.resolve(map)
                     }
@@ -117,26 +162,39 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
         }
     }
 
-    private fun makeThumbnailDataUrl(cr: ContentResolver, id: Long, contentUri: Uri): String? {
-        return try {
-            val thumbBmp: Bitmap? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                cr.loadThumbnail(contentUri, Size(220, 220), null)
+    @ReactMethod
+    fun pickImageFromGallery(promise: Promise) {
+        val activity = currentActivity
+        if (activity == null) {
+            promise.reject("NO_ACTIVITY", "Экран приложения недоступен")
+            return
+        }
+        pendingPromise?.reject("CANCELLED", "Прервано новым запросом")
+        pendingPromise = promise
+        pendingMode = REQ_PICK_GALLERY
+        try {
+            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Intent(MediaStore.ACTION_PICK_IMAGES).apply {
+                    type = "image/*"
+                }
             } else {
-                @Suppress("DEPRECATION")
-                MediaStore.Images.Thumbnails.getThumbnail(
-                    cr,
-                    id,
-                    MediaStore.Images.Thumbnails.MINI_KIND,
-                    null
-                )
+                Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply {
+                    type = "image/*"
+                }
             }
-            if (thumbBmp == null) return null
-            val baos = ByteArrayOutputStream()
-            thumbBmp.compress(Bitmap.CompressFormat.JPEG, 65, baos)
-            val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
-            "data:image/jpeg;base64,$b64"
+            activity.startActivityForResult(intent, REQ_PICK_GALLERY)
         } catch (_: Exception) {
-            null
+            try {
+                val fallback = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "image/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }
+                activity.startActivityForResult(fallback, REQ_PICK_GALLERY)
+            } catch (e: Exception) {
+                pendingPromise = null
+                pendingMode = 0
+                promise.reject("LAUNCH_ERROR", e.message, e)
+            }
         }
     }
 
@@ -149,7 +207,7 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
         thread(start = true) {
             try {
                 val cr = reactApplicationContext.contentResolver
-                val cap = minOf(if (limit > 0) limit else 48, 48)
+                val cap = minOf(if (limit > 0) limit else 60, 60)
                 val projection = arrayOf(
                     MediaStore.Images.Media._ID,
                     MediaStore.Images.Media.DISPLAY_NAME,
@@ -160,7 +218,7 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                     MediaStore.Images.Media.MIME_TYPE
                 )
                 val result = Arguments.createArray()
-                val sortOrder = "${MediaStore.Images.Media.DATE_MODIFIED} DESC"
+                val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
                 val cursor = cr.query(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     projection,
@@ -182,11 +240,11 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                     while (c.moveToNext() && count < cap) {
                         val id = c.getLong(idCol)
                         val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                        val thumbDataUrl = makeThumbnailDataUrl(cr, id, contentUri)
+                        val uriStr = contentUri.toString()
                         val item = Arguments.createMap().apply {
                             putString("id", id.toString())
-                            putString("uri", contentUri.toString())
-                            if (thumbDataUrl != null) putString("thumbDataUrl", thumbDataUrl)
+                            putString("uri", uriStr)
+                            putString("thumbDataUrl", uriStr)
                             putString("fileName", if (nameCol >= 0) c.getString(nameCol) ?: "photo_$id.jpg" else "photo_$id.jpg")
                             putDouble("size", if (sizeCol >= 0) c.getLong(sizeCol).toDouble() else 0.0)
                             putInt("width", if (wCol >= 0) c.getInt(wCol) else 0)
@@ -199,10 +257,6 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                     }
                 }
 
-                if (result.size() == 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.READ_MEDIA_IMAGES)) {
-                    promise.reject("PERMISSION_DENIED", "Нет полного доступа к фотографиям")
-                    return@thread
-                }
                 promise.resolve(result)
             } catch (se: SecurityException) {
                 promise.reject("PERMISSION_DENIED", "Нет доступа к фотографиям", se)

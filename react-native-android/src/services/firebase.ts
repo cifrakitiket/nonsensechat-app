@@ -122,6 +122,17 @@ export async function takeNativePhoto(): Promise<{ dataUrl: string; fileName: st
   return NativeModules.MediaPickerModule.takePhoto();
 }
 
+export async function pickNativePhotoFromGallery(): Promise<{
+  uri: string;
+  dataUrl: string;
+  fileName: string;
+  fileSize: number;
+  width?: number;
+  height?: number;
+}> {
+  return NativeModules.MediaPickerModule.pickImageFromGallery();
+}
+
 export async function startNativeVoiceRecording(maxDurationMs = 120000): Promise<boolean> {
   return NativeModules.VoiceRecorderModule.startRecording(maxDurationMs);
 }

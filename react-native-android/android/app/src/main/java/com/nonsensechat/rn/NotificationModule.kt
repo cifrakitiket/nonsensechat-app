@@ -6,11 +6,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.facebook.react.bridge.Promise
@@ -23,9 +26,9 @@ import java.util.concurrent.atomic.AtomicInteger
 class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
     companion object {
-        const val CHANNEL_ID = "nonsense_chat_messages_v2"
+        const val CHANNEL_ID = "nonsense_chat_messages_v3"
         const val CHANNEL_NAME = "Сообщения NonsenseChat"
-        private val notifIdCounter = AtomicInteger(1000)
+        private val notifIdCounter = AtomicInteger(2000)
 
         fun createNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -40,11 +43,12 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
                     CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
-                    description = "Уведомления о новых сообщениях и заявках"
+                    description = "Уведомления о новых сообщениях, заявках и событиях"
                     enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 180, 80, 180)
+                    vibrationPattern = longArrayOf(0, 220, 100, 220)
                     setSound(soundUri, audioAttributes)
                     enableLights(true)
+                    lightColor = Color.parseColor("#10B981")
                     setShowBadge(true)
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
@@ -57,16 +61,28 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
         fun showNotificationStatic(context: Context, title: String, body: String, chatId: String) {
             createNotificationChannel(context)
 
+            // Vibrate immediately
             try {
                 val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
                 if (vibrator != null && vibrator.hasVibrator()) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 180, 80, 180), -1))
+                        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 220, 100, 220), -1))
                     } else {
                         @Suppress("DEPRECATION")
-                        vibrator.vibrate(longArrayOf(0, 180, 80, 180), -1)
+                        vibrator.vibrate(longArrayOf(0, 220, 100, 220), -1)
                     }
                 }
+            } catch (_: Exception) {}
+
+            // Wake up screen briefly so notification is seen
+            try {
+                val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                @Suppress("DEPRECATION")
+                val wakeLock = powerManager?.newWakeLock(
+                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "nonsensechat:notif_wakelock"
+                )
+                wakeLock?.acquire(3000)
             } catch (_: Exception) {}
 
             val intent = Intent(context, MainActivity::class.java).apply {
@@ -92,7 +108,7 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
             val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(android.R.drawable.stat_notify_chat)
                 .setContentTitle(if (title.isNotEmpty()) title else "Беспонтовый Чат")
                 .setContentText(if (body.isNotEmpty()) body else "Новое сообщение")
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -120,6 +136,77 @@ class NotificationModule(reactContext: ReactApplicationContext) : ReactContextBa
     }
 
     override fun getName(): String = "NotificationModule"
+
+    @ReactMethod
+    fun areNotificationsEnabled(promise: Promise) {
+        try {
+            val enabled = NotificationManagerCompat.from(reactApplicationContext).areNotificationsEnabled()
+            promise.resolve(enabled)
+        } catch (e: Exception) {
+            promise.reject("CHECK_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun openNotificationSettings(promise: Promise) {
+        try {
+            val intent = Intent().apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                    putExtra(Settings.EXTRA_APP_PACKAGE, reactApplicationContext.packageName)
+                } else {
+                    action = "android.settings.APP_NOTIFICATION_SETTINGS"
+                    putExtra("app_package", reactApplicationContext.packageName)
+                    putExtra("app_uid", reactApplicationContext.applicationInfo.uid)
+                }
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            reactApplicationContext.startActivity(intent)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("OPEN_SETTINGS_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun testNotification(promise: Promise) {
+        try {
+            showNotificationStatic(
+                reactApplicationContext,
+                "Тест уведомлений 🔔",
+                "Звук, вибрация и статус-бар работают идеально!",
+                ""
+            )
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("TEST_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun startBackgroundSync(uid: String, promise: Promise) {
+        try {
+            NonsenseBackgroundService.start(reactApplicationContext, uid)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("START_SERVICE_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun stopBackgroundSync(promise: Promise) {
+        try {
+            NonsenseBackgroundService.stop(reactApplicationContext)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("STOP_SERVICE_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun isBackgroundSyncRunning(promise: Promise) {
+        promise.resolve(NonsenseBackgroundService.isServiceRunning)
+    }
 
     @ReactMethod
     fun clearAllNotifications() {

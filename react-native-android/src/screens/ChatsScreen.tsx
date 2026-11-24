@@ -11,6 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useApp, ChatItem } from '../context/AppContext';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { PrefixBadge } from '../components/PrefixBadge';
@@ -42,9 +43,35 @@ function stripHtml(text?: string) {
     .trim();
 }
 
+function formatLastMsgPreview(rawMsg?: string, isMine?: boolean) {
+  if (!rawMsg) return 'Нет сообщений';
+  const clean = stripHtml(rawMsg);
+  let text = clean;
+  if (clean.startsWith('data:image') || clean.includes('📷 Фото') || clean.includes('photo_')) text = '📷 Фотография';
+  else if (clean.includes('🎤') || clean.includes('[Голосовое]')) text = '🎤 Голосовое сообщение';
+  else if (clean.includes('📎') || clean.includes('📄') || clean.includes('file_')) text = '📄 Документ';
+  else if (clean.includes('📊') || clean.includes('Опрос:')) text = '📊 Опрос';
+  else if (clean.includes('🥧')) text = '🥧 Подарок пирожков';
+  else if (clean.includes('✨ Стикер')) text = '✨ Стикер';
+  return isMine ? `✓ ${text}` : text;
+}
+
 export default function ChatsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, chats, incomingRequests, acceptFriendRequest, declineFriendRequest, usersMap, appTheme, addFriendByNick, createGroupOrChannel, showToast } = useApp();
+  const {
+    me,
+    chats,
+    incomingRequests,
+    acceptFriendRequest,
+    declineFriendRequest,
+    usersMap,
+    appTheme,
+    addFriendByNick,
+    createGroupOrChannel,
+    showToast,
+    notificationsEnabled,
+    openNotificationSettings,
+  } = useApp();
 
   const [activeFolder, setActiveFolder] = useState<'all' | 'dm' | 'groups' | 'channels' | 'reqs'>('all');
   const [search, setSearch] = useState('');
@@ -186,7 +213,7 @@ export default function ChatsScreen({ navigation }: any) {
 
             <View style={styles.chatMsgRow}>
               <Text style={[styles.lastMsg, { color: appTheme.textSub }]} numberOfLines={1}>
-                {stripHtml(item.lastMsg) || 'Нет сообщений'}
+                {formatLastMsgPreview(item.lastMsg, me ? item.lastMsgUid === me.uid : false)}
               </Text>
               {(item.unread || 0) > 0 && (
                 <View style={[styles.unreadBadge, { backgroundColor: appTheme.accent }]}>
@@ -252,6 +279,28 @@ export default function ChatsScreen({ navigation }: any) {
             </View>
           </GlassCard>
         </View>
+
+        {/* System Notifications Alert */}
+        {!notificationsEnabled && (
+          <View style={{ paddingHorizontal: 12, marginBottom: 8 }}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={openNotificationSettings}
+              style={styles.notifBanner}
+            >
+              <Ionicons name="notifications-off" size={20} color="#f87171" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>
+                  Уведомления отключены в системе
+                </Text>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11.5 }}>
+                  Нажмите, чтобы включить в настройках и не пропускать сообщения
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#f87171" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Pill Search */}
         <View style={{ paddingHorizontal: 12, marginBottom: 8 }}>
@@ -387,6 +436,15 @@ export default function ChatsScreen({ navigation }: any) {
             }
           />
         )}
+
+        {/* Floating Action Button for new chat */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.fab, { backgroundColor: appTheme.accent }]}
+          onPress={() => setShowCreateModal(true)}
+        >
+          <Ionicons name="create-outline" size={26} color="#000" />
+        </TouchableOpacity>
 
         {/* Liquid Glass Create Modal */}
         <Modal
@@ -605,4 +663,29 @@ const styles = StyleSheet.create({
   modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
   modalBtnSec: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 },
   modalBtnPri: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
+  notifBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    borderColor: 'rgba(239, 68, 68, 0.38)',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+  },
 });
