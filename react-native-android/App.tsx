@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { AppProvider, useApp } from './src/context/AppContext';
 import { GlassDialogHost } from './src/components/GlassDialogHost';
+import { UpdateModalHost } from './src/components/UpdateModalHost';
 import TelegramBottomNav from './src/navigation/TelegramBottomNav';
 import AuthScreen from './src/screens/AuthScreen';
 import ChatRoomScreen from './src/screens/ChatRoomScreen';
@@ -92,6 +93,7 @@ export default function App() {
       <AppProvider>
         <RootNavigator />
         <GlassDialogHost />
+        <UpdateModalHost />
       </AppProvider>
     </SafeAreaProvider>
   );

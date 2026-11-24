@@ -135,8 +135,73 @@ export function cancelNativeVoiceRecording() {
   } catch (_) {}
 }
 
+import { APP_VERSION, APP_VERSION_CODE } from '../constants/catalogs';
+
 export function triggerHaptic(durationMs = 15) {
   try {
     Vibration.vibrate(durationMs);
+  } catch (_) {}
+}
+
+export interface AppUpdateInfo {
+  version: string;
+  versionCode: number;
+  apkUrl: string;
+  fileSize?: number;
+  publishedAt?: string;
+  releaseNotes?: string;
+}
+
+const VK_UPDATE_JSON_URL = 'https://hb.vkcs.cloud/noname/apk-version.json';
+
+function compareSemver(a: string, b: string): number {
+  const pa = String(a || '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b || '').split('.').map((n) => parseInt(n, 10) || 0);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const va = pa[i] || 0;
+    const vb = pb[i] || 0;
+    if (va > vb) return 1;
+    if (va < vb) return -1;
+  }
+  return 0;
+}
+
+export async function checkVkCloudUpdate(): Promise<AppUpdateInfo | null> {
+  const resp = await fetch(`${VK_UPDATE_JSON_URL}?t=${Date.now()}`, {
+    headers: { 'Cache-Control': 'no-cache' },
+  });
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}`);
+  }
+  const data = (await resp.json()) as AppUpdateInfo;
+  if (!data || !data.apkUrl) return null;
+
+  const remoteCode = Number(data.versionCode) || 0;
+  const isNewer =
+    remoteCode > APP_VERSION_CODE ||
+    (remoteCode === 0 && compareSemver(data.version, APP_VERSION) > 0);
+
+  return isNewer ? data : null;
+}
+
+export async function canInstallUpdates(): Promise<boolean> {
+  if (!NativeModules.AppUpdaterModule?.canRequestPackageInstalls) return true;
+  return NativeModules.AppUpdaterModule.canRequestPackageInstalls();
+}
+
+export async function openInstallSettings(): Promise<void> {
+  if (NativeModules.AppUpdaterModule?.openInstallPermissionSettings) {
+    await NativeModules.AppUpdaterModule.openInstallPermissionSettings();
+  }
+}
+
+export async function downloadAndInstallUpdate(apkUrl: string): Promise<boolean> {
+  return NativeModules.AppUpdaterModule.downloadAndInstallApk(apkUrl);
+}
+
+export function cancelUpdateDownload() {
+  try {
+    NativeModules.AppUpdaterModule?.cancelDownload?.();
   } catch (_) {}
 }

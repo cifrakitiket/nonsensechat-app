@@ -9,7 +9,7 @@ import {
   signOut,
 } from 'firebase/auth';
 import { ref, onValue, get, set, update, push } from 'firebase/database';
-import { auth, rtdb, triggerHaptic } from '../services/firebase';
+import { AppUpdateInfo, auth, checkVkCloudUpdate, rtdb, triggerHaptic } from '../services/firebase';
 import { CREATOR_UID } from '../constants/catalogs';
 import { AppThemeKey, LIQUID_THEMES, LiquidTheme } from '../theme/liquidGlass';
 
@@ -145,6 +145,10 @@ interface AppContextValue {
   showToast: (title: string, body?: string, type?: 'info' | 'success' | 'error') => void;
   showDialog: (cfg: DialogConfig) => void;
   dismissDialog: () => void;
+  updateInfo: AppUpdateInfo | null;
+  checkingUpdate: boolean;
+  checkForUpdates: (silent?: boolean) => Promise<void>;
+  dismissUpdate: () => void;
   loginWithNickOrEmail: (loginInput: string, password: string) => Promise<void>;
   registerAccount: (email: string, nick: string, password: string) => Promise<void>;
   resetPassword: (loginInput: string) => Promise<string>;
@@ -173,6 +177,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [toastState, setToastState] = useState<ToastState | null>(null);
   const [dialogState, setDialogState] = useState<DialogConfig | null>(null);
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
+  const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const checkForUpdates = async (silent = true) => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    try {
+      const info = await checkVkCloudUpdate();
+      if (info) {
+        setUpdateInfo(info);
+      } else if (!silent) {
+        showToast('Обновлений нет', 'У вас установлена последняя версия', 'success');
+      }
+    } catch (e: any) {
+      if (!silent) {
+        showToast('Проверка обновлений', e?.message || 'Не удалось связаться с VK Cloud', 'error');
+      }
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const dismissUpdate = () => setUpdateInfo(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const t = setTimeout(() => {
+      checkForUpdates(true);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, []);
 
   const activeChatIdRef = useRef<string | null>(null);
   const prevLastMsgAtRef = useRef<Record<string, number>>({});
@@ -738,6 +773,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showToast,
         showDialog,
         dismissDialog,
+        updateInfo,
+        checkingUpdate,
+        checkForUpdates,
+        dismissUpdate,
         loginWithNickOrEmail,
         registerAccount,
         resetPassword,

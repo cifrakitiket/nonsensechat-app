@@ -14,7 +14,8 @@ class NotificationPackage : ReactPackage {
             SoundPlayerModule(reactContext),
             NativeStorageModule(reactContext),
             MediaPickerModule(reactContext),
-            VoiceRecorderModule(reactContext)
+            VoiceRecorderModule(reactContext),
+            AppUpdaterModule(reactContext)
         )
     }
 

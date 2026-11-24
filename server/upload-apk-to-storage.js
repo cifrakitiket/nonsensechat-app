@@ -103,16 +103,29 @@ async function main() {
   console.log(`Found APK: ${apkPath} (${(apkStats.size / (1024 * 1024)).toFixed(2)} MB)`);
 
   let version = '2.9.6';
+  let versionCode = 0;
   try {
-    const vJsonPath = path.join(rootDir, 'public', 'version.json');
-    if (fs.existsSync(vJsonPath)) {
-      const vData = JSON.parse(fs.readFileSync(vJsonPath, 'utf8'));
-      if (vData && vData.v) version = String(vData.v).trim();
+    const gradlePath = path.join(rootDir, 'react-native-android', 'android', 'app', 'build.gradle');
+    if (fs.existsSync(gradlePath)) {
+      const gradleTxt = fs.readFileSync(gradlePath, 'utf8');
+      const vnMatch = gradleTxt.match(/versionName\s+"([^"]+)"/);
+      const vcMatch = gradleTxt.match(/versionCode\s+(\d+)/);
+      if (vnMatch && vnMatch[1]) version = vnMatch[1].trim();
+      if (vcMatch && vcMatch[1]) versionCode = parseInt(vcMatch[1], 10) || 0;
     }
   } catch (_) {}
 
-  const codeDigits = version.replace(/[^0-9]/g, '');
-  const versionCode = parseInt(codeDigits, 10) || 296;
+  if (!versionCode) {
+    try {
+      const vJsonPath = path.join(rootDir, 'public', 'version.json');
+      if (fs.existsSync(vJsonPath)) {
+        const vData = JSON.parse(fs.readFileSync(vJsonPath, 'utf8'));
+        if (vData && vData.v) version = String(vData.v).trim();
+      }
+    } catch (_) {}
+    const codeDigits = version.replace(/[^0-9]/g, '');
+    versionCode = parseInt(codeDigits, 10) || 296;
+  }
 
   const rawArg = process.argv.slice(2).join(' ').trim();
   const isVersionArg = /^\d+(\.\d+)*$/.test(rawArg);

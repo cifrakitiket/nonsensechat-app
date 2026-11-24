@@ -26,7 +26,7 @@ import { AppThemeKey, LIQUID_THEMES, RADII } from '../theme/liquidGlass';
 
 export default function ProfileScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, logout, grantSelfPirozhki, updateMyProfile, appTheme, appThemeKey, setAppTheme, showToast, showDialog } = useApp();
+  const { me, logout, grantSelfPirozhki, updateMyProfile, appTheme, appThemeKey, setAppTheme, showToast, showDialog, checkingUpdate, checkForUpdates } = useApp();
   const [showAvatarSheet, setShowAvatarSheet] = useState(false);
 
   if (!me) return null;
@@ -296,13 +296,20 @@ export default function ProfileScreen({ navigation }: any) {
 
         <View style={{ paddingHorizontal: 12 }}>
           <GlassCard radius={RADII.CARD}>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingIcon}>📱</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Liquid Glass Native</Text>
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => checkForUpdates(false)}
+              disabled={checkingUpdate}
+            >
+              <Text style={styles.settingIcon}>🔄</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>
+                {checkingUpdate ? 'Проверка обновлений...' : 'Проверить обновления (VK Cloud)'}
+              </Text>
               <Text style={styles.settingVal}>
                 v{APP_VERSION} ({APP_VERSION_CODE})
               </Text>
-            </View>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.settingItem, { borderBottomWidth: 0 }]}
               onPress={handleLogout}
