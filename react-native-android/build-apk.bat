@@ -7,7 +7,7 @@ echo.
 
 set "JAVA_HOME=D:\jdk17"
 set "ANDROID_HOME=D:\androidsdk"
-set "PATH=%JAVA_HOME%\bin;%PATH%"
+set "PATH=D:\NodeJs;%JAVA_HOME%\bin;%PATH%"
 
 cd /d "%~dp0android"
 

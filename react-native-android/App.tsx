@@ -9,12 +9,12 @@ import {
   PermissionsAndroid,
   Image,
   Text,
-  TouchableOpacity,
   ActivityIndicator,
   Animated,
   Linking,
   NativeModules,
   Vibration,
+  Share,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -27,6 +27,8 @@ function MainApp() {
   const webViewRef = useRef<WebView>(null);
   const [currentUrl, setCurrentUrl] = useState(LOCAL_ASSET_URL);
   const [isLoading, setIsLoading] = useState(true);
+  const [statusBarDark, setStatusBarDark] = useState(true);
+  const [statusBarBg, setStatusBarBg] = useState('#080C14');
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const lastBackPressTime = useRef(0);
   const [fcmToken, setFcmToken] = useState('');
@@ -98,7 +100,7 @@ function MainApp() {
     }
     requestPermissions();
 
-    // Deep linking: navigate to specific chat when opened from notification URL
+    // Deep linking: navigate to specific chat or handle payment return when opened from external URL
     function handleOpenUrl(url: string | null) {
       if (!url) return;
       try {
@@ -138,31 +140,36 @@ function MainApp() {
     };
   }, [dismissSplash]);
 
-  // Hardware back button handler for Android
+  // Hardware back button handler for Android (respects dynamic modal z-index stacking)
   const onHardwareBack = useCallback(() => {
     if (!webViewRef.current) return false;
 
-    // Send back command to the web app
     const script = `
       (function() {
         var handled = false;
-        // 1. Close mobile chat view if open
-        if (document.body && document.body.classList.contains('mobile-chat-open')) {
+
+        // 1. Close only the topmost open modal or customConfirm dialog first
+        if (typeof window.closeTopmostModalOnBack === 'function') {
+          if (window.closeTopmostModalOnBack()) {
+            handled = true;
+          }
+        } else {
+          var openModals = document.querySelectorAll('.modal:not(.hidden)');
+          if (openModals.length > 0) {
+            var topM = openModals[openModals.length - 1];
+            if (typeof closeModal === 'function') closeModal(topM.id);
+            handled = true;
+          }
+        }
+
+        // 2. Close mobile chat view if open
+        if (!handled && document.body && document.body.classList.contains('mobile-chat-open')) {
           if (typeof closeMobileChat === 'function') {
             closeMobileChat();
             handled = true;
           }
         }
-        // 2. Close any open modal dialogs
-        if (!handled) {
-          var openModals = document.querySelectorAll('.modal:not(.hidden)');
-          if (openModals.length > 0) {
-            openModals.forEach(function(m) {
-              if (typeof closeModal === 'function') closeModal(m.id);
-            });
-            handled = true;
-          }
-        }
+
         // 3. Close sticker / emoji / theme / lang pickers
         if (!handled) {
           if (window.tgpOpen) {
@@ -170,23 +177,25 @@ function MainApp() {
             handled = true;
           }
           var tp = document.getElementById('themePicker');
-          if (tp && tp.style.display !== 'none') {
-            tp.style.display = 'none';
+          if (tp && tp.classList.contains('open')) {
+            tp.classList.remove('open');
             handled = true;
           }
           var lp = document.getElementById('langPicker');
-          if (lp && lp.style.display !== 'none') {
-            lp.style.display = 'none';
+          if (lp && lp.classList.contains('open')) {
+            lp.classList.remove('open');
             handled = true;
           }
         }
-        // 4. Return to 'chats' tab from contacts/calls/profile
+
+        // 4. Return to 'chats' tab from contacts/calls/profile/appinfo
         if (!handled && typeof currentTgTab !== 'undefined' && currentTgTab !== 'chats') {
           if (typeof switchTgTab === 'function') {
             switchTgTab('chats');
             handled = true;
           }
         }
+
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'BACK_RESULT', handled: handled }));
       })();
       true;
@@ -205,7 +214,7 @@ function MainApp() {
   }, [onHardwareBack]);
 
   // Handle messages posted from WebView
-  const onWebViewMessage = (event: any) => {
+  const onWebViewMessage = async (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'SHOW_NOTIFICATION') {
@@ -222,6 +231,32 @@ function MainApp() {
         }
       } else if (data.type === 'REQUEST_FCM_TOKEN') {
         fetchAndInjectFcmToken();
+      } else if (data.type === 'HAPTIC') {
+        try {
+          const dur = data.style === 'heavy' ? 40 : data.style === 'medium' ? 22 : 10;
+          Vibration.vibrate(dur);
+        } catch (_) {}
+      } else if (data.type === 'SET_STATUS_BAR') {
+        const isDark = data.dark !== false;
+        setStatusBarDark(isDark);
+        setStatusBarBg(isDark ? '#080C14' : '#f5f0eb');
+      } else if (data.type === 'SHARE_CONTENT') {
+        try {
+          const title = data.title || 'Беспонтовый Чат';
+          const text = data.text || '';
+          const url = data.url || '';
+          const message = url && !text.includes(url) ? `${text}\n${url}` : text || url;
+          await Share.share({ title, message });
+        } catch (_) {}
+      } else if (data.type === 'OPEN_EXTERNAL_URL' || data.type === 'DOWNLOAD_FILE') {
+        if (data.url) {
+          try {
+            if (data.type === 'DOWNLOAD_FILE') {
+              ToastAndroid.show('Загрузка файла...', ToastAndroid.SHORT);
+            }
+            await Linking.openURL(data.url);
+          } catch (_) {}
+        }
       } else if (data.type === 'BACK_RESULT') {
         if (!data.handled) {
           // Double tap back to exit
@@ -236,6 +271,36 @@ function MainApp() {
       }
     } catch (_) {}
   };
+
+  // Intercept external schemes (SBP, SberPay, T-Pay, Telegram, mailto, tel, APK downloads)
+  const onShouldStartLoadWithRequest = useCallback((request: any) => {
+    const url = request?.url || '';
+    if (!url) return true;
+
+    // Allow internal file://, about:blank, data:, blob:
+    if (
+      url.startsWith('file://') ||
+      url.startsWith('about:') ||
+      url.startsWith('data:') ||
+      url.startsWith('blob:')
+    ) {
+      return true;
+    }
+
+    // Direct APK download links -> open in Android system browser/downloader
+    if (url.toLowerCase().endsWith('.apk') || url.includes('nonsensechat.apk')) {
+      Linking.openURL(url).catch(() => {});
+      return false;
+    }
+
+    // Handle banking / payment / deep-link custom URI schemes
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      Linking.openURL(url).catch(() => {});
+      return false;
+    }
+
+    return true;
+  }, []);
 
   const onLoadProgress = ({ nativeEvent }: any) => {
     if (nativeEvent.progress >= 0.7) {
@@ -296,9 +361,17 @@ function MainApp() {
         },
         hapticMedium: function() {
           try {
-            if (navigator.vibrate) navigator.vibrate(25);
+            if (navigator.vibrate) navigator.vibrate(22);
             if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
               window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'HAPTIC', style: 'medium' }));
+            }
+          } catch (e) {}
+        },
+        hapticHeavy: function() {
+          try {
+            if (navigator.vibrate) navigator.vibrate(40);
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'HAPTIC', style: 'heavy' }));
             }
           } catch (e) {}
         },
@@ -309,11 +382,41 @@ function MainApp() {
             }
           } catch (e) {}
         },
+        shareText: function(title, text, url) {
+          try {
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'SHARE_CONTENT',
+                title: String(title || ''),
+                text: String(text || ''),
+                url: String(url || '')
+              }));
+            }
+          } catch (e) {}
+        },
+        openExternalUrl: function(url) {
+          try {
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'OPEN_EXTERNAL_URL',
+                url: String(url || '')
+              }));
+            }
+          } catch (e) {}
+        },
         logError: function(msg) {
           console.warn('[AndroidBridge logError]:', msg);
         },
         downloadFile: function(url, filename) {
-          console.log('[AndroidBridge downloadFile]:', filename);
+          try {
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'DOWNLOAD_FILE',
+                url: String(url || ''),
+                filename: String(filename || '')
+              }));
+            }
+          } catch (e) {}
         }
       };
 
@@ -336,8 +439,8 @@ function MainApp() {
   return (
     <View style={styles.container}>
       <StatusBar
-        barStyle="light-content"
-        backgroundColor="#080C14"
+        barStyle={statusBarDark ? 'light-content' : 'dark-content'}
+        backgroundColor={statusBarBg}
         translucent={false}
       />
 
@@ -356,13 +459,15 @@ function MainApp() {
         mediaPlaybackRequiresUserAction={false}
         mediaCapturePermissionGrantType="grant"
         onPermissionRequest={(request) => request.grant(request.resources)}
+        onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+        setSupportMultipleWindows={false}
         geolocationEnabled={true}
         mixedContentMode="always"
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         overScrollMode="never"
         androidLayerType="hardware"
-        userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 NonsenseChatAndroid/2.6.1"
+        userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 NonsenseChatAndroid/3.3.0"
         injectedJavaScriptBeforeContentLoaded={injectedJs}
         onLoadProgress={onLoadProgress}
         onLoadEnd={onLoadEnd}
@@ -374,11 +479,11 @@ function MainApp() {
       {isLoading && (
         <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]} pointerEvents="none">
           <Image
-            source={{ uri: 'https://nonsensechat.ru/logo.png' }}
+            source={{ uri: 'file:///android_asset/public/logo.png' }}
             style={styles.splashLogo}
           />
           <Text style={styles.splashTitle}>Беспонтовый Чат</Text>
-          <Text style={styles.splashSubtitle}>Android Edition</Text>
+          <Text style={styles.splashSubtitle}>Android Edition v3.3.0</Text>
           <ActivityIndicator size="large" color="#5b8fb9" style={styles.splashSpinner} />
         </Animated.View>
       )}

@@ -1722,7 +1722,129 @@
       }
       .steam-actions-bar {
         justify-content: center;
+        flex-wrap: wrap;
       }
+      .steam-customizer-card {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        max-height: 90dvh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        border-radius: 16px !important;
+      }
+      .steam-customizer-body {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        max-height: calc(90dvh - 52px) !important;
+        padding: 14px !important;
+      }
+      .steam-theme-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+      }
+      .steam-frame-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 8px !important;
+      }
+      .pirozhki-modal-box {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        max-height: 90dvh !important;
+        padding: 16px 14px 22px !important;
+        border-radius: 18px !important;
+      }
+      .pirozhki-balance-card {
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+      }
+      #prefixSoundPresetsGrid {
+        grid-template-columns: 1fr !important;
+        max-height: 280px !important;
+      }
+    }
+
+    /* Mobile Profile Hero Themes & Frames support */
+    .tg-profile-hero.theme-classic {
+      background: radial-gradient(circle at 50% 0%, #1b2838 0%, #171a21 60%, #0e141b 100%) !important;
+    }
+    .tg-profile-hero.theme-cyberpunk {
+      background: radial-gradient(circle at 50% 0%, #3b0a6e 0%, #1a032e 60%, #0b0114 100%) !important;
+      border: 1px solid rgba(236, 72, 153, 0.35) !important;
+    }
+    .tg-profile-hero.theme-galaxy {
+      background: radial-gradient(circle at 50% 0%, #231557 0%, #110b30 60%, #060417 100%) !important;
+      border: 1px solid rgba(99, 102, 241, 0.35) !important;
+    }
+    .tg-profile-hero.theme-bakery {
+      background: radial-gradient(circle at 50% 0%, #4d2b0a 0%, #261505 60%, #140b02 100%) !important;
+      border: 1px solid rgba(245, 158, 11, 0.38) !important;
+    }
+    .tg-profile-hero.theme-matrix {
+      background: radial-gradient(circle at 50% 0%, #07361e 0%, #031a0e 60%, #010a05 100%) !important;
+      border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    }
+    .tg-profile-hero.theme-crimson {
+      background: radial-gradient(circle at 50% 0%, #4d0b1a 0%, #26050d 60%, #120206 100%) !important;
+      border: 1px solid rgba(239, 68, 68, 0.38) !important;
+    }
+    .tg-hero-framed-ava {
+      width: 92px !important;
+      height: 92px !important;
+      border-radius: 18px !important;
+      padding: 3px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .tg-hero-framed-ava .tg-profile-hero-ava {
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 14px !important;
+      object-fit: cover !important;
+    }
+    .tg-pirozhki-mobile-card {
+      margin: 10px 14px 12px;
+      padding: 14px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(217, 119, 6, 0.22));
+      border: 1px solid rgba(245, 158, 11, 0.38);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+    .tg-pirozhki-mobile-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .tg-pirozhki-mobile-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .tg-pirozhki-act-btn {
+      padding: 9px 6px;
+      border-radius: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.32);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease;
+    }
+    .tg-pirozhki-act-btn.primary {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-color: rgba(255, 255, 255, 0.22);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(245, 158, 11, 0.35);
+    }
+    .tg-pirozhki-act-btn:active {
+      transform: scale(0.95);
     }
 
   </style>
@@ -9116,16 +9238,45 @@
         display: none !important;
       }
 
-      /* Не кликабельный логотип и название приложения на мобильной версии */
+      /* Мобильная верхняя панель: логотип слева + баланс пирожков и профиль справа */
       .mobile-brand-header {
         display: flex !important;
         align-items: center;
-        gap: 11px;
-        padding: 12px 14px 4px;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px 4px;
         margin-bottom: 2px;
-        pointer-events: none !important;
         user-select: none !important;
-        cursor: default !important;
+      }
+      .mobile-brand-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        pointer-events: none !important;
+      }
+      .mobile-brand-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        pointer-events: auto !important;
+      }
+      .mobile-hdr-icon-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text, #fff);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+        transition: transform 0.12s ease, background 0.15s ease;
+      }
+      .mobile-hdr-icon-btn:active {
+        transform: scale(0.92);
+        background: rgba(255, 255, 255, 0.14);
       }
 
       .mobile-brand-logo {
@@ -13091,10 +13242,25 @@
     </div>
     <!-- CHATS VIEW (default) -->
     <div class="tg-chats-content" id="tgChatsContent">
-      <!-- Не кликабельные логотип и название только для мобильной версии -->
+      <!-- Мобильная шапка с быстрым доступом к балансу Пирожков, Магазину и Профилю -->
       <div class="mobile-brand-header">
-        <img src="logo.png" class="mobile-brand-logo" alt="Logo" draggable="false">
-        <span class="mobile-brand-title" data-i18n="appTitle">NonsenseChat</span>
+        <div class="mobile-brand-left">
+          <img src="logo.png" class="mobile-brand-logo" alt="Logo" draggable="false">
+          <span class="mobile-brand-title" data-i18n="appTitle">NonsenseChat</span>
+        </div>
+        <div class="mobile-brand-actions">
+          <div class="pirozhki-balance-badge" id="mobilePirozhkiBadge" onclick="openPirozhkiStore('buy')" title="Баланс пирожков и магазин">
+            <img src="pirozhok.png" class="pirozhok-coin-icon" alt="Пирожок">
+            <span id="mobilePirozhkiCount">0</span>
+            <button type="button" class="pirozhki-add-btn" title="Магазин пирожков">+</button>
+          </div>
+          <button type="button" class="mobile-hdr-icon-btn" onclick="openSteamCustomizer()" title="Темы и рамки профиля" style="color:#fbbf24;">
+            <i class="fa-solid fa-palette"></i>
+          </button>
+          <button type="button" class="mobile-hdr-icon-btn" onclick="if(typeof me!=='undefined'&&me&&me.uid)viewProfile(me.uid)" title="Мой профиль">
+            <i class="fa-solid fa-id-card"></i>
+          </button>
+        </div>
       </div>
       <div class="profile-row" onclick="openMyProfile()">
         <div class="my-ava-wrap">
@@ -13169,7 +13335,11 @@
     <div class="tg-tab-screen" id="tgScreenProfile" style="display:none">
       <div class="tg-screen-header">
         <div class="tg-screen-title" data-i18n="navProfile">Профиль</div>
-        <button class="tg-screen-act-btn" onclick="openMyProfile()" title="Редактировать профиль"><i class="fa-solid fa-pen"></i></button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="tg-screen-act-btn" onclick="openPirozhkiStore('buy')" title="Магазин пирожков" style="color:#fbbf24;"><img src="pirozhok.png" style="width:18px;height:18px;" alt="🥟"></button>
+          <button class="tg-screen-act-btn" onclick="openSteamCustomizer()" title="Темы и рамки профиля" style="color:#66c0f4;"><i class="fa-solid fa-palette"></i></button>
+          <button class="tg-screen-act-btn" onclick="openMyProfile()" title="Редактировать профиль"><i class="fa-solid fa-pen"></i></button>
+        </div>
       </div>
       <div class="tg-screen-body tg-profile-body" id="tgProfileBody"></div>
     </div>
@@ -19436,6 +19606,10 @@
         avaEl.alt = p.nick || p.name || '';
         avaEl.src = optImg(p.avatar, 150) || '';
       }
+      if (typeof renderTgProfileScreen === 'function') {
+        const pEl = document.getElementById('tgScreenProfile');
+        if (pEl && pEl.classList.contains('active')) renderTgProfileScreen();
+      }
     }
 
     /* ═══ SIGNAL PROTOCOL E2EE & UNIVERSAL ENCRYPTION MODULE ═══ */
@@ -21621,6 +21795,9 @@
       if (typeof vpUid !== 'undefined' && vpUid === me.uid && typeof renderSteamProfile === 'function') {
         renderSteamProfile(me, me.uid);
       }
+      if (typeof renderTgProfileScreen === 'function') {
+        try { renderTgProfileScreen(); } catch (_) {}
+      }
       showToast('Поздравляем! 🎉', itemName.charAt(0).toUpperCase() + itemName.slice(1) + ' успешно куплено и применено!', 'success');
     }
     window.buyAndApplyCustomization = buyAndApplyCustomization;
@@ -21663,6 +21840,9 @@
       closeModal('modal-steam-customizer');
       if (typeof vpUid !== 'undefined' && vpUid === me.uid && typeof renderSteamProfile === 'function') {
         renderSteamProfile(me, me.uid);
+      }
+      if (typeof renderTgProfileScreen === 'function') {
+        try { renderTgProfileScreen(); } catch (_) {}
       }
       showToast('Оформление', 'Оформление профиля успешно обновлено!', 'success');
     }
@@ -27287,8 +27467,8 @@
     window.dismissNotifPrompt = dismissNotifPrompt;
 
     /* ═══ IN-APP APK UPDATE SYSTEM (VK CLOUD OBJECT STORAGE) ═══ */
-    let APP_LOCAL_VERSION = '3.2.2';
-    let APP_LOCAL_VERSION_CODE = 322;
+    let APP_LOCAL_VERSION = '3.3.0';
+    let APP_LOCAL_VERSION_CODE = 330;
     let _latestApkRelease = null;
     let _apkDownloadTimer = null;
 
@@ -36319,7 +36499,20 @@ document.addEventListener('click', function(e) {
           snap.forEach(doc => {
             const d = doc.data();
             if (d && doc.id !== (me?.uid || '')) {
-              usersMap.set(doc.id, { uid: doc.id, nick: d.nick || 'Пользователь', username: d.username || '', ava: d.ava || d.avatar || '', online: !!d.online, bio: d.bio || '', prefix: d.prefix || '', prefixStyle: d.prefixStyle || 'gold' });
+              usersMap.set(doc.id, {
+                uid: doc.id,
+                nick: d.nick || 'Пользователь',
+                username: d.username || '',
+                ava: d.ava || d.avatar || '',
+                online: !!d.online,
+                bio: d.bio || '',
+                prefix: d.prefix || '',
+                prefixStyle: d.prefixStyle || 'gold',
+                prefixSound: d.prefixSound || '',
+                prefixSoundName: d.prefixSoundName || '',
+                steamFrame: d.steamFrame || 'none',
+                steamTheme: d.steamTheme || 'classic'
+              });
             }
           });
           if (Array.isArray(allChats)) {
@@ -36389,6 +36582,8 @@ document.addEventListener('click', function(e) {
               <div class="tg-item-sub ${subClass}">${subText}</div>
             </div>
             <div class="tg-item-actions" onclick="event.stopPropagation()">
+              <button class="tg-item-btn" onclick="viewProfile('${u.uid}')" title="Профиль пользователя"><i class="fa-solid fa-id-card"></i></button>
+              <button class="tg-item-btn" style="color:#fbbf24" onclick="if(typeof openGiftPirozhkiForUser==='function')openGiftPirozhkiForUser('${u.uid}','${escHtml(u.nick)}')" title="Угостить пирожками"><img src="pirozhok.png" style="width:15px;height:15px" alt="🥟"></button>
               <button class="tg-item-btn acc" onclick="startDirectChatWithUser('${u.uid}', '${escHtml(u.nick)}', '${escHtml(u.ava)}')" title="Написать"><i class="fa-solid fa-comment"></i></button>
               <button class="tg-item-btn" onclick="startDirectCallWithUser('${u.uid}', '${escHtml(u.nick)}', '${escHtml(u.ava)}')" title="Позвонить"><i class="fa-solid fa-phone"></i></button>
             </div>
@@ -36503,13 +36698,13 @@ document.addEventListener('click', function(e) {
     function renderTgAppInfoScreen() {
       const el = document.getElementById('tgAppInfoBody');
       if (!el) return;
-      const curVersion = 'v1.0 (2.6.4)';
+      const curVersion = 'v' + (typeof APP_LOCAL_VERSION !== 'undefined' ? APP_LOCAL_VERSION : '3.3.0');
       el.innerHTML = `
         <div class="tg-appinfo-hero">
           <img src="logo.png" class="tg-appinfo-hero-logo" onerror="this.src='icon-192.png'">
           <div class="tg-appinfo-hero-title">NonsenseChat</div>
-          <div class="tg-appinfo-hero-badge"><i class="fa-solid fa-certificate"></i> ${curVersion}</div>
-          <div class="tg-appinfo-hero-sub">Быстрый, дерзкий и свободный мессенджер без лишнего пафоса</div>
+          <div class="tg-appinfo-hero-badge"><i class="fa-solid fa-certificate"></i> ${curVersion} Android Edition</div>
+          <div class="tg-appinfo-hero-sub">Быстрый, дерзкий и свободный мессенджер со всеми фишками: Пирожки, Кастомные префиксы со звуком, Темы и Анимированные рамки профилей</div>
         </div>
 
         <div class="tg-appinfo-card">
@@ -36519,26 +36714,26 @@ document.addEventListener('click', function(e) {
             <span class="tg-appinfo-val">NonsenseChat Team</span>
           </div>
           <div class="tg-appinfo-item">
-            <span class="tg-appinfo-label">Год выпуска:</span>
-            <span class="tg-appinfo-val">2026</span>
+            <span class="tg-appinfo-label">Версия сборки:</span>
+            <span class="tg-appinfo-val">${curVersion} (build ${typeof APP_LOCAL_VERSION_CODE !== 'undefined' ? APP_LOCAL_VERSION_CODE : 330})</span>
           </div>
           <div class="tg-appinfo-item">
             <span class="tg-appinfo-label">Платформа:</span>
-            <span class="tg-appinfo-val">Android App & Web PWA</span>
+            <span class="tg-appinfo-val">Android Native & Web PWA</span>
           </div>
           <div class="tg-appinfo-item">
             <span class="tg-appinfo-label">Официальный сайт:</span>
             <a href="https://nonsensechat.ru" target="_blank" class="tg-appinfo-link">nonsensechat.ru</a>
           </div>
           <div class="tg-appinfo-item">
-            <span class="tg-appinfo-label">База данных & Сеть:</span>
-            <span class="tg-appinfo-val">Firebase & WebRTC</span>
+            <span class="tg-appinfo-label">Стек технологий:</span>
+            <span class="tg-appinfo-val">Firebase, WebRTC, WebAudio, VK Cloud S3</span>
           </div>
         </div>
 
         <div class="tg-appinfo-actions">
-          <button class="tg-appinfo-btn primary" onclick="checkAppUpdates()">
-            <i class="fa-solid fa-rotate"></i> Проверить обновления
+          <button class="tg-appinfo-btn primary" onclick="if(typeof checkForApkUpdates==='function')checkForApkUpdates(true);else checkAppUpdates();">
+            <i class="fa-solid fa-rotate"></i> Проверить обновления APK
           </button>
           <button class="tg-appinfo-btn secondary" onclick="shareNonsenseApp()">
             <i class="fa-solid fa-share-nodes"></i> Поделиться приложением
@@ -36548,37 +36743,31 @@ document.addEventListener('click', function(e) {
     }
 
     async function checkAppUpdates() {
-      try {
-        if (typeof showToast === 'function') showToast('Обновления', 'Проверка актуальной версии...', 'info');
-        const res = await fetch('version.json?t=' + Date.now());
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.v) {
-            showToast('Обновления', 'У вас актуальная версия: ' + data.v, 'success');
-            return;
-          }
-        }
-        showToast('Обновления', 'У вас установлена последняя версия', 'success');
-      } catch (_) {
-        if (typeof showToast === 'function') showToast('Обновления', 'У вас установлена последняя версия', 'success');
+      if (typeof checkForApkUpdates === 'function') {
+        checkForApkUpdates(true);
+        return;
       }
+      if (typeof showToast === 'function') showToast('Обновления', 'У вас установлена актуальная версия v' + APP_LOCAL_VERSION, 'success');
     }
 
     function shareNonsenseApp() {
+      const shareTitle = 'Беспонтовый Чат (NonsenseChat)';
+      const shareText = 'Общайся в NonsenseChat — звонки, пирожки, кастомные префиксы со звуком и профили: https://nonsensechat.ru';
+      const shareUrl = 'https://nonsensechat.ru';
+      if (window.AndroidBridge && typeof window.AndroidBridge.shareText === 'function') {
+        window.AndroidBridge.shareText(shareTitle, shareText, shareUrl);
+        return;
+      }
       if (navigator.share) {
-        navigator.share({
-          title: 'NonsenseChat',
-          text: 'Общайся в NonsenseChat!',
-          url: 'https://nonsensechat.ru'
-        }).catch(() => {});
+        navigator.share({ title: shareTitle, text: shareText, url: shareUrl }).catch(() => {});
       } else {
-        if (typeof copyToClipboard === 'function') copyToClipboard('https://nonsensechat.ru');
-        else if (navigator.clipboard) navigator.clipboard.writeText('https://nonsensechat.ru');
-        if (typeof showToast === 'function') showToast('Ссылка скопирована', 'https://nonsensechat.ru', 'success');
+        if (typeof copyToClipboard === 'function') copyToClipboard(shareUrl);
+        else if (navigator.clipboard) navigator.clipboard.writeText(shareUrl);
+        if (typeof showToast === 'function') showToast('Ссылка скопирована', 'Ссылка на приложение скопирована в буфер обмена', 'success');
       }
     }
 
-    // Render Profile Screen
+    // Render Profile Screen (Full Android Port with Pirozhki, Themes, Frames, Prefix Sounds, Creator Panel)
     function renderTgProfileScreen() {
       const bodyEl = document.getElementById('tgProfileBody');
       if (!bodyEl) return;
@@ -36590,8 +36779,8 @@ document.addEventListener('click', function(e) {
       const initial = (me.nick || '?')[0].toUpperCase();
       const curAva = (me.avatar || me.ava || (document.getElementById('myAva') && document.getElementById('myAva').src)) || '';
       const avaHtml = curAva
-        ? `<img class="tg-profile-hero-ava" src="${escHtml(curAva)}" onerror="this.outerHTML='<div class=\\\'tg-profile-hero-ava tg-item-ava-ph\\\' style=\\\width:88px;height:88px;font-size:30px\\\'>${initial}</div>'">`
-        : `<div class="tg-profile-hero-ava tg-item-ava-ph" style="width:88px;height:88px;font-size:30px">${initial}</div>`;
+        ? `<img class="tg-profile-hero-ava" src="${escHtml(curAva)}" onerror="this.outerHTML='<div class=\\'tg-profile-hero-ava tg-item-ava-ph\\' style=\\'width:100%;height:100%;font-size:30px\\'>${initial}</div>'">`
+        : `<div class="tg-profile-hero-ava tg-item-ava-ph" style="width:100%;height:100%;font-size:30px">${initial}</div>`;
 
       const themeNames = { 'dark': 'Тёмная (стандарт)', 'coffee-dark': 'Кофейная тёмная', 'light': 'Кофейная светлая', 'moss': 'Моховая тёмная' };
       const curThemeKey = localStorage.getItem('theme') || 'dark';
@@ -36604,30 +36793,94 @@ document.addEventListener('click', function(e) {
       const isDev = (typeof CREATOR_UID !== 'undefined' && me.uid === CREATOR_UID);
       const isFemale = (typeof isFemaleUser === 'function' && isFemaleUser(me, me.uid));
 
+      const equippedSteamTheme = me.steamTheme || 'classic';
+      const equippedSteamFrame = me.steamFrame || 'none';
+      const steamThemeLabels = {
+        classic: 'Тёмный графит',
+        cyberpunk: 'Cyberpunk Neon',
+        galaxy: 'Deep Space',
+        bakery: 'Пекарня Пирожков',
+        matrix: 'Matrix Green',
+        crimson: 'Crimson Fire'
+      };
+      const steamFrameLabels = {
+        none: 'Обычная',
+        gold: 'Золото',
+        neon: 'Неон',
+        fire: 'Пламя',
+        rainbow: 'Радуга'
+      };
+      const curSteamSummary = (steamThemeLabels[equippedSteamTheme] || 'Графит') + ' • ' + (steamFrameLabels[equippedSteamFrame] || 'Без рамки');
+
+      const pirozhkiBal = Math.max(0, parseInt(me.pirozhki, 10) || 0);
+      const pirozhkiRub = (pirozhkiBal * 0.42).toFixed(2);
+      const prefixBadgeHtml = (typeof renderUserPrefixBadge === 'function' && me.prefix) ? renderUserPrefixBadge(me, true) : '';
+      const curSoundLabel = me.prefixSoundName || (me.prefixSound ? 'Установлен 🔊' : 'Настроить');
+
       bodyEl.innerHTML = `
-        <div class="tg-profile-hero">
+        <div class="tg-profile-hero theme-${escHtml(equippedSteamTheme)}">
           <div class="tg-profile-hero-ava-wrap">
-            ${avaHtml}
+            <div class="steam-ava-frame frame-${escHtml(equippedSteamFrame)} tg-hero-framed-ava">
+              ${avaHtml}
+            </div>
             <div class="tg-hero-online-dot" title="В сети"></div>
             <div class="tg-profile-hero-ava-cam" onclick="document.getElementById('mpAvaFile').click()" title="Изменить фото">
               <i class="fa-solid fa-camera"></i>
             </div>
           </div>
-          <div class="tg-profile-hero-name">
-            ${escHtml(me.nick || 'Пользователь')}
-            ${isDev ? ' <span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}
-            ${isFemale ? ' <span class="female-badge" title="Девушка"></span>' : ''}
+          <div class="tg-profile-hero-name" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;">
+            <span>${escHtml(me.nick || 'Пользователь')}</span>
+            ${prefixBadgeHtml}
+            ${isDev ? '<span class="dev-badge" title="Разработчик">&lt;/&gt;</span>' : ''}
+            ${isFemale ? '<span class="female-badge" title="Девушка"></span>' : ''}
           </div>
           <div class="tg-profile-hero-sub">
-            ${me.username ? '@' + escHtml(me.username) : ('@' + escHtml(me.nick || 'user'))} · ${isDev ? 'СЕО Бч' : 'В сети'}
+            ${me.username ? '@' + escHtml(me.username) : ('@' + escHtml(me.nick || 'user'))} · ${isDev ? 'СЕО БЧ' : 'В сети'}
           </div>
 
-          <div class="tg-profile-hero-btns">
-            <button class="tg-hero-btn primary" onclick="if(typeof me!=='undefined'&&me&&me.uid)viewProfile(me.uid)" title="Посмотреть, как ваш профиль видят другие">
-              <i class="fa-solid fa-id-card"></i> Посмотреть свой профиль
+          <div class="tg-profile-hero-btns" style="flex-wrap:wrap;">
+            <button class="tg-hero-btn primary" onclick="if(typeof me!=='undefined'&&me&&me.uid)viewProfile(me.uid)" title="Открыть полный профиль со статистикой и стеной">
+              <i class="fa-solid fa-id-card"></i> Мой профиль
+            </button>
+            <button class="tg-hero-btn secondary" style="background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;" onclick="openSteamCustomizer()" title="Темы профиля и рамки аватара за пирожки">
+              <i class="fa-solid fa-palette"></i> Темы и рамки
             </button>
             <button class="tg-hero-btn secondary" onclick="openMyProfile()" title="Редактировать данные">
-              <i class="fa-solid fa-user-pen"></i> Редактировать
+              <i class="fa-solid fa-user-pen"></i> Данные
+            </button>
+          </div>
+        </div>
+
+        <!-- ВИДЖЕТ БАЛАНСА И МАГАЗИНА ПИРОЖКОВ НА ANDROID -->
+        <div class="tg-pirozhki-mobile-card">
+          <div class="tg-pirozhki-mobile-top">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:42px;height:42px;border-radius:12px;background:rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;">
+                <img src="pirozhok.png" class="pirozhok-coin-icon xl" alt="🥟">
+              </div>
+              <div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.75);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Баланс пирожков</div>
+                <div style="font-size:19px;font-weight:900;color:#fbbf24;display:flex;align-items:baseline;gap:6px;">
+                  <span id="tgProfilePirozhkiCount">${pirozhkiBal.toLocaleString('ru-RU')}</span> 🥟
+                  <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7);">~( <span id="tgProfilePirozhkiRub">${pirozhkiRub}</span> ₽ )</span>
+                </div>
+              </div>
+            </div>
+            ${isDev ? `
+              <button type="button" class="tg-pirozhki-act-btn" style="background:linear-gradient(135deg,#ef4444,#dc2626);border:none;padding:8px 11px;box-shadow:0 3px 10px rgba(239,68,68,0.4);" onclick="openCreatorGrantModal()">
+                ⚡ Выдать себе
+              </button>
+            ` : ''}
+          </div>
+          <div class="tg-pirozhki-mobile-actions">
+            <button type="button" class="tg-pirozhki-act-btn primary" onclick="openPirozhkiStore('buy')">
+              <i class="fa-solid fa-plus"></i> Пополнить
+            </button>
+            <button type="button" class="tg-pirozhki-act-btn" onclick="openPirozhkiStore('prefixes')">
+              <i class="fa-solid fa-tag" style="color:#fbbf24"></i> Префиксы
+            </button>
+            <button type="button" class="tg-pirozhki-act-btn" onclick="openPirozhkiStore('gift')">
+              <i class="fa-solid fa-gift" style="color:#f472b6"></i> Угостить
             </button>
           </div>
         </div>
@@ -36635,29 +36888,63 @@ document.addEventListener('click', function(e) {
         ${me.bio ? `
           <div class="tg-profile-bio-box" onclick="openMyProfile()" title="Нажмите для изменения био">
             <div style="font-size:11px;color:var(--text2);font-weight:700;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between">
-              <span><i class="fa-solid fa-quote-left" style="opacity:.6"></i> О СЕБЕ / СТАТУС</span>
+              <span><i class="fa-solid fa-quote-left" style="opacity:.6"></i> О СЕБЕ / СВОДКА</span>
               <span style="font-size:11px;color:var(--acc);font-weight:600">изменить ✏️</span>
             </div>
             <div style="font-size:13.5px;color:var(--text);line-height:1.4">${escHtml(me.bio)}</div>
           </div>
         ` : ''}
 
+        <!-- КАСТОМИЗАЦИЯ ПРОФИЛЯ, РАМКИ, ПРЕФИКСЫ И ЗВУК ДО 2 СЕК -->
+        <div class="tg-profile-settings-group">
+          <div class="tg-profile-setting-item" onclick="openSteamCustomizer()">
+            <div class="tg-setting-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+            <div class="tg-setting-title">Темы профиля и рамки аватара</div>
+            <div class="tg-setting-val" style="color:#fbbf24">${escHtml(curSteamSummary)}</div>
+            <div class="tg-setting-arr">›</div>
+          </div>
+          <div class="tg-profile-setting-item" onclick="openPirozhkiStore('prefixes')">
+            <div class="tg-setting-icon" style="background:linear-gradient(135deg,#ec4899,#be185d)"><i class="fa-solid fa-tag"></i></div>
+            <div class="tg-setting-title">Кастомный префикс</div>
+            <div class="tg-setting-val">${me.prefix ? escHtml(me.prefix) : 'Выбрать / Создать'}</div>
+            <div class="tg-setting-arr">›</div>
+          </div>
+          <div class="tg-profile-setting-item" onclick="openPrefixSoundModal()">
+            <div class="tg-setting-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)"><i class="fa-solid fa-volume-high"></i></div>
+            <div class="tg-setting-title">Звук префикса (до 2 сек)</div>
+            <div class="tg-setting-val">${escHtml(curSoundLabel)}</div>
+            <div class="tg-setting-arr">›</div>
+          </div>
+          <div class="tg-profile-setting-item" onclick="if(typeof me!=='undefined'&&me&&me.uid)viewProfile(me.uid)">
+            <div class="tg-setting-icon" style="background:linear-gradient(135deg,#6366f1,#4f46e5)"><i class="fa-solid fa-id-card"></i></div>
+            <div class="tg-setting-title">Стена комментариев (+rep) и профиль</div>
+            <div class="tg-setting-val">Открыть</div>
+            <div class="tg-setting-arr">›</div>
+          </div>
+        </div>
+
         <div class="tg-profile-quick-grid">
+          <div class="tg-quick-card" onclick="switchTgTab('contacts')">
+            <div class="tg-quick-icon" style="background:linear-gradient(135deg,#10b981,#059669)"><i class="fa-solid fa-address-book"></i></div>
+            <div class="tg-quick-text">Контакты</div>
+          </div>
+          <div class="tg-quick-card" onclick="switchTgTab('calls')">
+            <div class="tg-quick-icon" style="background:linear-gradient(135deg,#06b6d4,#0284c7)"><i class="fa-solid fa-phone"></i></div>
+            <div class="tg-quick-text">Звонки</div>
+          </div>
           <div class="tg-quick-card" onclick="openModal('modal-folders')">
             <div class="tg-quick-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="fa-solid fa-folder"></i></div>
             <div class="tg-quick-text">Папки чатов</div>
           </div>
-          <div class="tg-quick-card" onclick="openModal('modal-friend')">
-            <div class="tg-quick-icon" style="background:linear-gradient(135deg,#10b981,#059669)"><i class="fa-solid fa-user-plus"></i></div>
-            <div class="tg-quick-text">Добавить друга</div>
-          </div>
-          <div class="tg-quick-card" onclick="openModal('modal-group')">
-            <div class="tg-quick-icon" style="background:linear-gradient(135deg,#3b82f6,#2563eb)"><i class="fa-solid fa-users"></i></div>
-            <div class="tg-quick-text">Создать группу</div>
-          </div>
         </div>
 
         <div class="tg-profile-settings-group">
+          <div class="tg-profile-setting-item" onclick="openAiHubSettings()">
+            <div class="tg-setting-icon" style="background:linear-gradient(135deg,#a855f7,#7e22ce)"><i class="fa-solid fa-robot"></i></div>
+            <div class="tg-setting-title">Настройки ИИ-Хаба (AI Hub)</div>
+            <div class="tg-setting-val">Открыть</div>
+            <div class="tg-setting-arr">›</div>
+          </div>
           <div class="tg-profile-setting-item" onclick="checkForApkUpdates(true)">
             <div class="tg-setting-icon" style="background:linear-gradient(135deg,#06b6d4,#0284c7)"><i class="fa-solid fa-arrows-rotate"></i></div>
             <div class="tg-setting-title">${(typeof isNativeAndroidApp === 'function' && isNativeAndroidApp()) ? 'Проверить обновления APK' : 'Приложение для Android'}</div>
@@ -36676,20 +36963,14 @@ document.addEventListener('click', function(e) {
             <div class="tg-setting-val">Открыть</div>
             <div class="tg-setting-arr">›</div>
           </div>
-          <div class="tg-profile-setting-item" onclick="if(typeof me!=='undefined'&&me&&me.uid)viewProfile(me.uid)">
-            <div class="tg-setting-icon" style="background:linear-gradient(135deg,#6366f1,#4f46e5)"><i class="fa-solid fa-eye"></i></div>
-            <div class="tg-setting-title">Профиль (как видят другие)</div>
-            <div class="tg-setting-val">Открыть</div>
-            <div class="tg-setting-arr">›</div>
-          </div>
           <div class="tg-profile-setting-item" onclick="openMyProfile()">
             <div class="tg-setting-icon" style="background:linear-gradient(135deg,#3b82f6,#2563eb)"><i class="fa-solid fa-user-pen"></i></div>
-            <div class="tg-setting-title">Редактировать данные</div>
+            <div class="tg-setting-title">Редактировать личные данные и звук</div>
             <div class="tg-setting-arr">›</div>
           </div>
           <div class="tg-profile-setting-item" onclick="toggleInlineThemePicker()">
             <div class="tg-setting-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)"><i class="fa-solid fa-palette"></i></div>
-            <div class="tg-setting-title">Оформление и тема</div>
+            <div class="tg-setting-title">Цветовая тема чатов</div>
             <div class="tg-setting-val">${curTheme}</div>
             <div class="tg-setting-arr">›</div>
           </div>
@@ -36739,7 +37020,7 @@ document.addEventListener('click', function(e) {
           <div class="tg-profile-setting-item" onclick="switchTgTab('appinfo')">
             <div class="tg-setting-icon" style="background:linear-gradient(135deg,#64748b,#475569)"><i class="fa-solid fa-circle-info"></i></div>
             <div class="tg-setting-title">О сервисе и обновления</div>
-            <div class="tg-setting-val">v1.0</div>
+            <div class="tg-setting-val">v${APP_LOCAL_VERSION}</div>
             <div class="tg-setting-arr">›</div>
           </div>
         </div>
@@ -36782,15 +37063,41 @@ document.addEventListener('click', function(e) {
       }
     }
 
+    // Helper: Close only the topmost open modal or customConfirm dialog (respecting dynamic z-index stack)
+    function closeTopmostModalOnBack() {
+      const cc = document.getElementById('customConfirm');
+      if (cc && !cc.classList.contains('hidden')) {
+        const cancelBtn = document.getElementById('ccCancel');
+        if (cancelBtn) cancelBtn.click();
+        else cc.classList.add('hidden');
+        return true;
+      }
+      const openModals = Array.from(document.querySelectorAll('.modal:not(.hidden):not(.closing)'))
+        .filter(m => m.id !== 'modal-legal-mandatory');
+      if (openModals.length > 0) {
+        let topModal = openModals[openModals.length - 1];
+        let highestZ = -1;
+        openModals.forEach(m => {
+          const z = parseInt(m.style.zIndex || window.getComputedStyle(m).zIndex, 10) || 0;
+          if (z >= highestZ) {
+            highestZ = z;
+            topModal = m;
+          }
+        });
+        if (topModal && typeof closeModal === 'function') {
+          closeModal(topModal.id);
+          return true;
+        }
+      }
+      return false;
+    }
+    window.closeTopmostModalOnBack = closeTopmostModalOnBack;
+
     // Android Enhanced Back Button Handling
     window.addEventListener('popstate', function (e) {
+      if (closeTopmostModalOnBack()) return;
       if (document.body.classList.contains('mobile-chat-open')) {
         closeMobileChat();
-        return;
-      }
-      const openModals = document.querySelectorAll('.modal:not(.hidden)');
-      if (openModals.length > 0) {
-        openModals.forEach(m => closeModal(m.id));
         return;
       }
       if (typeof window.tgpOpen !== 'undefined' && window.tgpOpen) {
@@ -37040,17 +37347,27 @@ document.addEventListener('click', function(e) {
 
     function updateUserPirozhkiUI(count) {
       const c = Math.max(0, parseInt(count, 10) || 0);
+      const fmt = c.toLocaleString('ru-RU');
+      const rub = (c * 0.42).toFixed(2);
       if (typeof me !== 'undefined' && me) me.pirozhki = c;
       const countEl = document.getElementById('myPirozhkiCount');
-      if (countEl) countEl.textContent = c.toLocaleString('ru-RU');
+      if (countEl) countEl.textContent = fmt;
+      const mobCountEl = document.getElementById('mobilePirozhkiCount');
+      if (mobCountEl) mobCountEl.textContent = fmt;
+      const tgProfCountEl = document.getElementById('tgProfilePirozhkiCount');
+      if (tgProfCountEl) tgProfCountEl.textContent = fmt;
+      const tgProfRubEl = document.getElementById('tgProfilePirozhkiRub');
+      if (tgProfRubEl) tgProfRubEl.textContent = rub;
+      const custBalEl = document.getElementById('custModalPirozhkiBal');
+      if (custBalEl) custBalEl.textContent = fmt;
       const storeBalEl = document.getElementById('storeModalBalance');
-      if (storeBalEl) storeBalEl.textContent = c.toLocaleString('ru-RU');
+      if (storeBalEl) storeBalEl.textContent = fmt;
       const storeRubEl = document.getElementById('storeModalRubEquivalent');
-      if (storeRubEl) storeRubEl.textContent = (c * 0.42).toFixed(2);
+      if (storeRubEl) storeRubEl.textContent = rub;
       const setBalEl = document.getElementById('settingsPirozhkiBalance');
-      if (setBalEl) setBalEl.textContent = c.toLocaleString('ru-RU');
+      if (setBalEl) setBalEl.textContent = fmt;
       const setRubEl = document.getElementById('settingsPirozhkiRub');
-      if (setRubEl) setRubEl.textContent = (c * 0.42).toFixed(2);
+      if (setRubEl) setRubEl.textContent = rub;
     }
     window.updateUserPirozhkiUI = updateUserPirozhkiUI;
 
@@ -37438,6 +37755,11 @@ document.addEventListener('click', function(e) {
         e.preventDefault();
       }
       if (!el) return;
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.haptic === 'function') {
+          window.AndroidBridge.haptic();
+        }
+      } catch (_) {}
       const rawSound = el.dataset ? el.dataset.sound : el.getAttribute('data-sound');
       if (!rawSound) return;
       const soundSource = decodeURIComponent(rawSound);
@@ -38659,7 +38981,8 @@ document.addEventListener('click', function(e) {
       const pirozhkiCount = _selectedPirozhkiPack.count;
       const uid = (typeof me !== 'undefined' && me && me.uid) || (window.auth && auth.currentUser && auth.currentUser.uid) || '';
       const email = (typeof me !== 'undefined' && me && me.email) || (window.auth && auth.currentUser && auth.currentUser.email) || '';
-      const returnUrl = window.location.origin + window.location.pathname;
+      const isFileOrAndroid = (window.location.protocol === 'file:' || !window.location.origin || window.location.origin === 'null' || (typeof isNativeAndroidApp === 'function' && isNativeAndroidApp()));
+      const returnUrl = isFileOrAndroid ? 'https://nonsensechat.ru/' : (window.location.origin + window.location.pathname);
 
       try {
         let checkoutData = null;

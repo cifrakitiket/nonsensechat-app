@@ -22,8 +22,8 @@ android {
         applicationId "com.nonsensechat.rn"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 322
-        versionName "3.2.2"
+        versionCode 330
+        versionName "3.3.0"
     }
     signingConfigs {
         debug {
