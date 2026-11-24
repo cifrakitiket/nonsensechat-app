@@ -21,7 +21,7 @@ import { RADII } from '../theme/liquidGlass';
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
-  const { loginWithNickOrEmail, registerAccount, appTheme } = useApp();
+  const { loginWithNickOrEmail, registerAccount, resetPassword, appTheme, showToast } = useApp();
 
   const [isReg, setIsReg] = useState(false);
   const [loginInput, setLoginInput] = useState('');
@@ -58,6 +58,23 @@ export default function AuthScreen() {
         'auth/weak-password': 'Пароль должен быть не менее 6 символов',
       };
       setErrorMsg(map[code] || e?.message || 'Ошибка авторизации');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setErrorMsg('');
+    if (!loginInput.trim()) {
+      setErrorMsg('Введите ваш Email или @логин выше для сброса пароля');
+      return;
+    }
+    setLoading(true);
+    try {
+      const sentEmail = await resetPassword(loginInput);
+      showToast('Письмо отправлено', `Ссылка для сброса пароля отправлена на ${sentEmail}`, 'success');
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Не удалось отправить письмо для сброса пароля');
     } finally {
       setLoading(false);
     }
@@ -141,6 +158,12 @@ export default function AuthScreen() {
               )}
             </ScalePressable>
 
+            {!isReg && (
+              <TouchableOpacity style={styles.forgotBtn} onPress={handleForgotPassword} disabled={loading}>
+                <Text style={[styles.forgotText, { color: appTheme.accent }]}>Забыли пароль?</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={styles.switchBtn}
               onPress={() => {
@@ -187,4 +210,6 @@ const styles = StyleSheet.create({
   submitText: { color: '#000', fontSize: 15.5, fontWeight: '900' },
   switchBtn: { marginTop: 16, paddingVertical: 8, alignItems: 'center' },
   switchText: { fontSize: 13.5, fontWeight: '700' },
+  forgotBtn: { marginTop: 12, paddingVertical: 6, alignItems: 'center' },
+  forgotText: { fontSize: 13, fontWeight: '600' },
 });

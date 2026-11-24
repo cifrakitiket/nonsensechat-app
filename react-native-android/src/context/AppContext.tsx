@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
 } from 'firebase/auth';
 import { ref, onValue, get, set, update, push } from 'firebase/database';
@@ -145,6 +146,7 @@ interface AppContextValue {
   dismissDialog: () => void;
   loginWithNickOrEmail: (loginInput: string, password: string) => Promise<void>;
   registerAccount: (email: string, nick: string, password: string) => Promise<void>;
+  resetPassword: (loginInput: string) => Promise<string>;
   logout: () => Promise<void>;
   openOrCreateDm: (targetUid: string) => Promise<ChatItem | null>;
   addFriendByNick: (nickOrUid: string) => Promise<ChatItem | null>;
@@ -331,6 +333,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     await signInWithEmailAndPassword(auth, targetEmail, password);
+  };
+
+  const resetPassword = async (loginInput: string): Promise<string> => {
+    const clean = loginInput.trim();
+    if (!clean) throw new Error('Введите логин (@username) или Email');
+    let targetEmail = clean;
+
+    if (!clean.includes('@')) {
+      const nickLower = clean.replace(/^@+/, '').toLowerCase();
+      const unSnap = await get(ref(rtdb, `usernames/${nickLower}`));
+      const unVal = unSnap.val();
+      if (unVal && unVal.email) {
+        targetEmail = unVal.email;
+      } else {
+        const allUsersSnap = await get(ref(rtdb, 'users'));
+        const allUsers = allUsersSnap.val() || {};
+        let found = '';
+        Object.keys(allUsers).forEach((k) => {
+          const u = allUsers[k];
+          if (u && String(u.nickLower || u.nick || '').toLowerCase() === nickLower && u.email) {
+            found = u.email;
+          }
+        });
+        if (!found) {
+          throw new Error(`Пользователь @${nickLower} не найден`);
+        }
+        targetEmail = found;
+      }
+    }
+
+    await sendPasswordResetEmail(auth, targetEmail);
+    return targetEmail;
   };
 
   const registerAccount = async (email: string, nick: string, password: string) => {
@@ -626,6 +660,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dismissDialog,
         loginWithNickOrEmail,
         registerAccount,
+        resetPassword,
         logout,
         openOrCreateDm,
         addFriendByNick,

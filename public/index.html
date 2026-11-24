@@ -18598,12 +18598,12 @@
 
         let sentSuccess = false;
 
-        // 1. Пробуем через Cloud Function sendLoginOtp
+        // 1. Пробуем через Cloud Function sendLoginOtp (Resend / SMTP)
         if (window.firebase && window.firebase.functions) {
           try {
             const sendFn = window.firebase.functions().httpsCallable('sendLoginOtp');
             const res = await sendFn({ emailOrLogin: email });
-            if (res && res.data && res.data.success) {
+            if (res && res.data && (res.data.method === 'resend' || res.data.method === 'smtp')) {
               sentSuccess = true;
             }
           } catch (fnErr) {
@@ -18611,7 +18611,21 @@
           }
         }
 
-        // 2. Пробуем через локальный бэкенд (/api/auth/otp-request)
+        // 2. Пробуем через Vercel Resend API (/api/send-email)
+        if (!sentSuccess) {
+          try {
+            const resp = await fetch('https://nonsensechat-web-5vve.vercel.app/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'otp', email: email, code: code })
+            });
+            if (resp.ok) {
+              sentSuccess = true;
+            }
+          } catch (_) { }
+        }
+
+        // 3. Пробуем через локальный бэкенд (/api/auth/otp-request)
         if (!sentSuccess) {
           try {
             const resp = await fetch('/api/auth/otp-request', {
@@ -18627,17 +18641,23 @@
           } catch (_) { }
         }
 
-        // 3. Отправляем официальное письмо от Firebase (sendSignInLinkToEmail)
-        try {
-          const actionCodeSettings = {
-            url: getAuthContinueUrl('?emailSignIn=' + encodeURIComponent(email)),
-            handleCodeInApp: true
-          };
-          localStorage.setItem('emailForSignIn', email);
-          await auth.sendSignInLinkToEmail(email, actionCodeSettings);
-          sentSuccess = true;
-        } catch (linkErr) {
-          console.warn('sendSignInLinkToEmail note:', linkErr.message);
+        // 4. Отправляем официальное письмо от Firebase (sendSignInLinkToEmail)
+        if (!sentSuccess) {
+          try {
+            const actionCodeSettings = {
+              url: getAuthContinueUrl('?emailSignIn=' + encodeURIComponent(email)),
+              handleCodeInApp: true
+            };
+            localStorage.setItem('emailForSignIn', email);
+            await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+            sentSuccess = true;
+          } catch (linkErr) {
+            console.warn('sendSignInLinkToEmail note:', linkErr.message);
+          }
+        }
+
+        if (!sentSuccess) {
+          throw new Error('Не удалось отправить письмо с кодом. Попробуйте позже или войдите по паролю.');
         }
 
         // Переходим к шагу 2
@@ -18904,13 +18924,28 @@
       }
 
       try {
-        const rawAuth = (typeof _fbAuth !== 'undefined' && _fbAuth) || (window.firebase && window.firebase.auth && window.firebase.auth());
-        if (rawAuth && typeof rawAuth.sendPasswordResetEmail === 'function') {
-          await rawAuth.sendPasswordResetEmail(email);
-        } else if (typeof auth !== 'undefined' && auth && typeof auth.sendPasswordResetEmail === 'function') {
-          await auth.sendPasswordResetEmail(email);
-        } else {
-          throw new Error('Модуль авторизации ещё не инициализирован. Пожалуйста, обновите страницу.');
+        let customResetSent = false;
+        if (window.firebase && window.firebase.functions) {
+          try {
+            const resetFn = window.firebase.functions().httpsCallable('sendPasswordResetEmailCustom');
+            const res = await resetFn({ email, url: getAuthContinueUrl('') });
+            if (res && res.data && res.data.customSent === true) {
+              customResetSent = true;
+            }
+          } catch (fnErr) {
+            console.warn('sendPasswordResetEmailCustom fallback:', fnErr.message);
+          }
+        }
+
+        if (!customResetSent) {
+          const rawAuth = (typeof _fbAuth !== 'undefined' && _fbAuth) || (window.firebase && window.firebase.auth && window.firebase.auth());
+          if (rawAuth && typeof rawAuth.sendPasswordResetEmail === 'function') {
+            await rawAuth.sendPasswordResetEmail(email);
+          } else if (typeof auth !== 'undefined' && auth && typeof auth.sendPasswordResetEmail === 'function') {
+            await auth.sendPasswordResetEmail(email);
+          } else {
+            throw new Error('Модуль авторизации ещё не инициализирован. Пожалуйста, обновите страницу.');
+          }
         }
         if (succEl) {
           succEl.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#22c55e;margin-right:6px"></i> Письмо для сброса пароля отправлено на <b>${email}</b>!<br><span style="font-size:11px;opacity:0.85">Перейдите по ссылке из письма, чтобы задать новый пароль. Проверьте папку «Спам», если письма долго нет.</span>`;
@@ -19393,7 +19428,7 @@
           try {
             const sendCustom = window.firebase.functions().httpsCallable('sendVerificationEmail');
             const res = await sendCustom({ email: user.email, url: actionCodeSettings.url });
-            if (res && res.data && res.data.success) {
+            if (res && res.data && res.data.customSent === true) {
               return true;
             }
           } catch (fnErr) {

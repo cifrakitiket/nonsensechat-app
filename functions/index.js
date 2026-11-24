@@ -70,6 +70,26 @@ try {
   nodemailer = require('nodemailer');
 } catch (_) {}
 
+async function sendViaResend({ to, subject, html }) {
+  const apiKey = process.env.RESEND_API_KEY || (functions.config().resend && functions.config().resend.key);
+  if (!apiKey) return { sent: false, reason: 'missing_key' };
+  const from =
+    process.env.RESEND_FROM ||
+    (functions.config().resend && functions.config().resend.from) ||
+    'NonsenseChat <noreply@nonsensechat.ru>';
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: Array.isArray(to) ? to : [to], subject, html }),
+  });
+  if (!resp.ok) {
+    const errBody = await resp.text().catch(() => '');
+    throw new Error('Resend HTTP ' + resp.status + ': ' + errBody);
+  }
+  const data = await resp.json().catch(() => ({}));
+  return { sent: true, id: data.id || null };
+}
+
 exports.sendVerificationEmail = functions.https.onCall(async (data, context) => {
   const email = (data && data.email) || (context.auth && context.auth.token && context.auth.token.email);
   if (!email) {
@@ -84,6 +104,27 @@ exports.sendVerificationEmail = functions.https.onCall(async (data, context) => 
 
   try {
     const link = await admin.auth().generateEmailVerificationLink(email, actionCodeSettings);
+    const fs = require('fs');
+    const path = require('path');
+    let verifyHtml = '';
+    try {
+      verifyHtml = fs.readFileSync(path.join(__dirname, 'email-verification-template.html'), 'utf8');
+      verifyHtml = verifyHtml.replace(/%LINK%/g, link).replace(/%EMAIL%/g, email);
+    } catch (fErr) {
+      verifyHtml = '<p>Подтвердите ваш email в NonsenseChat: <a href="' + link + '">' + link + '</a></p>';
+    }
+    try {
+      const resendRes = await sendViaResend({
+        to: email,
+        subject: '✨ Подтвердите адрес электронной почты | NonsenseChat',
+        html: verifyHtml,
+      });
+      if (resendRes.sent) {
+        return { success: true, customSent: true, method: 'resend', id: resendRes.id };
+      }
+    } catch (rErr) {
+      console.warn('sendVerificationEmail Resend error:', rErr.message);
+    }
 
     const smtpHost = process.env.SMTP_HOST || (functions.config().smtp && functions.config().smtp.host);
     const smtpUser = process.env.SMTP_USER || (functions.config().smtp && functions.config().smtp.user);
@@ -173,7 +214,36 @@ exports.sendLoginOtp = functions.https.onCall(async (data, context) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
-  // Отправка через SMTP если настроен
+  const otpHtml = `
+    <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f1923;color:#e8f0f9;border-radius:16px;">
+      <h2 style="margin:0 0 12px;color:#fff;font-size:22px;">Одноразовый код для входа</h2>
+      <p style="font-size:14px;color:#8aabb8;line-height:1.5;margin-bottom:20px;">
+        Вы запросили вход в <b>NonsenseChat</b> без пароля. Введите этот 6-значный код в окне приложения:
+      </p>
+      <div style="background:#1b2838;border:2px dashed #3b82f6;border-radius:12px;padding:16px;text-align:center;margin-bottom:20px;">
+        <span style="font-size:32px;letter-spacing:6px;font-weight:700;color:#60a5fa;font-family:monospace;">${code}</span>
+      </div>
+      <p style="font-size:12px;color:#8aabb8;margin:0;">
+        Код действителен в течение 10 минут. Если вы не запрашивали вход, просто проигнорируйте это письмо.
+      </p>
+    </div>
+  `;
+
+  // 1. Отправка через Resend (основной способ)
+  try {
+    const resendRes = await sendViaResend({
+      to: email,
+      subject: `🔐 Ваш одноразовый код для входа: ${code} | NonsenseChat`,
+      html: otpHtml,
+    });
+    if (resendRes.sent) {
+      return { success: true, email, method: 'resend' };
+    }
+  } catch (rErr) {
+    console.warn('sendLoginOtp Resend error:', rErr.message);
+  }
+
+  // 2. Отправка через SMTP если настроен
   try {
     const smtpHost = process.env.SMTP_HOST || (functions.config().smtp && functions.config().smtp.host);
     const smtpUser = process.env.SMTP_USER || (functions.config().smtp && functions.config().smtp.user);
@@ -193,20 +263,7 @@ exports.sendLoginOtp = functions.https.onCall(async (data, context) => {
         from: smtpFrom,
         to: email,
         subject: `🔐 Ваш одноразовый код для входа: ${code} | NonsenseChat`,
-        html: `
-          <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f1923;color:#e8f0f9;border-radius:16px;">
-            <h2 style="margin:0 0 12px;color:#fff;font-size:22px;">Одноразовый код для входа</h2>
-            <p style="font-size:14px;color:#8aabb8;line-height:1.5;margin-bottom:20px;">
-              Вы запросили вход в <b>NonsenseChat</b> без пароля. Введите этот 6-значный код в окне приложения:
-            </p>
-            <div style="background:#1b2838;border:2px dashed #3b82f6;border-radius:12px;padding:16px;text-align:center;margin-bottom:20px;">
-              <span style="font-size:32px;letter-spacing:6px;font-weight:700;color:#60a5fa;font-family:monospace;">${code}</span>
-            </div>
-            <p style="font-size:12px;color:#8aabb8;margin:0;">
-              Код действителен в течение 10 минут. Если вы не запрашивали вход, просто проигнорируйте это письмо.
-            </p>
-          </div>
-        `
+        html: otpHtml
       });
       return { success: true, email, method: 'smtp' };
     }
@@ -214,7 +271,64 @@ exports.sendLoginOtp = functions.https.onCall(async (data, context) => {
     console.warn('sendLoginOtp mail transport error:', mailErr);
   }
 
-  return { success: true, email, method: 'code_saved' };
+  return { success: false, email, method: 'none' };
+});
+
+exports.sendPasswordResetEmailCustom = functions.https.onCall(async (data, context) => {
+  const emailOrLogin = String((data && data.emailOrLogin) || (data && data.email) || '').trim().toLowerCase();
+  if (!emailOrLogin) {
+    throw new functions.https.HttpsError('invalid-argument', 'Email или логин обязателен');
+  }
+
+  let email = emailOrLogin;
+  if (!email.includes('@')) {
+    const cleanNick = email.replace(/^@+/, '');
+    const unDoc = await admin.firestore().collection('usernames').doc(cleanNick).get();
+    if (unDoc.exists && unDoc.data() && unDoc.data().email) {
+      email = unDoc.data().email;
+    } else {
+      const uSnap = await admin.firestore().collection('users').where('nickLower', '==', cleanNick).limit(1).get();
+      if (!uSnap.empty && uSnap.docs[0].data() && uSnap.docs[0].data().email) {
+        email = uSnap.docs[0].data().email;
+      } else {
+        throw new functions.https.HttpsError('not-found', `Пользователь с логином "@${cleanNick}" не найден`);
+      }
+    }
+  }
+
+  const returnUrl = (data && data.url) || 'https://nonsensechat.ru/';
+  try {
+    const link = await admin.auth().generatePasswordResetLink(email, { url: returnUrl });
+    const resetHtml = `
+      <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f1923;color:#e8f0f9;border-radius:16px;">
+        <h2 style="margin:0 0 12px;color:#fff;font-size:22px;">Сброс пароля в NonsenseChat</h2>
+        <p style="font-size:14px;color:#8aabb8;line-height:1.5;margin-bottom:20px;">
+          Мы получили запрос на смену пароля для аккаунта <b>${email}</b>. Нажмите на кнопку ниже, чтобы задать новый пароль:
+        </p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${link}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#ffffff;text-decoration:none;font-weight:700;border-radius:12px;">
+            Сбросить пароль
+          </a>
+        </div>
+        <p style="font-size:12px;color:#8aabb8;margin:0;">
+          Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.
+        </p>
+      </div>
+    `;
+
+    const resendRes = await sendViaResend({
+      to: email,
+      subject: '🔑 Сброс пароля | NonsenseChat',
+      html: resetHtml,
+    });
+    if (resendRes.sent) {
+      return { success: true, customSent: true, method: 'resend', email };
+    }
+    return { success: true, customSent: false, email };
+  } catch (err) {
+    console.error('sendPasswordResetEmailCustom error:', err);
+    throw new functions.https.HttpsError('internal', err.message || 'Не удалось отправить письмо для сброса пароля');
+  }
 });
 
 exports.verifyLoginOtp = functions.https.onCall(async (data, context) => {
