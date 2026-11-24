@@ -1,9 +1,9 @@
 {
-  "version": "4.4.0",
-  "versionCode": 440,
+  "version": "4.4.1",
+  "versionCode": 441,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 178174518,
-  "publishedAt": "2026-11-24T10:00:10.394Z",
-  "releaseNotes": "• 🔄 Встроенные обновления прямо внутри приложения через VK Cloud S3 с прогресс-баром и автоустановкой"
+  "fileSize": 23271274,
+  "publishedAt": "2026-11-24T10:07:31.331Z",
+  "releaseNotes": "• 📦 Оптимизация размера APK: вес приложения уменьшен в ~5 раз без потери функций"
 }
