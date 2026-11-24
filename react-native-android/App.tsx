@@ -1,5 +1,9 @@
 import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator, PermissionsAndroid, Platform, StatusBar, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, PermissionsAndroid, Platform, StatusBar, StyleSheet, UIManager } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -56,7 +60,14 @@ function RootNavigator() {
   return (
     <NavigationContainer>
       <StatusBar barStyle="light-content" backgroundColor="#080C14" />
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 240,
+          gestureEnabled: true,
+        }}
+      >
         {!authUser ? (
           <Stack.Screen name="Auth" component={AuthScreen} />
         ) : (

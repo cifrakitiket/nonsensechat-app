@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   FlatList,
   Image,
+  InteractionManager,
   Modal,
   PermissionsAndroid,
   Platform,
@@ -105,8 +107,13 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   const [giftAmount, setGiftAmount] = useState('25');
   const [giftNote, setGiftNote] = useState('');
 
+  // Smooth spring animations
+  const sheetAnim = useRef(new Animated.Value(0)).current;
+  const tabFadeAnim = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     if (!visible) {
+      sheetAnim.setValue(0);
       setSelectedUris([]);
       setCaption('');
       setSearchOpen(false);
@@ -115,11 +122,34 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       return;
     }
     setActiveTab('gallery');
-    loadPhotos();
-    if (mode === 'chat') {
-      loadFiles();
-    }
+    Animated.spring(sheetAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 18,
+      bounciness: 5,
+    }).start();
+    const task = InteractionManager.runAfterInteractions(() => {
+      loadPhotos();
+    });
+    return () => task.cancel();
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    tabFadeAnim.setValue(0.35);
+    Animated.timing(tabFadeAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+
+    if (activeTab === 'file' && files.length === 0 && !loadingFiles) {
+      const task = InteractionManager.runAfterInteractions(() => {
+        loadFiles();
+      });
+      return () => task.cancel();
+    }
+  }, [activeTab, visible]);
 
   const loadPhotos = async () => {
     setLoadingPhotos(true);
@@ -238,6 +268,10 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
 
   const handlePickFile = async (item: DeviceFileItem) => {
     if (busy) return;
+    if (item.size > 4 * 1024 * 1024) {
+      showToast('Слишком большой файл', 'Максимальный размер файла — 4 МБ', 'error');
+      return;
+    }
     try {
       setBusy(true);
       const encoded = await encodeDeviceFile(item.uri, 4 * 1024 * 1024);
@@ -329,17 +363,25 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
         ];
 
   return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.backdrop}>
           <TouchableWithoutFeedback>
-            <View
+            <Animated.View
               style={[
                 styles.sheet,
                 {
                   backgroundColor: appTheme.glassStrong,
                   borderColor: appTheme.specular,
                   paddingBottom: Math.max(insets.bottom, 10),
+                  transform: [
+                    {
+                      translateY: sheetAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [420, 0],
+                      }),
+                    },
+                  ],
                 },
               ]}
             >
@@ -387,7 +429,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
               ) : null}
 
               {/* Content Body */}
-              <View style={styles.body}>
+              <Animated.View style={[styles.body, { opacity: tabFadeAnim }]}>
                 {activeTab === 'gallery' && (
                   <>
                     {photoPermDenied ? (
@@ -499,67 +541,84 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                 )}
 
                 {activeTab === 'file' && (
-                  <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-                    <GlassCard radius={20} style={{ marginBottom: 14, paddingVertical: 4 }}>
-                      <TouchableOpacity
-                        style={styles.quickActionRow}
-                        onPress={() => setActiveTab('gallery')}
-                      >
-                        <Ionicons name="images-outline" size={20} color={appTheme.accent} />
-                        <Text style={[styles.quickActionText, { color: appTheme.accent }]}>
-                          Выбрать из Галереи
-                        </Text>
-                      </TouchableOpacity>
-                      <View style={[styles.sep, { backgroundColor: appTheme.border }]} />
-                      <TouchableOpacity style={styles.quickActionRow} onPress={loadFiles}>
-                        <Ionicons name="refresh-outline" size={20} color={appTheme.accent} />
-                        <Text style={[styles.quickActionText, { color: appTheme.accent }]}>
-                          Обновить список файлов
-                        </Text>
-                      </TouchableOpacity>
-                    </GlassCard>
+                  <FlatList
+                    data={filteredFiles}
+                    keyExtractor={(f) => f.uri}
+                    initialNumToRender={12}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
+                    removeClippedSubviews
+                    contentContainerStyle={{ paddingBottom: 16 }}
+                    ListHeaderComponent={
+                      <>
+                        <GlassCard radius={20} style={{ marginBottom: 14, paddingVertical: 4 }}>
+                          <TouchableOpacity
+                            style={styles.quickActionRow}
+                            onPress={() => setActiveTab('gallery')}
+                          >
+                            <Ionicons name="images-outline" size={20} color={appTheme.accent} />
+                            <Text style={[styles.quickActionText, { color: appTheme.accent }]}>
+                              Выбрать из Галереи
+                            </Text>
+                          </TouchableOpacity>
+                          <View style={[styles.sep, { backgroundColor: appTheme.border }]} />
+                          <TouchableOpacity style={styles.quickActionRow} onPress={loadFiles}>
+                            <Ionicons name="refresh-outline" size={20} color={appTheme.accent} />
+                            <Text style={[styles.quickActionText, { color: appTheme.accent }]}>
+                              Обновить список файлов
+                            </Text>
+                          </TouchableOpacity>
+                        </GlassCard>
 
-                    <Text style={[styles.sectionLabel, { color: appTheme.textSub }]}>
-                      НЕДАВНИЕ ФАЙЛЫ ({filteredFiles.length})
-                    </Text>
+                        <Text style={[styles.sectionLabel, { color: appTheme.textSub }]}>
+                          НЕДАВНИЕ ФАЙЛЫ ({filteredFiles.length})
+                        </Text>
 
-                    {loadingFiles ? (
-                      <ActivityIndicator size="small" color={appTheme.accent} style={{ marginTop: 20 }} />
-                    ) : filteredFiles.length === 0 ? (
-                      <Text style={[styles.emptySub, { color: appTheme.textSub, marginTop: 18 }]}>
-                        Файлы не найдены
-                      </Text>
-                    ) : (
-                      <GlassCard radius={20} style={{ paddingVertical: 4 }}>
-                        {filteredFiles.map((f, idx) => {
-                          const ext = (f.fileName.split('.').pop() || 'FILE').slice(0, 4).toUpperCase();
-                          return (
-                            <React.Fragment key={f.uri}>
-                              {idx > 0 && <View style={[styles.sep, { backgroundColor: appTheme.border }]} />}
-                              <TouchableOpacity
-                                style={styles.fileRow}
-                                onPress={() => handlePickFile(f)}
-                                disabled={busy}
-                              >
-                                <View style={[styles.fileBadge, { backgroundColor: appTheme.accent + '28' }]}>
-                                  <Text style={[styles.fileExt, { color: appTheme.accent }]}>{ext}</Text>
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                  <Text style={[styles.fileName, { color: appTheme.text }]} numberOfLines={1}>
-                                    {f.fileName}
-                                  </Text>
-                                  <Text style={[styles.fileSize, { color: appTheme.textSub }]}>
-                                    {formatBytes(f.size)}
-                                  </Text>
-                                </View>
-                                <Ionicons name="send" size={16} color={appTheme.textSub} />
-                              </TouchableOpacity>
-                            </React.Fragment>
-                          );
-                        })}
-                      </GlassCard>
-                    )}
-                  </ScrollView>
+                        {loadingFiles ? (
+                          <ActivityIndicator size="small" color={appTheme.accent} style={{ marginVertical: 20 }} />
+                        ) : null}
+                      </>
+                    }
+                    ListEmptyComponent={
+                      !loadingFiles ? (
+                        <Text style={[styles.emptySub, { color: appTheme.textSub, marginTop: 18 }]}>
+                          Файлы не найдены
+                        </Text>
+                      ) : null
+                    }
+                    renderItem={({ item: f }) => {
+                      const ext = (f.fileName.split('.').pop() || 'FILE').slice(0, 4).toUpperCase();
+                      return (
+                        <TouchableOpacity
+                          style={[
+                            styles.fileRow,
+                            {
+                              backgroundColor: appTheme.glass,
+                              borderColor: appTheme.border,
+                              borderWidth: 1,
+                              borderRadius: 16,
+                              marginBottom: 8,
+                            },
+                          ]}
+                          onPress={() => handlePickFile(f)}
+                          disabled={busy}
+                        >
+                          <View style={[styles.fileBadge, { backgroundColor: appTheme.accent + '28' }]}>
+                            <Text style={[styles.fileExt, { color: appTheme.accent }]}>{ext}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.fileName, { color: appTheme.text }]} numberOfLines={1}>
+                              {f.fileName}
+                            </Text>
+                            <Text style={[styles.fileSize, { color: appTheme.textSub }]}>
+                              {formatBytes(f.size)}
+                            </Text>
+                          </View>
+                          <Ionicons name="send" size={16} color={appTheme.textSub} />
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
                 )}
 
                 {activeTab === 'poll' && (
@@ -714,7 +773,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                     )}
                   />
                 )}
-              </View>
+              </Animated.View>
 
               {/* Bottom Tabs */}
               {tabs.length > 1 && (
@@ -756,7 +815,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                   <ActivityIndicator size="large" color={appTheme.accent} />
                 </View>
               )}
-            </View>
+            </Animated.View>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>

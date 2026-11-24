@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { NativeModules, Platform } from 'react-native';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { AppState, NativeModules, Platform } from 'react-native';
 import {
   User,
   onAuthStateChanged,
@@ -139,6 +139,7 @@ interface AppContextValue {
   appThemeKey: AppThemeKey;
   appTheme: LiquidTheme;
   setAppTheme: (key: AppThemeKey) => void;
+  setActiveChatId: (chatId: string | null) => void;
   toastState: ToastState | null;
   dialogState: DialogConfig | null;
   showToast: (title: string, body?: string, type?: 'info' | 'success' | 'error') => void;
@@ -171,6 +172,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [appThemeKey, setAppThemeKeyState] = useState<AppThemeKey>('dark');
   const [toastState, setToastState] = useState<ToastState | null>(null);
   const [dialogState, setDialogState] = useState<DialogConfig | null>(null);
+  const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
+
+  const activeChatIdRef = useRef<string | null>(null);
+  const prevLastMsgAtRef = useRef<Record<string, number>>({});
+  const chatsInitializedRef = useRef<boolean>(false);
+  const usersMapRef = useRef<Record<string, UserProfile>>({});
+
+  useEffect(() => {
+    usersMapRef.current = usersMap;
+  }, [usersMap]);
+
+  const setActiveChatId = (chatId: string | null) => {
+    activeChatIdRef.current = chatId;
+    if (chatId) {
+      setUnreadMap((prev) => {
+        if (!prev[chatId]) return prev;
+        const next = { ...prev, [chatId]: 0 };
+        return next;
+      });
+      setChats((prev) =>
+        prev.map((c) => (c.id === chatId && c.unread ? { ...c, unread: 0 } : c))
+      );
+    }
+  };
 
   const showToast = (title: string, body?: string, type: 'info' | 'success' | 'error' = 'info') => {
     const id = Date.now() + Math.random();
@@ -275,25 +300,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     const chatsRef = ref(rtdb, 'chats');
+    chatsInitializedRef.current = false;
+    prevLastMsgAtRef.current = {};
+
     const unsubChats = onValue(chatsRef, (snap) => {
       const val = snap.val() || {};
       const list: ChatItem[] = [];
+      const newUnreads: Record<string, number> = {};
+      const isInitial = !chatsInitializedRef.current;
+
       Object.keys(val).forEach((cid) => {
         const raw = val[cid];
         if (!raw || typeof raw !== 'object') return;
         const members = toArray<string>(raw.members);
         if (members.includes(uid) || cid === `aihub_${uid}`) {
+          const msgAt = toMs(raw.lastMsgAt || raw.createdAt);
+          const prevAt = prevLastMsgAtRef.current[cid] || 0;
+
+          if (!isInitial && msgAt > prevAt && cid !== activeChatIdRef.current && raw.lastMsgUid !== uid) {
+            newUnreads[cid] = (newUnreads[cid] || 0) + 1;
+            const otherUid = raw.type === 'dm' ? members.find((m) => m !== uid) : undefined;
+            const partner = otherUid ? usersMapRef.current[otherUid] : undefined;
+            const title =
+              partner?.nick ||
+              (otherUid ? raw[`${otherUid}_nick`] : '') ||
+              raw.name ||
+              'Новое сообщение';
+            const cleanBody = String(raw.lastMsg || 'Новое сообщение').replace(/<[^>]+>/g, '').trim();
+
+            if (Platform.OS === 'android') {
+              try {
+                NativeModules.NotificationModule?.showNotification?.(title, cleanBody, cid);
+              } catch (_) {}
+            }
+            if (AppState.currentState === 'active') {
+              showToast(title, cleanBody, 'info');
+            }
+          }
+
+          prevLastMsgAtRef.current[cid] = msgAt;
           list.push({
             ...raw,
             id: cid,
             type: raw.type || 'dm',
             members,
-            lastMsgAt: toMs(raw.lastMsgAt || raw.createdAt),
+            lastMsgAt: msgAt,
           });
         }
       });
-      list.sort((a, b) => (b.lastMsgAt || 0) - (a.lastMsgAt || 0));
-      setChats(list);
+
+      chatsInitializedRef.current = true;
+      if (Object.keys(newUnreads).length > 0) {
+        setUnreadMap((prev) => {
+          const merged = { ...prev };
+          Object.keys(newUnreads).forEach((cid) => {
+            merged[cid] = (merged[cid] || 0) + newUnreads[cid];
+          });
+          setChats(
+            list
+              .map((c) => ({ ...c, unread: merged[c.id] || 0 }))
+              .sort((a, b) => (b.lastMsgAt || 0) - (a.lastMsgAt || 0))
+          );
+          return merged;
+        });
+      } else {
+        setUnreadMap((prev) => {
+          setChats(
+            list
+              .map((c) => ({ ...c, unread: prev[c.id] || 0 }))
+              .sort((a, b) => (b.lastMsgAt || 0) - (a.lastMsgAt || 0))
+          );
+          return prev;
+        });
+      }
     });
 
     return () => {
@@ -653,6 +732,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         appThemeKey,
         appTheme,
         setAppTheme,
+        setActiveChatId,
         toastState,
         dialogState,
         showToast,

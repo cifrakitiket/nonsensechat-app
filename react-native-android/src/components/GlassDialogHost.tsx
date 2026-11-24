@@ -17,6 +17,7 @@ export const GlassDialogHost: React.FC = () => {
   const { appTheme, toastState, dialogState, dismissDialog } = useApp();
   const insets = useSafeAreaInsets();
   const toastAnim = useRef(new Animated.Value(0)).current;
+  const dialogAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (toastState) {
@@ -24,11 +25,23 @@ export const GlassDialogHost: React.FC = () => {
       Animated.spring(toastAnim, {
         toValue: 1,
         useNativeDriver: true,
-        speed: 20,
-        bounciness: 6,
+        tension: 220,
+        friction: 18,
       }).start();
     }
   }, [toastState?.id]);
+
+  useEffect(() => {
+    if (dialogState) {
+      dialogAnim.setValue(0);
+      Animated.spring(dialogAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 240,
+        friction: 20,
+      }).start();
+    }
+  }, [dialogState]);
 
   const toastColor =
     toastState?.type === 'error'
@@ -97,7 +110,22 @@ export const GlassDialogHost: React.FC = () => {
         <TouchableWithoutFeedback onPress={dismissDialog}>
           <View style={styles.backdrop}>
             <TouchableWithoutFeedback>
-              <View style={styles.dialogOuter}>
+              <Animated.View
+                style={[
+                  styles.dialogOuter,
+                  {
+                    opacity: dialogAnim,
+                    transform: [
+                      {
+                        scale: dialogAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.92, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
                 <GlassCard radius={28} strong style={[styles.dialogCard, styles.dialogInner]}>
                   <Text style={[styles.dialogTitle, { color: appTheme.text }]}>
                     {dialogState?.title}
@@ -155,7 +183,7 @@ export const GlassDialogHost: React.FC = () => {
                     })}
                   </View>
                 </GlassCard>
-              </View>
+              </Animated.View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>

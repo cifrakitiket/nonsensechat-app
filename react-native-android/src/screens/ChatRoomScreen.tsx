@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   Image,
   Modal,
@@ -76,7 +77,7 @@ function formatBytes(bytes = 0) {
 export default function ChatRoomScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { chatId, name: paramName } = route.params || {};
-  const { me, chats, usersMap, appTheme, showToast, showDialog, giftPirozhki } = useApp();
+  const { me, chats, usersMap, appTheme, showToast, showDialog, giftPirozhki, setActiveChatId } = useApp();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -108,6 +109,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
   useEffect(() => {
     if (!chatId) return;
+    setActiveChatId(chatId);
     const msgsRef = ref(rtdb, `messages/${chatId}`);
     const unsub = onValue(msgsRef, (snap) => {
       const val = snap.val() || {};
@@ -118,6 +120,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 120);
     });
     return () => {
+      setActiveChatId(null);
       unsub();
       stopVoiceMessage();
       if (recTimerRef.current) clearInterval(recTimerRef.current);
@@ -151,6 +154,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     await update(ref(rtdb, `chats/${chatId}`), {
       lastMsg: previewText,
       lastMsgAt: Date.now(),
+      lastMsgUid: me?.uid || '',
     });
   };
 
@@ -365,6 +369,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     await update(ref(rtdb, `chats/${targetChatId}`), {
       lastMsg: `↪ ${decodeMsgText(orig.text) || 'Пересланное сообщение'}`,
       lastMsgAt: Date.now(),
+      lastMsgUid: me.uid,
     });
     triggerHaptic(20);
     showToast('Переслано ✓', 'Сообщение отправлено', 'success');

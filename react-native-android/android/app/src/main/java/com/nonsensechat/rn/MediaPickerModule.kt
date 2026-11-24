@@ -2,6 +2,7 @@ package com.nonsensechat.rn
 
 import android.Manifest
 import android.app.Activity
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -9,6 +10,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Base64
@@ -181,13 +183,7 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                 val cr = reactApplicationContext.contentResolver
                 val result = Arguments.createArray()
                 val seen = HashSet<String>()
-                val cap = if (limit > 0) limit else 50
-
-                val queryUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    MediaStore.Downloads.EXTERNAL_CONTENT_URI
-                } else {
-                    MediaStore.Files.getContentUri("external")
-                }
+                val cap = minOf(if (limit > 0) limit else 30, 40)
 
                 val projection = arrayOf(
                     MediaStore.Files.FileColumns._ID,
@@ -196,63 +192,56 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                     MediaStore.Files.FileColumns.DATE_MODIFIED,
                     MediaStore.Files.FileColumns.MIME_TYPE
                 )
-                val selection = "${MediaStore.Files.FileColumns.SIZE} > 0"
+                val selection = "${MediaStore.Files.FileColumns.SIZE} > 0 AND ${MediaStore.Files.FileColumns.SIZE} <= 52428800"
                 val sortOrder = "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
 
-                cr.query(queryUri, projection, selection, null, sortOrder)?.use { cursor ->
-                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-                    val nameCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
-                    val sizeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
-                    val dateCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED)
-                    val mimeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
-
-                    while (cursor.moveToNext() && result.size() < cap) {
-                        val id = cursor.getLong(idCol)
-                        val contentUri = ContentUris.withAppendedId(queryUri, id)
-                        val uriStr = contentUri.toString()
-                        if (!seen.add(uriStr)) continue
-                        val fileName = if (nameCol >= 0) cursor.getString(nameCol) else null
-                        if (fileName.isNullOrBlank()) continue
-                        val item = Arguments.createMap().apply {
-                            putString("id", id.toString())
-                            putString("uri", uriStr)
-                            putString("fileName", fileName)
-                            putDouble("size", if (sizeCol >= 0) cursor.getLong(sizeCol).toDouble() else 0.0)
-                            putDouble("dateModified", if (dateCol >= 0) cursor.getLong(dateCol).toDouble() else 0.0)
-                            putString("mimeType", if (mimeCol >= 0) cursor.getString(mimeCol) ?: "application/octet-stream" else "application/octet-stream")
+                fun runQuery(targetUri: Uri) {
+                    val cursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val queryArgs = Bundle().apply {
+                            putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                            putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(MediaStore.Files.FileColumns.DATE_MODIFIED))
+                            putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING)
+                            putInt(ContentResolver.QUERY_ARG_LIMIT, cap)
                         }
-                        result.pushMap(item)
+                        cr.query(targetUri, projection, queryArgs, null)
+                    } else {
+                        cr.query(targetUri, projection, selection, null, sortOrder)
                     }
-                }
 
-                // Also append recent images/audio if Downloads was sparse
-                if (result.size() < cap && hasImagePermission()) {
-                    val filesUri = MediaStore.Files.getContentUri("external")
-                    cr.query(filesUri, projection, selection, null, sortOrder)?.use { cursor ->
-                        val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-                        val nameCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
-                        val sizeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
-                        val dateCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED)
-                        val mimeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+                    cursor?.use { c ->
+                        val idCol = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                        val nameCol = c.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                        val sizeCol = c.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
+                        val dateCol = c.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED)
+                        val mimeCol = c.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
 
-                        while (cursor.moveToNext() && result.size() < cap) {
-                            val id = cursor.getLong(idCol)
-                            val contentUri = ContentUris.withAppendedId(filesUri, id)
+                        while (c.moveToNext() && result.size() < cap) {
+                            val id = c.getLong(idCol)
+                            val contentUri = ContentUris.withAppendedId(targetUri, id)
                             val uriStr = contentUri.toString()
                             if (!seen.add(uriStr)) continue
-                            val fileName = if (nameCol >= 0) cursor.getString(nameCol) else null
-                            if (fileName.isNullOrBlank()) continue
+                            val fileName = if (nameCol >= 0) c.getString(nameCol) else null
+                            if (fileName.isNullOrBlank() || fileName.startsWith(".")) continue
                             val item = Arguments.createMap().apply {
                                 putString("id", id.toString())
                                 putString("uri", uriStr)
                                 putString("fileName", fileName)
-                                putDouble("size", if (sizeCol >= 0) cursor.getLong(sizeCol).toDouble() else 0.0)
-                                putDouble("dateModified", if (dateCol >= 0) cursor.getLong(dateCol).toDouble() else 0.0)
-                                putString("mimeType", if (mimeCol >= 0) cursor.getString(mimeCol) ?: "application/octet-stream" else "application/octet-stream")
+                                putDouble("size", if (sizeCol >= 0) c.getLong(sizeCol).toDouble() else 0.0)
+                                putDouble("dateModified", if (dateCol >= 0) c.getLong(dateCol).toDouble() else 0.0)
+                                putString("mimeType", if (mimeCol >= 0) c.getString(mimeCol) ?: "application/octet-stream" else "application/octet-stream")
                             }
                             result.pushMap(item)
                         }
                     }
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    runQuery(MediaStore.Downloads.EXTERNAL_CONTENT_URI)
+                    if (result.size() == 0 && hasImagePermission()) {
+                        runQuery(MediaStore.Files.getContentUri("external"))
+                    }
+                } else {
+                    runQuery(MediaStore.Files.getContentUri("external"))
                 }
 
                 promise.resolve(result)
@@ -379,17 +368,46 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
             try {
                 val uri = Uri.parse(uriStr)
                 val cr = reactApplicationContext.contentResolver
-                val bytes = cr.openInputStream(uri)?.use { it.readBytes() }
-                if (bytes == null) {
+                val limit = if (maxBytes > 0) maxBytes else 4 * 1024 * 1024
+                val mb = (limit / (1024.0 * 1024.0))
+
+                // Pre-check OpenableColumns.SIZE before reading stream
+                try {
+                    cr.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
+                        val sizeIdx = c.getColumnIndex(OpenableColumns.SIZE)
+                        if (sizeIdx >= 0 && c.moveToFirst()) {
+                            val declaredSize = c.getLong(sizeIdx)
+                            if (declaredSize > limit) {
+                                promise.reject("TOO_LARGE", String.format("Максимальный размер файла — %.1f МБ", mb))
+                                return@thread
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                val baos = ByteArrayOutputStream()
+                val inputStream = cr.openInputStream(uri)
+                if (inputStream == null) {
                     promise.reject("READ_ERROR", "Не удалось прочитать файл")
                     return@thread
                 }
-                val limit = if (maxBytes > 0) maxBytes else 4 * 1024 * 1024
-                if (bytes.size > limit) {
-                    val mb = (limit / (1024.0 * 1024.0))
-                    promise.reject("TOO_LARGE", String.format("Максимальный размер файла — %.1f МБ", mb))
-                    return@thread
+
+                inputStream.use { stream ->
+                    val buf = ByteArray(16384)
+                    var total = 0
+                    while (true) {
+                        val read = stream.read(buf)
+                        if (read <= 0) break
+                        total += read
+                        if (total > limit) {
+                            promise.reject("TOO_LARGE", String.format("Максимальный размер файла — %.1f МБ", mb))
+                            return@thread
+                        }
+                        baos.write(buf, 0, read)
+                    }
                 }
+
+                val bytes = baos.toByteArray()
                 val mime = cr.getType(uri) ?: "application/octet-stream"
                 val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
                 val fileName = queryFileName(uri) ?: "file_${System.currentTimeMillis()}"

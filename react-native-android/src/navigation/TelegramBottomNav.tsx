@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
@@ -11,6 +11,81 @@ import CallsScreen from '../screens/CallsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
+
+function AnimatedTabPill({
+  route,
+  isFocused,
+  onPress,
+  label,
+  iconChar,
+  badgeCount,
+  isProfile,
+  userAvatar,
+  appTheme,
+}: any) {
+  const scaleAnim = useRef(new Animated.Value(isFocused ? 1.04 : 1)).current;
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: isFocused ? 1.04 : 1,
+      useNativeDriver: true,
+      tension: 260,
+      friction: 18,
+    }).start();
+  }, [isFocused]);
+
+  return (
+    <TouchableOpacity
+      key={route.key}
+      activeOpacity={0.78}
+      accessibilityRole="button"
+      accessibilityState={isFocused ? { selected: true } : {}}
+      onPress={onPress}
+      style={styles.tabItem}
+    >
+      <Animated.View
+        style={[
+          styles.pillInner,
+          { transform: [{ scale: scaleAnim }] },
+          isFocused && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.specular, borderWidth: 1 },
+        ]}
+      >
+        <View style={{ position: 'relative' }}>
+          {isProfile && userAvatar ? (
+            <Image
+              source={{ uri: userAvatar }}
+              style={[
+                styles.profileAvatar,
+                isFocused && { borderColor: appTheme.accent },
+              ]}
+            />
+          ) : (
+            <Text style={styles.tabIcon}>{iconChar}</Text>
+          )}
+
+          {badgeCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <Text
+          style={[
+            styles.tabLabel,
+            { color: isFocused ? appTheme.accent : appTheme.textSub },
+            isFocused && { fontWeight: '800' },
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
 
 function TelegramTabBar({ state, navigation, userAvatar, unreadCount }: any) {
   const insets = useSafeAreaInsets();
@@ -69,54 +144,18 @@ function TelegramTabBar({ state, navigation, userAvatar, unreadCount }: any) {
           const isProfile = route.name === 'Profile';
 
           return (
-            <TouchableOpacity
+            <AnimatedTabPill
               key={route.key}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
+              route={route}
+              isFocused={isFocused}
               onPress={onPress}
-              style={styles.tabItem}
-            >
-              <View
-                style={[
-                  styles.pillInner,
-                  isFocused && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.specular, borderWidth: 1 },
-                ]}
-              >
-                <View style={{ position: 'relative' }}>
-                  {isProfile && userAvatar ? (
-                    <Image
-                      source={{ uri: userAvatar }}
-                      style={[
-                        styles.profileAvatar,
-                        isFocused && { borderColor: appTheme.accent },
-                      ]}
-                    />
-                  ) : (
-                    <Text style={styles.tabIcon}>{iconChar}</Text>
-                  )}
-
-                  {badgeCount > 0 && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>
-                        {badgeCount > 99 ? '99+' : badgeCount}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    { color: isFocused ? appTheme.accent : appTheme.textSub },
-                    isFocused && { fontWeight: '800' },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {label}
-                </Text>
-              </View>
-            </TouchableOpacity>
+              label={label}
+              iconChar={iconChar}
+              badgeCount={badgeCount}
+              isProfile={isProfile}
+              userAvatar={userAvatar}
+              appTheme={appTheme}
+            />
           );
         })}
       </View>

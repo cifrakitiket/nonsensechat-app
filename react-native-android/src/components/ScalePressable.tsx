@@ -27,8 +27,8 @@ export const ScalePressable: React.FC<ScalePressableProps> = ({
     Animated.spring(anim, {
       toValue: scaleTo,
       useNativeDriver: true,
-      speed: 40,
-      bounciness: 6,
+      tension: 280,
+      friction: 18,
     }).start();
   };
 
@@ -36,8 +36,8 @@ export const ScalePressable: React.FC<ScalePressableProps> = ({
     Animated.spring(anim, {
       toValue: 1,
       useNativeDriver: true,
-      speed: 30,
-      bounciness: 8,
+      tension: 240,
+      friction: 16,
     }).start();
   };
 
