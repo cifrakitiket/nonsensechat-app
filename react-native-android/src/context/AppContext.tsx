@@ -8,7 +8,7 @@ import {
   sendPasswordResetEmail,
   signOut,
 } from 'firebase/auth';
-import { ref, onValue, get, set, update, push } from 'firebase/database';
+import { ref, onValue, get, set, update, push, remove } from 'firebase/database';
 import { AppUpdateInfo, auth, checkVkCloudUpdate, rtdb, triggerHaptic } from '../services/firebase';
 import { CREATOR_UID } from '../constants/catalogs';
 import { AppThemeKey, LIQUID_THEMES, LiquidTheme } from '../theme/liquidGlass';
@@ -35,6 +35,15 @@ export interface UserProfile {
   steamFrame?: string;
   unlockedThemes?: string[];
   unlockedFrames?: string[];
+}
+
+export interface FriendRequestItem {
+  id: string;
+  from: string;
+  fromNick?: string;
+  to: string;
+  toNick?: string;
+  at?: number;
 }
 
 export interface ChatItem {
@@ -135,6 +144,8 @@ interface AppContextValue {
   loadingAuth: boolean;
   me: UserProfile | null;
   chats: ChatItem[];
+  incomingRequests: FriendRequestItem[];
+  outgoingRequests: FriendRequestItem[];
   usersMap: Record<string, UserProfile>;
   appThemeKey: AppThemeKey;
   appTheme: LiquidTheme;
@@ -155,6 +166,9 @@ interface AppContextValue {
   logout: () => Promise<void>;
   openOrCreateDm: (targetUid: string) => Promise<ChatItem | null>;
   addFriendByNick: (nickOrUid: string) => Promise<ChatItem | null>;
+  sendFriendRequest: (targetUid: string) => Promise<void>;
+  acceptFriendRequest: (req: FriendRequestItem) => Promise<ChatItem | null>;
+  declineFriendRequest: (reqId: string) => Promise<void>;
   createGroupOrChannel: (type: 'group' | 'channel', name: string, desc?: string) => Promise<ChatItem | null>;
   updateMyProfile: (patch: Partial<UserProfile>) => Promise<void>;
   grantSelfPirozhki: (amount: number) => Promise<void>;
@@ -172,6 +186,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [me, setMe] = useState<UserProfile | null>(null);
   const [chats, setChats] = useState<ChatItem[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<FriendRequestItem[]>([]);
+  const [outgoingRequests, setOutgoingRequests] = useState<FriendRequestItem[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, UserProfile>>({});
   const [appThemeKey, setAppThemeKeyState] = useState<AppThemeKey>('dark');
   const [toastState, setToastState] = useState<ToastState | null>(null);
@@ -212,6 +228,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const activeChatIdRef = useRef<string | null>(null);
   const prevLastMsgAtRef = useRef<Record<string, number>>({});
   const chatsInitializedRef = useRef<boolean>(false);
+  const reqsInitializedRef = useRef<boolean>(false);
+  const prevReqIdsRef = useRef<Set<string>>(new Set());
   const usersMapRef = useRef<Record<string, UserProfile>>({});
 
   useEffect(() => {
@@ -410,10 +428,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
 
+    const reqsRef = ref(rtdb, 'friend_requests');
+    reqsInitializedRef.current = false;
+    prevReqIdsRef.current = new Set();
+    const unsubReqs = onValue(reqsRef, (snap) => {
+      const val = snap.val() || {};
+      const incoming: FriendRequestItem[] = [];
+      const outgoing: FriendRequestItem[] = [];
+      const isInitial = !reqsInitializedRef.current;
+
+      Object.keys(val).forEach((rid) => {
+        const raw = val[rid];
+        if (!raw || typeof raw !== 'object') return;
+        const item: FriendRequestItem = {
+          id: rid,
+          from: raw.from || '',
+          fromNick: raw.fromNick || '',
+          to: raw.to || '',
+          toNick: raw.toNick || '',
+          at: toMs(raw.at || raw.createdAt),
+        };
+        if (item.to === uid) {
+          incoming.push(item);
+          if (!isInitial && !prevReqIdsRef.current.has(rid)) {
+            const senderNick = usersMapRef.current[item.from]?.nick || item.fromNick || 'Пользователь';
+            if (Platform.OS === 'android') {
+              try {
+                NativeModules.NotificationModule?.showNotification?.(
+                  'Новая заявка в друзья',
+                  `${senderNick} хочет добавить вас в друзья`,
+                  ''
+                );
+              } catch (_) {}
+            }
+            if (AppState.currentState === 'active') {
+              showToast('Заявка в друзья', `${senderNick} отправил(а) заявку`, 'info');
+            }
+          }
+          prevReqIdsRef.current.add(rid);
+        } else if (item.from === uid) {
+          outgoing.push(item);
+        }
+      });
+
+      reqsInitializedRef.current = true;
+      incoming.sort((a, b) => (b.at || 0) - (a.at || 0));
+      setIncomingRequests(incoming);
+      setOutgoingRequests(outgoing);
+    });
+
     return () => {
       unsubMe();
       unsubUsers();
       unsubChats();
+      unsubReqs();
     };
   }, [authUser]);
 
@@ -581,6 +649,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return await openOrCreateDm(un.uid);
     }
     throw new Error(`Пользователь "${nickOrUid}" не найден`);
+  };
+
+  const sendFriendRequest = async (targetUid: string) => {
+    if (!me || !targetUid || targetUid === me.uid) return;
+    const already = outgoingRequests.some((r) => r.to === targetUid);
+    if (already) return;
+    const targetNick = usersMap[targetUid]?.nick || '';
+    const newRef = push(ref(rtdb, 'friend_requests'));
+    await set(newRef, {
+      from: me.uid,
+      fromNick: me.nick,
+      to: targetUid,
+      toNick: targetNick,
+      at: Date.now(),
+    });
+    triggerHaptic(15);
+  };
+
+  const acceptFriendRequest = async (req: FriendRequestItem): Promise<ChatItem | null> => {
+    const chat = await openOrCreateDm(req.from);
+    await remove(ref(rtdb, `friend_requests/${req.id}`));
+    triggerHaptic(20);
+    return chat;
+  };
+
+  const declineFriendRequest = async (reqId: string) => {
+    await remove(ref(rtdb, `friend_requests/${reqId}`));
+    triggerHaptic(10);
   };
 
   const createGroupOrChannel = async (
@@ -763,6 +859,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loadingAuth,
         me,
         chats,
+        incomingRequests,
+        outgoingRequests,
         usersMap,
         appThemeKey,
         appTheme,
@@ -783,6 +881,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         openOrCreateDm,
         addFriendByNick,
+        sendFriendRequest,
+        acceptFriendRequest,
+        declineFriendRequest,
         createGroupOrChannel,
         updateMyProfile,
         grantSelfPirozhki,

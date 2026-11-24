@@ -23,7 +23,7 @@ import { RADII } from '../theme/liquidGlass';
 export default function UserProfileScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { uid: targetUid } = route.params || {};
-  const { me, usersMap, chats, openOrCreateDm, appTheme, showToast } = useApp();
+  const { me, usersMap, chats, openOrCreateDm, outgoingRequests, sendFriendRequest, appTheme, showToast } = useApp();
 
   const resolvedUid = targetUid || me?.uid || '';
   const isSelf = resolvedUid === me?.uid;
@@ -63,6 +63,9 @@ export default function UserProfileScreen({ route, navigation }: any) {
   const daysRegistered = user.createdAt
     ? Math.max(1, Math.floor((Date.now() - user.createdAt) / 86400000))
     : 1;
+  const dmCount = chats.filter((c) => c.type === 'dm').length;
+  const alreadyFriend = !isSelf && chats.some((c) => c.type === 'dm' && (c.members || []).includes(resolvedUid));
+  const reqSent = !isSelf && outgoingRequests.some((r) => r.to === resolvedUid);
 
   const postComment = async () => {
     const clean = commentText.trim();
@@ -176,6 +179,24 @@ export default function UserProfileScreen({ route, navigation }: any) {
                   </ScalePressable>
                   <ScalePressable
                     style={{ flex: 1 }}
+                    onPress={async () => {
+                      if (alreadyFriend || reqSent) return;
+                      try {
+                        await sendFriendRequest(resolvedUid);
+                        showToast('Заявка отправлена ✓', `Запрос отправлен ${user.nick}`, 'success');
+                      } catch (e: any) {
+                        showToast('Ошибка', e?.message || 'Не удалось отправить заявку', 'error');
+                      }
+                    }}
+                  >
+                    <View style={[styles.btnSec, { opacity: alreadyFriend || reqSent ? 0.7 : 1 }]}>
+                      <Text style={styles.btnSecText}>
+                        {alreadyFriend ? '✓ В друзьях' : reqSent ? '⏳ Заявка' : '➕ В друзья'}
+                      </Text>
+                    </View>
+                  </ScalePressable>
+                  <ScalePressable
+                    style={{ flex: 1 }}
                     onPress={() =>
                       navigation.navigate('PirozhkiStore', {
                         initialTab: 'gift',
@@ -209,9 +230,15 @@ export default function UserProfileScreen({ route, navigation }: any) {
                 <Text style={styles.statVal}>{daysRegistered} дн.</Text>
                 <Text style={styles.statLbl}>Стаж</Text>
               </View>
+              {isSelf ? (
+                <View style={styles.statCard}>
+                  <Text style={styles.statVal}>{dmCount}</Text>
+                  <Text style={styles.statLbl}>Друзей</Text>
+                </View>
+              ) : null}
               <View style={styles.statCard}>
-                <Text style={styles.statVal}>{isSelf ? chats.length : comments.length}</Text>
-                <Text style={styles.statLbl}>{isSelf ? 'Чатов' : 'Отзывов'}</Text>
+                <Text style={styles.statVal}>{comments.length}</Text>
+                <Text style={styles.statLbl}>Отзывов</Text>
               </View>
             </View>
           </GlassCard>

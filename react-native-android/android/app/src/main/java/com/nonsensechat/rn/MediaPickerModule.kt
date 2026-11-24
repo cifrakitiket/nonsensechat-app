@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Base64
+import android.util.Size
 import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.BaseActivityEventListener
@@ -87,7 +88,10 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
     }
 
     private fun hasImagePermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        return if (Build.VERSION.SDK_INT >= 34) {
+            hasPermission(Manifest.permission.READ_MEDIA_IMAGES) ||
+                hasPermission("android.permission.READ_MEDIA_VISUAL_USER_SELECTED")
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             hasPermission(Manifest.permission.READ_MEDIA_IMAGES)
         } else {
             hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -113,6 +117,29 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
         }
     }
 
+    private fun makeThumbnailDataUrl(cr: ContentResolver, id: Long, contentUri: Uri): String? {
+        return try {
+            val thumbBmp: Bitmap? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                cr.loadThumbnail(contentUri, Size(220, 220), null)
+            } else {
+                @Suppress("DEPRECATION")
+                MediaStore.Images.Thumbnails.getThumbnail(
+                    cr,
+                    id,
+                    MediaStore.Images.Thumbnails.MINI_KIND,
+                    null
+                )
+            }
+            if (thumbBmp == null) return null
+            val baos = ByteArrayOutputStream()
+            thumbBmp.compress(Bitmap.CompressFormat.JPEG, 65, baos)
+            val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+            "data:image/jpeg;base64,$b64"
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     @ReactMethod
     fun getRecentPhotos(limit: Int, promise: Promise) {
         if (!hasImagePermission()) {
@@ -122,6 +149,7 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
         thread(start = true) {
             try {
                 val cr = reactApplicationContext.contentResolver
+                val cap = minOf(if (limit > 0) limit else 48, 48)
                 val projection = arrayOf(
                     MediaStore.Images.Media._ID,
                     MediaStore.Images.Media.DISPLAY_NAME,
@@ -133,35 +161,41 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
                 )
                 val result = Arguments.createArray()
                 val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
-                cr.query(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    projection,
-                    null,
-                    null,
-                    sortOrder
-                )?.use { cursor ->
-                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-                    val nameCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
-                    val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
-                    val wCol = cursor.getColumnIndex(MediaStore.Images.Media.WIDTH)
-                    val hCol = cursor.getColumnIndex(MediaStore.Images.Media.HEIGHT)
-                    val dateCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
-                    val mimeCol = cursor.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
+                val cursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val queryArgs = Bundle().apply {
+                        putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(MediaStore.Images.Media.DATE_ADDED))
+                        putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING)
+                        putInt(ContentResolver.QUERY_ARG_LIMIT, cap)
+                    }
+                    cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, queryArgs, null)
+                } else {
+                    cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, null, null, sortOrder)
+                }
+
+                cursor?.use { c ->
+                    val idCol = c.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                    val nameCol = c.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+                    val sizeCol = c.getColumnIndex(MediaStore.Images.Media.SIZE)
+                    val wCol = c.getColumnIndex(MediaStore.Images.Media.WIDTH)
+                    val hCol = c.getColumnIndex(MediaStore.Images.Media.HEIGHT)
+                    val dateCol = c.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
+                    val mimeCol = c.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
 
                     var count = 0
-                    val cap = if (limit > 0) limit else 60
-                    while (cursor.moveToNext() && count < cap) {
-                        val id = cursor.getLong(idCol)
+                    while (c.moveToNext() && count < cap) {
+                        val id = c.getLong(idCol)
                         val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                        val thumbDataUrl = makeThumbnailDataUrl(cr, id, contentUri)
                         val item = Arguments.createMap().apply {
                             putString("id", id.toString())
                             putString("uri", contentUri.toString())
-                            putString("fileName", if (nameCol >= 0) cursor.getString(nameCol) ?: "photo_$id.jpg" else "photo_$id.jpg")
-                            putDouble("size", if (sizeCol >= 0) cursor.getLong(sizeCol).toDouble() else 0.0)
-                            putInt("width", if (wCol >= 0) cursor.getInt(wCol) else 0)
-                            putInt("height", if (hCol >= 0) cursor.getInt(hCol) else 0)
-                            putDouble("dateAdded", if (dateCol >= 0) cursor.getLong(dateCol).toDouble() else 0.0)
-                            putString("mimeType", if (mimeCol >= 0) cursor.getString(mimeCol) ?: "image/jpeg" else "image/jpeg")
+                            if (thumbDataUrl != null) putString("thumbDataUrl", thumbDataUrl)
+                            putString("fileName", if (nameCol >= 0) c.getString(nameCol) ?: "photo_$id.jpg" else "photo_$id.jpg")
+                            putDouble("size", if (sizeCol >= 0) c.getLong(sizeCol).toDouble() else 0.0)
+                            putInt("width", if (wCol >= 0) c.getInt(wCol) else 0)
+                            putInt("height", if (hCol >= 0) c.getInt(hCol) else 0)
+                            putDouble("dateAdded", if (dateCol >= 0) c.getLong(dateCol).toDouble() else 0.0)
+                            putString("mimeType", if (mimeCol >= 0) c.getString(mimeCol) ?: "image/jpeg" else "image/jpeg")
                         }
                         result.pushMap(item)
                         count++

@@ -484,9 +484,9 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                             <TouchableOpacity
                               activeOpacity={0.85}
                               onPress={() => togglePhoto(item)}
-                              style={styles.photoTile}
+                              style={[styles.photoTile, { backgroundColor: 'rgba(255,255,255,0.06)' }]}
                             >
-                              <Image source={{ uri: item.uri }} style={styles.photoImg} />
+                              <Image source={{ uri: item.thumbDataUrl || item.uri }} style={styles.photoImg} />
                               {mode === 'chat' && (
                                 <View
                                   style={[

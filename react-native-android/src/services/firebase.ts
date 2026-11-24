@@ -64,6 +64,7 @@ export function stopVoiceMessage() {
 export interface DevicePhotoItem {
   id: string;
   uri: string;
+  thumbDataUrl?: string;
   fileName: string;
   size: number;
   width: number;

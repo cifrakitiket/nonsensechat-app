@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Modal,
   ScrollView,
   Linking,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ref, onValue, push, set, update, remove } from 'firebase/database';
@@ -31,6 +32,7 @@ import {
   EncodedFileResult,
   EncodedPhotoResult,
 } from '../components/TelegramAttachSheet';
+import { EmojiStickerDrawer } from '../components/EmojiStickerDrawer';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { PrefixBadge } from '../components/PrefixBadge';
 import { LiquidBackground } from '../components/LiquidBackground';
@@ -56,8 +58,30 @@ function decodeMsgText(raw?: string) {
 function toMs(ts: any): number {
   if (!ts) return 0;
   if (typeof ts === 'number') return ts;
-  if (typeof ts === 'object' && typeof ts.seconds === 'number') return ts.seconds * 1000;
+  if (typeof ts === 'string') {
+    const parsed = Date.parse(ts);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof ts === 'object') {
+    if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+    if (typeof ts.__ts__ === 'string') {
+      const parsed = Date.parse(ts.__ts__);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+  }
   return 0;
+}
+
+function formatDateBadge(ms: number): string {
+  if (!ms) return '';
+  const d = new Date(ms);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((today - target) / 86400000);
+  if (diffDays === 0) return 'Сегодня';
+  if (diffDays === 1) return 'Вчера';
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 }
 
 function formatDuration(sec = 0) {
@@ -114,10 +138,14 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     const unsub = onValue(msgsRef, (snap) => {
       const val = snap.val() || {};
       const list = Object.keys(val)
-        .map((k) => ({ id: k, ...val[k], _atMs: toMs(val[k]?.at) }))
-        .sort((a, b) => a._atMs - b._atMs);
+        .filter((k) => val[k] && typeof val[k] === 'object')
+        .map((k) => ({
+          id: k,
+          ...val[k],
+          _atMs: toMs(val[k]?.at || val[k]?.timestamp || val[k]?.createdAt),
+        }))
+        .sort((a, b) => (a._atMs - b._atMs) || a.id.localeCompare(b.id));
       setMessages(list);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 120);
     });
     return () => {
       setActiveChatId(null);
@@ -126,6 +154,25 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       if (recTimerRef.current) clearInterval(recTimerRef.current);
     };
   }, [chatId]);
+
+  const invertedFeed = useMemo(() => {
+    const items: any[] = [];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      items.push(m);
+      const prev = i > 0 ? messages[i - 1] : null;
+      const curDay = m._atMs ? new Date(m._atMs).toDateString() : '';
+      const prevDay = prev?._atMs ? new Date(prev._atMs).toDateString() : '';
+      if (curDay && curDay !== prevDay) {
+        items.push({
+          id: `__date_${m.id}`,
+          type: '__date__',
+          label: formatDateBadge(m._atMs),
+        });
+      }
+    }
+    return items;
+  }, [messages]);
 
   const buildBasePayload = () => {
     const base: any = {
@@ -260,6 +307,19 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     triggerHaptic(12);
   };
 
+  const handleSendSticker = async (stickerUrl: string, emoji?: string) => {
+    if (!me || !stickerUrl) return;
+    const payload = {
+      ...buildBasePayload(),
+      type: 'sticker',
+      stickerUrl,
+      text: emoji || '✨ Стикер',
+    };
+    setShowEmojiDrawer(false);
+    await pushChatMessage(payload, emoji ? `${emoji} Стикер` : '✨ Стикер');
+    triggerHaptic(12);
+  };
+
   const togglePollVote = async (msg: any, optIdx: number) => {
     if (!me || !chatId) return;
     triggerHaptic(10);
@@ -376,11 +436,33 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   };
 
   const renderMessage = ({ item }: any) => {
+    if (item.type === '__date__') {
+      return (
+        <View style={[styles.sysWrap, { backgroundColor: appTheme.glass, borderColor: appTheme.border }]}>
+          <Text style={[styles.sysText, { color: appTheme.textSub }]}>{item.label}</Text>
+        </View>
+      );
+    }
+
     if (item.type === 'system') {
       return (
         <View style={[styles.sysWrap, { backgroundColor: appTheme.glass, borderColor: appTheme.border }]}>
           <Text style={[styles.sysText, { color: appTheme.textSub }]}>{decodeMsgText(item.text)}</Text>
         </View>
+      );
+    }
+
+    const isSticker = item.type === 'sticker' || !!item.stickerUrl;
+    if (isSticker && item.stickerUrl) {
+      const isMineS = item.uid === me?.uid;
+      return (
+        <ScalePressable
+          scaleTo={0.96}
+          onLongPress={() => setActionMsg(item)}
+          style={[styles.msgRow, isMineS ? styles.msgRowOut : styles.msgRowIn]}
+        >
+          <Image source={{ uri: item.stickerUrl }} style={{ width: 156, height: 156 }} resizeMode="contain" />
+        </ScalePressable>
       );
     }
 
@@ -669,14 +751,17 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
         ) : null}
 
-        {/* Messages Feed */}
+        {/* Messages Feed (Inverted: newest at bottom, loads all messages) */}
         <FlatList
           ref={flatListRef}
-          data={messages}
+          data={invertedFeed}
+          inverted
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
+          initialNumToRender={20}
+          maxToRenderPerBatch={15}
+          windowSize={11}
           contentContainerStyle={styles.feedContent}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
 
         {/* Reply / Edit Banner */}
@@ -704,26 +789,19 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* Emoji / Sticker Quick Drawer */}
+        {/* Full Emoji & Sticker Drawer */}
         {showEmojiDrawer && (
-          <View style={{ paddingHorizontal: 12, paddingBottom: 6 }}>
-            <GlassCard radius={24} strong style={styles.emojiDrawer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {QUICK_EMOJIS.map((em) => (
-                  <TouchableOpacity
-                    key={em}
-                    style={styles.emojiItem}
-                    onPress={() => {
-                      triggerHaptic(8);
-                      setText((prev) => prev + em);
-                    }}
-                  >
-                    <Text style={{ fontSize: 24 }}>{em}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </GlassCard>
-          </View>
+          <EmojiStickerDrawer
+            onSelectEmoji={(em) => setText((prev) => prev + em)}
+            onBackspace={() =>
+              setText((prev) => {
+                const chars = Array.from(prev);
+                chars.pop();
+                return chars.join('');
+              })
+            }
+            onSelectSticker={handleSendSticker}
+          />
         )}
 
         {/* Floating Liquid Glass Pill Composer */}
@@ -843,6 +921,22 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                 }}
               >
                 <Text style={styles.sheetRowText}>↪️ Переслать</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={async () => {
+                  const m = actionMsg;
+                  setActionMsg(null);
+                  const txt = decodeMsgText(m?.text);
+                  if (txt) {
+                    Share.share({ message: txt }).catch(() => {});
+                  } else {
+                    showToast('Сообщение', 'Нет текста для отправки', 'info');
+                  }
+                }}
+              >
+                <Text style={styles.sheetRowText}>📋 Поделиться / Скопировать</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

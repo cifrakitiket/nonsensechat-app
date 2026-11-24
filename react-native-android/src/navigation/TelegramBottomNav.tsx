@@ -87,7 +87,7 @@ function AnimatedTabPill({
   );
 }
 
-function TelegramTabBar({ state, navigation, userAvatar, unreadCount }: any) {
+function TelegramTabBar({ state, navigation, userAvatar, unreadCount, reqsCount }: any) {
   const insets = useSafeAreaInsets();
   const { appTheme } = useApp();
 
@@ -129,6 +129,7 @@ function TelegramTabBar({ state, navigation, userAvatar, unreadCount }: any) {
           if (route.name === 'Contacts') {
             label = 'Контакты';
             iconChar = '👤';
+            badgeCount = reqsCount || 0;
           } else if (route.name === 'Calls') {
             label = 'Звонки';
             iconChar = '📞';
@@ -164,8 +165,9 @@ function TelegramTabBar({ state, navigation, userAvatar, unreadCount }: any) {
 }
 
 export default function TelegramBottomNav() {
-  const { me, chats } = useApp();
+  const { me, chats, incomingRequests } = useApp();
   const unreadCount = chats.reduce((acc, c) => acc + (Number(c.unread) || 0), 0);
+  const reqsCount = incomingRequests.length;
 
   return (
     <Tab.Navigator
@@ -176,6 +178,7 @@ export default function TelegramBottomNav() {
           {...props}
           userAvatar={me?.avatar}
           unreadCount={unreadCount}
+          reqsCount={reqsCount}
         />
       )}
     >

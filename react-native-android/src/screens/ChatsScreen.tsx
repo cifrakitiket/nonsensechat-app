@@ -44,9 +44,9 @@ function stripHtml(text?: string) {
 
 export default function ChatsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, chats, usersMap, appTheme, addFriendByNick, createGroupOrChannel, showToast } = useApp();
+  const { me, chats, incomingRequests, acceptFriendRequest, declineFriendRequest, usersMap, appTheme, addFriendByNick, createGroupOrChannel, showToast } = useApp();
 
-  const [activeFolder, setActiveFolder] = useState<'all' | 'dm' | 'groups' | 'channels'>('all');
+  const [activeFolder, setActiveFolder] = useState<'all' | 'dm' | 'groups' | 'channels' | 'reqs'>('all');
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createMode, setCreateMode] = useState<'friend' | 'group' | 'channel'>('friend');
@@ -274,6 +274,7 @@ export default function ChatsScreen({ navigation }: any) {
             { key: 'dm', label: 'ЛС' },
             { key: 'groups', label: 'ГРУППЫ' },
             { key: 'channels', label: 'КАНАЛЫ' },
+            { key: 'reqs', label: incomingRequests.length > 0 ? `ЗАЯВКИ (${incomingRequests.length})` : 'ЗАЯВКИ' },
           ].map((f) => {
             const act = activeFolder === f.key;
             return (
@@ -301,21 +302,91 @@ export default function ChatsScreen({ navigation }: any) {
           })}
         </View>
 
-        {/* Chats List */}
-        <FlatList
-          data={filteredChats}
-          keyExtractor={(item) => item.id}
-          renderItem={renderChatItem}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyEmoji}>💬</Text>
-              <Text style={[styles.emptyText, { color: appTheme.textSub }]}>
-                Чатов пока нет. Нажмите «＋», чтобы найти друга!
-              </Text>
-            </View>
-          }
-        />
+        {/* Chats List or Friend Requests */}
+        {activeFolder === 'reqs' ? (
+          <FlatList
+            data={incomingRequests}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyEmoji}>🤝</Text>
+                <Text style={[styles.emptyText, { color: appTheme.textSub }]}>
+                  Входящих заявок в друзья пока нет
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => {
+              const sender = usersMap[item.from];
+              const nick = sender?.nick || item.fromNick || 'Пользователь';
+              return (
+                <View style={{ marginHorizontal: 12, marginVertical: 4 }}>
+                  <GlassCard radius={RADII.ITEM} style={styles.chatCard}>
+                    <FramedAvatar
+                      uri={sender?.avatar}
+                      name={nick}
+                      frameId={sender?.steamFrame || 'none'}
+                      size={48}
+                      online={!!sender?.online}
+                    />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={{ color: appTheme.text, fontWeight: '800', fontSize: 15 }}>{nick}</Text>
+                      <Text style={{ color: appTheme.textSub, fontSize: 12.5 }}>Хочет добавить вас в друзья</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 7,
+                          borderRadius: 14,
+                          backgroundColor: appTheme.accent,
+                        }}
+                        onPress={async () => {
+                          const chat = await acceptFriendRequest(item);
+                          showToast('Принято ✓', `${nick} добавлен в друзья`, 'success');
+                          if (chat) {
+                            navigation.navigate('ChatRoom', { chatId: chat.id, name: nick });
+                          }
+                        }}
+                      >
+                        <Text style={{ color: '#000', fontWeight: '800', fontSize: 12 }}>Принять</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 7,
+                          borderRadius: 14,
+                          backgroundColor: 'rgba(239,68,68,0.16)',
+                        }}
+                        onPress={async () => {
+                          await declineFriendRequest(item.id);
+                          showToast('Отклонено', `Заявка от ${nick} отклонена`, 'info');
+                        }}
+                      >
+                        <Text style={{ color: '#ef4444', fontWeight: '800', fontSize: 12 }}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </GlassCard>
+                </View>
+              );
+            }}
+          />
+        ) : (
+          <FlatList
+            data={filteredChats}
+            keyExtractor={(item) => item.id}
+            renderItem={renderChatItem}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyEmoji}>💬</Text>
+                <Text style={[styles.emptyText, { color: appTheme.textSub }]}>
+                  Чатов пока нет. Нажмите «＋», чтобы найти друга!
+                </Text>
+              </View>
+            }
+          />
+        )}
 
         {/* Liquid Glass Create Modal */}
         <Modal

@@ -11,7 +11,11 @@
 # Keep React Native & Hermes
 -keep class com.facebook.react.** { *; }
 -keep class com.facebook.hermes.** { *; }
+-keep class com.facebook.fresco.** { *; }
+-keep class com.facebook.drawee.** { *; }
+-keep class com.facebook.imagepipeline.** { *; }
 -dontwarn com.facebook.react.**
+-dontwarn com.facebook.fresco.**
 
 # Keep WebRTC
 -keep class com.oney.WebRTCModule.** { *; }
