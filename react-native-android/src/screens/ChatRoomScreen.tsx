@@ -289,7 +289,9 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       await giftPirozhki(partnerUid, amount, note);
       const payload = {
         ...buildBasePayload(),
-        type: 'text',
+        type: 'pirozhki_gift',
+        amount,
+        note: note ? note.trim() : '',
         text: `🥧 Подарено ${amount} пирожков!${note ? `\n💬 ${note}` : ''}`,
       };
       await pushChatMessage(payload, `🥧 Подарок: ${amount} пирожков`);
@@ -450,6 +452,60 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       return (
         <View style={[styles.sysWrap, { backgroundColor: appTheme.glass, borderColor: appTheme.border }]}>
           <Text style={[styles.sysText, { color: appTheme.textSub }]}>{decodeMsgText(item.text)}</Text>
+        </View>
+      );
+    }
+
+    const isPirozhkiGift =
+      item.type === 'pirozhki_gift' ||
+      item.type === 'gift' ||
+      (typeof item.text === 'string' &&
+        (item.text.startsWith('🥧 Подарено') ||
+          (item.text.includes('Подарено') && item.text.includes('пирожк'))));
+
+    if (isPirozhkiGift) {
+      const isMine = item.uid === me?.uid;
+      const sender = item.uid ? usersMap[item.uid] : undefined;
+      const authorName = sender?.nick || item.author || 'Пользователь';
+      const timeStr = item._atMs
+        ? new Date(item._atMs).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+        : '';
+      const match = typeof item.text === 'string' ? item.text.match(/(\d+)\s*пирожк/i) : null;
+      const giftAmt = item.amount || (match ? match[1] : '');
+      const noteMatch = typeof item.text === 'string' ? item.text.split('💬')[1] : '';
+      const giftNote = item.note || (noteMatch ? noteMatch.trim() : '');
+
+      return (
+        <View style={styles.giftPillRow}>
+          <View
+            style={[
+              styles.giftPillOval,
+              {
+                borderColor: 'rgba(245, 158, 11, 0.45)',
+                backgroundColor: 'rgba(245, 158, 11, 0.16)',
+              },
+            ]}
+          >
+            <View style={styles.giftPillIconWrap}>
+              <Image
+                source={require('../../android/app/src/main/assets/public/pirozhok.png')}
+                style={styles.giftPillIcon}
+              />
+            </View>
+            <View style={styles.giftPillBody}>
+              <Text style={styles.giftPillTitle}>
+                {isMine
+                  ? `Вы подарили ${giftAmt ? `${giftAmt} пирожков` : 'пирожки'}!`
+                  : `${authorName} дарит вам ${giftAmt ? `${giftAmt} пирожков` : 'пирожки'}!`}
+              </Text>
+              {giftNote ? (
+                <Text style={styles.giftPillNote} numberOfLines={2}>
+                  «{giftNote}»
+                </Text>
+              ) : null}
+              <Text style={styles.giftPillTime}>{timeStr}</Text>
+            </View>
+          </View>
         </View>
       );
     }
@@ -1107,6 +1163,62 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   sysText: { fontSize: 12, fontWeight: '600' },
+  giftPillRow: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 8,
+  },
+  giftPillOval: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: '90%',
+    borderRadius: 999,
+    borderWidth: 1.5,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    elevation: 3,
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+  },
+  giftPillIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(245, 158, 11, 0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+  },
+  giftPillIcon: {
+    width: 22,
+    height: 22,
+  },
+  giftPillBody: {
+    flexShrink: 1,
+  },
+  giftPillTitle: {
+    color: '#fbbf24',
+    fontSize: 13.5,
+    fontWeight: '800',
+    letterSpacing: 0.15,
+  },
+  giftPillNote: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  giftPillTime: {
+    color: 'rgba(245, 158, 11, 0.7)',
+    fontSize: 10,
+    marginTop: 2,
+    alignSelf: 'flex-end',
+  },
   msgRow: { width: '100%', flexDirection: 'row', marginVertical: 2 },
   msgRowOut: { justifyContent: 'flex-end' },
   msgRowIn: { justifyContent: 'flex-start' },
