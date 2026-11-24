@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-  Alert,
   Modal,
   ScrollView,
   Linking,
@@ -19,16 +18,18 @@ import { ref, onValue, push, set, update, remove } from 'firebase/database';
 import {
   rtdb,
   triggerHaptic,
-  pickNativeImage,
-  takeNativePhoto,
-  pickNativeFile,
   startNativeVoiceRecording,
   stopNativeVoiceRecording,
   cancelNativeVoiceRecording,
   playVoiceMessage,
   stopVoiceMessage,
 } from '../services/firebase';
-import { useApp } from '../context/AppContext';
+import { useApp, UserProfile } from '../context/AppContext';
+import {
+  TelegramAttachSheet,
+  EncodedFileResult,
+  EncodedPhotoResult,
+} from '../components/TelegramAttachSheet';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { PrefixBadge } from '../components/PrefixBadge';
 import { LiquidBackground } from '../components/LiquidBackground';
@@ -75,7 +76,7 @@ function formatBytes(bytes = 0) {
 export default function ChatRoomScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { chatId, name: paramName } = route.params || {};
-  const { me, chats, usersMap, appTheme } = useApp();
+  const { me, chats, usersMap, appTheme, showToast, showDialog, giftPirozhki } = useApp();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -88,13 +89,6 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   const [actionMsg, setActionMsg] = useState<any | null>(null);
   const [forwardMsg, setForwardMsg] = useState<any | null>(null);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
-
-  // Poll Creator
-  const [showPollModal, setShowPollModal] = useState(false);
-  const [pollQuestion, setPollQuestion] = useState('');
-  const [pollOpt1, setPollOpt1] = useState('');
-  const [pollOpt2, setPollOpt2] = useState('');
-  const [pollOpt3, setPollOpt3] = useState('');
 
   // Voice recording & playback state
   const [isRecording, setIsRecording] = useState(false);
@@ -114,7 +108,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
   useEffect(() => {
     if (!chatId) return;
-    const msgsRef = ref(rtdb, `chats/${chatId}/messages`);
+    const msgsRef = ref(rtdb, `messages/${chatId}`);
     const unsub = onValue(msgsRef, (snap) => {
       const val = snap.val() || {};
       const list = Object.keys(val)
@@ -152,7 +146,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   };
 
   const pushChatMessage = async (payload: any, previewText: string) => {
-    const newRef = push(ref(rtdb, `chats/${chatId}/messages`));
+    const newRef = push(ref(rtdb, `messages/${chatId}`));
     await set(newRef, payload);
     await update(ref(rtdb, `chats/${chatId}`), {
       lastMsg: previewText,
@@ -169,7 +163,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       setText('');
       const targetId = editingMsg.id;
       setEditingMsg(null);
-      await update(ref(rtdb, `chats/${chatId}/messages/${targetId}`), {
+      await update(ref(rtdb, `messages/${chatId}/${targetId}`), {
         text: clean,
         edited: true,
         editedAt: Date.now(),
@@ -187,72 +181,79 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     await pushChatMessage(payload, clean);
   };
 
-  const handleSendImage = async (fromCamera: boolean) => {
-    setShowAttachSheet(false);
-    try {
-      const res = fromCamera ? await takeNativePhoto() : await pickNativeImage();
-      if (!res?.dataUrl || !me) return;
+  const handleSendPhotos = async (photos: EncodedPhotoResult[], caption: string) => {
+    if (!me || photos.length === 0) return;
+    for (let i = 0; i < photos.length; i++) {
+      const p = photos[i];
+      const cap = i === photos.length - 1 ? caption : '';
       const payload = {
         ...buildBasePayload(),
         type: 'photo',
-        photoUrl: res.dataUrl,
-        fileName: res.fileName || 'photo.jpg',
-        fileSize: res.fileSize || 0,
-        text: '',
+        photoUrl: p.dataUrl,
+        fileName: p.fileName || 'photo.jpg',
+        fileSize: p.fileSize || 0,
+        caption: cap,
+        text: cap,
       };
-      await pushChatMessage(payload, '📷 Фото');
-      triggerHaptic(15);
-    } catch (e: any) {
-      if (e?.code !== 'CANCELLED') {
-        Alert.alert('Фото', e?.message || 'Не удалось прикрепить фото');
-      }
+      await pushChatMessage(payload, cap ? `📷 ${cap}` : '📷 Фото');
     }
+    triggerHaptic(15);
   };
 
-  const handleSendFile = async () => {
-    setShowAttachSheet(false);
-    try {
-      const res = await pickNativeFile();
-      if (!res?.dataUrl || !me) return;
-      const payload = {
-        ...buildBasePayload(),
-        type: 'file',
-        fileUrl: res.dataUrl,
-        fileName: res.fileName || 'document',
-        fileSize: res.fileSize || 0,
-        text: '',
-      };
-      await pushChatMessage(payload, `📎 ${res.fileName || 'Файл'}`);
-      triggerHaptic(15);
-    } catch (e: any) {
-      if (e?.code !== 'CANCELLED') {
-        Alert.alert('Файл', e?.message || 'Не удалось прикрепить файл');
-      }
-    }
+  const handleSendFile = async (res: EncodedFileResult) => {
+    if (!res?.dataUrl || !me) return;
+    const payload = {
+      ...buildBasePayload(),
+      type: 'file',
+      fileUrl: res.dataUrl,
+      fileName: res.fileName || 'document',
+      fileSize: res.fileSize || 0,
+      mimeType: res.mimeType || 'application/octet-stream',
+      text: '',
+    };
+    await pushChatMessage(payload, `📎 ${res.fileName || 'Файл'}`);
+    triggerHaptic(15);
   };
 
-  const handleCreatePoll = async () => {
-    const q = pollQuestion.trim();
-    const opts = [pollOpt1.trim(), pollOpt2.trim(), pollOpt3.trim()].filter(Boolean);
-    if (!q || opts.length < 2) {
-      Alert.alert('Опрос', 'Укажите вопрос и минимум 2 варианта ответа');
-      return;
-    }
-    setShowPollModal(false);
-    setPollQuestion('');
-    setPollOpt1('');
-    setPollOpt2('');
-    setPollOpt3('');
-
+  const handleCreatePoll = async (question: string, opts: string[]) => {
     const payload = {
       ...buildBasePayload(),
       type: 'poll',
-      text: `📊 Опрос: ${q}`,
-      pollQuestion: q,
+      text: `📊 Опрос: ${question}`,
+      pollQuestion: question,
       pollOptions: opts.map((label, idx) => ({ id: String(idx), text: label, votes: {} })),
     };
-    await pushChatMessage(payload, `📊 ${q}`);
+    await pushChatMessage(payload, `📊 ${question}`);
     triggerHaptic(15);
+  };
+
+  const handleSendPirozhki = async (amount: number, note: string) => {
+    if (!partnerUid) {
+      showToast('Подарок', 'Пирожки можно дарить только в личном чате', 'info');
+      return;
+    }
+    try {
+      await giftPirozhki(partnerUid, amount, note);
+      const payload = {
+        ...buildBasePayload(),
+        type: 'text',
+        text: `🥧 Подарено ${amount} пирожков!${note ? `\n💬 ${note}` : ''}`,
+      };
+      await pushChatMessage(payload, `🥧 Подарок: ${amount} пирожков`);
+      showToast('Отправлено ✓', `Вы подарили 🥧 ${amount}`, 'success');
+    } catch (e: any) {
+      showToast('Ошибка', e?.message || 'Не удалось подарить пирожки', 'error');
+    }
+  };
+
+  const handleSendContact = async (user: UserProfile) => {
+    const payload = {
+      ...buildBasePayload(),
+      type: 'text',
+      text: `👤 Контакт: ${user.nick}${user.phone ? `\n📞 ${user.phone}` : ''}${user.bio ? `\nℹ️ ${user.bio}` : ''}`,
+    };
+    await pushChatMessage(payload, `👤 Контакт: ${user.nick}`);
+    triggerHaptic(12);
   };
 
   const togglePollVote = async (msg: any, optIdx: number) => {
@@ -268,7 +269,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       votes[me.uid] = true;
     }
     options[optIdx] = { ...targetOpt, votes };
-    await update(ref(rtdb, `chats/${chatId}/messages/${msg.id}`), {
+    await update(ref(rtdb, `messages/${chatId}/${msg.id}`), {
       pollOptions: options,
     });
   };
@@ -283,7 +284,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
         setRecSec((prev) => prev + 1);
       }, 1000);
     } catch (e: any) {
-      Alert.alert('Микрофон', e?.message || 'Разрешите доступ к микрофону в настройках');
+      showToast('Микрофон', e?.message || 'Разрешите доступ к микрофону в настройках', 'error');
     }
   };
 
@@ -307,7 +308,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       await pushChatMessage(payload, `🎤 Голосовое (${formatDuration(res.duration)})`);
       triggerHaptic(15);
     } catch (e: any) {
-      Alert.alert('Ошибка записи', e?.message || 'Не удалось сохранить голосовое');
+      showToast('Ошибка записи', e?.message || 'Не удалось сохранить голосовое', 'error');
     }
   };
 
@@ -337,7 +338,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     } else {
       reactions[emoji] = usersForEmoji;
     }
-    await update(ref(rtdb, `chats/${chatId}/messages/${msg.id}`), { reactions });
+    await update(ref(rtdb, `messages/${chatId}/${msg.id}`), { reactions });
   };
 
   const handleForwardToChat = async (targetChatId: string) => {
@@ -359,14 +360,14 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     if (orig.fileName) fwdPayload.fileName = orig.fileName;
     if (orig.duration) fwdPayload.duration = orig.duration;
 
-    const newRef = push(ref(rtdb, `chats/${targetChatId}/messages`));
+    const newRef = push(ref(rtdb, `messages/${targetChatId}`));
     await set(newRef, fwdPayload);
     await update(ref(rtdb, `chats/${targetChatId}`), {
       lastMsg: `↪ ${decodeMsgText(orig.text) || 'Пересланное сообщение'}`,
       lastMsgAt: Date.now(),
     });
     triggerHaptic(20);
-    Alert.alert('Переслано ✓', 'Сообщение отправлено');
+    showToast('Переслано ✓', 'Сообщение отправлено', 'success');
   };
 
   const renderMessage = ({ item }: any) => {
@@ -498,7 +499,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               style={styles.fileCard}
               onPress={() => {
                 if (String(item.fileUrl).startsWith('http')) Linking.openURL(item.fileUrl).catch(() => {});
-                else Alert.alert('Файл', `${item.fileName || 'Файл'} (${formatBytes(item.fileSize)})`);
+                else showToast('Файл', `${item.fileName || 'Файл'} (${formatBytes(item.fileSize)})`, 'info');
               }}
             >
               <View style={[styles.fileIconCircle, { backgroundColor: appTheme.accentSoft }]}>
@@ -778,46 +779,18 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           )}
         </View>
 
-        {/* Attachment Glass Sheet */}
-        <Modal visible={showAttachSheet} transparent animationType="fade" onRequestClose={() => setShowAttachSheet(false)}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowAttachSheet(false)}>
-            <GlassCard radius={28} strong style={styles.sheetCard}>
-              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Прикрепить</Text>
-              <View style={styles.attachGrid}>
-                <ScalePressable style={styles.attachItem} onPress={() => handleSendImage(false)}>
-                  <View style={[styles.attachCircle, { backgroundColor: 'rgba(59,130,246,0.22)' }]}>
-                    <Text style={{ fontSize: 24 }}>🖼️</Text>
-                  </View>
-                  <Text style={styles.attachLbl}>Галерея</Text>
-                </ScalePressable>
-                <ScalePressable style={styles.attachItem} onPress={() => handleSendImage(true)}>
-                  <View style={[styles.attachCircle, { backgroundColor: 'rgba(236,72,153,0.22)' }]}>
-                    <Text style={{ fontSize: 24 }}>📸</Text>
-                  </View>
-                  <Text style={styles.attachLbl}>Камера</Text>
-                </ScalePressable>
-                <ScalePressable style={styles.attachItem} onPress={handleSendFile}>
-                  <View style={[styles.attachCircle, { backgroundColor: 'rgba(16,185,129,0.22)' }]}>
-                    <Text style={{ fontSize: 24 }}>📄</Text>
-                  </View>
-                  <Text style={styles.attachLbl}>Файл</Text>
-                </ScalePressable>
-                <ScalePressable
-                  style={styles.attachItem}
-                  onPress={() => {
-                    setShowAttachSheet(false);
-                    setShowPollModal(true);
-                  }}
-                >
-                  <View style={[styles.attachCircle, { backgroundColor: 'rgba(245,158,11,0.22)' }]}>
-                    <Text style={{ fontSize: 24 }}>📊</Text>
-                  </View>
-                  <Text style={styles.attachLbl}>Опрос</Text>
-                </ScalePressable>
-              </View>
-            </GlassCard>
-          </TouchableOpacity>
-        </Modal>
+        {/* Telegram-Style In-App Attachment Sheet */}
+        <TelegramAttachSheet
+          visible={showAttachSheet}
+          mode="chat"
+          onClose={() => setShowAttachSheet(false)}
+          onSendPhotos={handleSendPhotos}
+          onSendFile={handleSendFile}
+          onSendPoll={handleCreatePoll}
+          onSendPirozhki={handleSendPirozhki}
+          onSendContact={handleSendContact}
+          canGiftPirozhki={!!partnerUid}
+        />
 
         {/* Message Action & Reactions Sheet */}
         <Modal visible={!!actionMsg} transparent animationType="fade" onRequestClose={() => setActionMsg(null)}>
@@ -902,7 +875,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   onPress={() => {
                     const m = actionMsg;
                     setActionMsg(null);
-                    if (m) remove(ref(rtdb, `chats/${chatId}/messages/${m.id}`));
+                    if (m) remove(ref(rtdb, `messages/${chatId}/${m.id}`));
                   }}
                 >
                   <Text style={[styles.sheetRowText, { color: '#ef4444' }]}>🗑️ Удалить</Text>
@@ -940,54 +913,6 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setForwardMsg(null)}>
                 <Text style={{ color: '#94a3b8', fontWeight: '700' }}>Отмена</Text>
               </TouchableOpacity>
-            </GlassCard>
-          </View>
-        </Modal>
-
-        {/* Poll Creator Modal */}
-        <Modal visible={showPollModal} transparent animationType="fade" onRequestClose={() => setShowPollModal(false)}>
-          <View style={styles.modalBackdrop}>
-            <GlassCard radius={28} strong style={styles.sheetCard}>
-              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Создать опрос 📊</Text>
-              <TextInput
-                style={styles.pollInput}
-                placeholder="Вопрос опроса..."
-                placeholderTextColor="#64748b"
-                value={pollQuestion}
-                onChangeText={setPollQuestion}
-              />
-              <TextInput
-                style={styles.pollInput}
-                placeholder="Вариант 1"
-                placeholderTextColor="#64748b"
-                value={pollOpt1}
-                onChangeText={setPollOpt1}
-              />
-              <TextInput
-                style={styles.pollInput}
-                placeholder="Вариант 2"
-                placeholderTextColor="#64748b"
-                value={pollOpt2}
-                onChangeText={setPollOpt2}
-              />
-              <TextInput
-                style={styles.pollInput}
-                placeholder="Вариант 3 (необязательно)"
-                placeholderTextColor="#64748b"
-                value={pollOpt3}
-                onChangeText={setPollOpt3}
-              />
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
-                <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setShowPollModal(false)}>
-                  <Text style={{ color: '#94a3b8', fontWeight: '700' }}>Отмена</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.createPollBtn, { backgroundColor: appTheme.accent }]}
-                  onPress={handleCreatePoll}
-                >
-                  <Text style={{ color: '#000', fontWeight: '800' }}>Создать</Text>
-                </TouchableOpacity>
-              </View>
             </GlassCard>
           </View>
         </Modal>

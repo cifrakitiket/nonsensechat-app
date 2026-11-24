@@ -6,12 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
-import { pickNativeImage, takeNativePhoto } from '../services/firebase';
+import { takeNativePhoto } from '../services/firebase';
+import { TelegramAttachSheet } from '../components/TelegramAttachSheet';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
@@ -20,7 +20,7 @@ import { RADII } from '../theme/liquidGlass';
 
 export default function EditProfileScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, updateMyProfile, appTheme } = useApp();
+  const { me, updateMyProfile, appTheme, showToast } = useApp();
 
   const [nick, setNick] = useState(me?.nick || '');
   const [bio, setBio] = useState(me?.bio || '');
@@ -28,19 +28,24 @@ export default function EditProfileScreen({ navigation }: any) {
   const [bday, setBday] = useState(me?.bday || '');
   const [phone, setPhone] = useState(me?.phone || '');
   const [saving, setSaving] = useState(false);
+  const [showAvatarSheet, setShowAvatarSheet] = useState(false);
 
   const pickAvatar = async (fromCam: boolean) => {
+    if (!fromCam) {
+      setShowAvatarSheet(true);
+      return;
+    }
     try {
-      const res = fromCam ? await takeNativePhoto() : await pickNativeImage();
+      const res = await takeNativePhoto();
       if (res?.dataUrl) setAvatar(res.dataUrl);
     } catch (e: any) {
-      if (e?.code !== 'CANCELLED') Alert.alert('Фото', e?.message);
+      if (e?.code !== 'CANCELLED') showToast('Фото', e?.message || 'Ошибка камеры', 'error');
     }
   };
 
   const handleSave = async () => {
     if (!nick.trim()) {
-      Alert.alert('Ошибка', 'Юзернейм не может быть пустым');
+      showToast('Ошибка', 'Юзернейм не может быть пустым', 'error');
       return;
     }
     setSaving(true);
@@ -52,10 +57,10 @@ export default function EditProfileScreen({ navigation }: any) {
         bday: bday.trim(),
         phone: phone.trim(),
       });
-      Alert.alert('Сохранено ✓', 'Данные профиля обновлены');
+      showToast('Сохранено ✓', 'Данные профиля обновлены', 'success');
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message || 'Не удалось обновить профиль');
+      showToast('Ошибка', e?.message || 'Не удалось обновить профиль', 'error');
     } finally {
       setSaving(false);
     }
@@ -166,6 +171,13 @@ export default function EditProfileScreen({ navigation }: any) {
           </GlassCard>
         </ScrollView>
       </View>
+
+      <TelegramAttachSheet
+        visible={showAvatarSheet}
+        mode="avatar"
+        onClose={() => setShowAvatarSheet(false)}
+        onPickAvatar={(dataUrl) => setAvatar(dataUrl)}
+      />
     </LiquidBackground>
   );
 }

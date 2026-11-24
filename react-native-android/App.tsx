@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { AppProvider, useApp } from './src/context/AppContext';
+import { GlassDialogHost } from './src/components/GlassDialogHost';
 import TelegramBottomNav from './src/navigation/TelegramBottomNav';
 import AuthScreen from './src/screens/AuthScreen';
 import ChatRoomScreen from './src/screens/ChatRoomScreen';
@@ -25,8 +26,18 @@ function RootNavigator() {
         PermissionsAndroid.PERMISSIONS.CAMERA,
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
       ];
-      if (Platform.Version >= 33 && (PermissionsAndroid.PERMISSIONS as any).POST_NOTIFICATIONS) {
-        perms.push((PermissionsAndroid.PERMISSIONS as any).POST_NOTIFICATIONS);
+      if (Platform.Version >= 33) {
+        if ((PermissionsAndroid.PERMISSIONS as any).POST_NOTIFICATIONS) {
+          perms.push((PermissionsAndroid.PERMISSIONS as any).POST_NOTIFICATIONS);
+        }
+        if ((PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_IMAGES) {
+          perms.push((PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_IMAGES);
+        }
+        if ((PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_AUDIO) {
+          perms.push((PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_AUDIO);
+        }
+      } else {
+        perms.push(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
       }
       PermissionsAndroid.requestMultiple(perms).catch(() => {});
     }
@@ -69,6 +80,7 @@ export default function App() {
     <SafeAreaProvider>
       <AppProvider>
         <RootNavigator />
+        <GlassDialogHost />
       </AppProvider>
     </SafeAreaProvider>
   );

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Alert,
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +23,7 @@ import { RADII } from '../theme/liquidGlass';
 export default function UserProfileScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { uid: targetUid } = route.params || {};
-  const { me, usersMap, chats, openOrCreateDm, appTheme } = useApp();
+  const { me, usersMap, chats, openOrCreateDm, appTheme, showToast } = useApp();
 
   const resolvedUid = targetUid || me?.uid || '';
   const isSelf = resolvedUid === me?.uid;
@@ -83,7 +82,7 @@ export default function UserProfileScreen({ route, navigation }: any) {
       });
       setCommentText('');
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message || 'Не удалось оставить комментарий');
+      showToast('Ошибка', e?.message || 'Не удалось оставить комментарий', 'error');
     } finally {
       setPosting(false);
     }

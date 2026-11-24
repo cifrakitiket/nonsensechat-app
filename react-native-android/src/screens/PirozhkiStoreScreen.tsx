@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Alert,
   Image,
   Linking,
   ActivityIndicator,
@@ -28,7 +27,7 @@ import { RADII } from '../theme/liquidGlass';
 export default function PirozhkiStoreScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { initialTab = 'buy', targetUid = '' } = route.params || {};
-  const { me, usersMap, grantSelfPirozhki, giftPirozhki, buyPrefix, appTheme } = useApp();
+  const { me, usersMap, grantSelfPirozhki, giftPirozhki, buyPrefix, appTheme, showToast, showDialog } = useApp();
 
   const [tab, setTab] = useState<'buy' | 'prefixes' | 'gift'>(initialTab);
   const [selectedPack, setSelectedPack] = useState(PIROZHKI_PACKS[1]);
@@ -66,10 +65,10 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
       if (data && data.confirmationUrl) {
         await Linking.openURL(data.confirmationUrl);
       } else {
-        Alert.alert('Ошибка ЮKassa', 'Сервер оплаты не вернул ссылку.');
+        showToast('Ошибка ЮKassa', 'Сервер оплаты не вернул ссылку.', 'error');
       }
     } catch (e: any) {
-      Alert.alert('Ошибка сети', e?.message || 'Не удалось создать платёж');
+      showToast('Ошибка сети', e?.message || 'Не удалось создать платёж', 'error');
     } finally {
       setPayLoading(false);
     }
@@ -78,41 +77,45 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
   const handleGrantSelf = async (amt: number) => {
     try {
       await grantSelfPirozhki(amt);
-      Alert.alert('Готово 🥟', `Начислено +${amt} пирожков на ваш аккаунт!`);
+      showToast('Готово 🥟', `Начислено +${amt} пирожков на ваш аккаунт!`, 'success');
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message);
+      showToast('Ошибка', e?.message, 'error');
     }
   };
 
   const handleBuyPresetPrefix = (text: string, style: string, cost: number) => {
-    Alert.alert('Покупка префикса', `Купить префикс "${text}" за ${cost} 🥟?`, [
-      { text: 'Отмена', style: 'cancel' },
-      {
-        text: 'Купить',
-        onPress: async () => {
-          try {
-            await buyPrefix(text, style, cost);
-            Alert.alert('Успешно 🎉', `Префикс "${text}" установлен!`);
-          } catch (e: any) {
-            Alert.alert('Недостаточно пирожков', e?.message);
-          }
+    showDialog({
+      title: 'Покупка префикса',
+      message: `Купить префикс "${text}" за ${cost} 🥟?`,
+      buttons: [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Купить',
+          onPress: async () => {
+            try {
+              await buyPrefix(text, style, cost);
+              showToast('Успешно 🎉', `Префикс "${text}" установлен!`, 'success');
+            } catch (e: any) {
+              showToast('Недостаточно пирожков', e?.message, 'error');
+            }
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   const handleGiftSubmit = async () => {
     const amt = parseInt(giftAmount, 10) || 0;
     if (!giftTargetUid) {
-      Alert.alert('Выберите получателя', 'Нажмите на пользователя из списка');
+      showToast('Выберите получателя', 'Нажмите на пользователя из списка', 'info');
       return;
     }
     try {
       await giftPirozhki(giftTargetUid, amt, giftNote);
-      Alert.alert('Угостили! 🥟', `Вы успешно подарили ${amt} пирожков!`);
+      showToast('Угостили! 🥟', `Вы успешно подарили ${amt} пирожков!`, 'success');
       setGiftNote('');
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message);
+      showToast('Ошибка', e?.message, 'error');
     }
   };
 
@@ -325,7 +328,7 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
                   onPress={() => {
                     const clean = customText.trim();
                     if (!clean) {
-                      Alert.alert('Внимание', 'Введите текст префикса');
+                      showToast('Внимание', 'Введите текст префикса', 'error');
                       return;
                     }
                     handleBuyPresetPrefix(clean, customStyle, 250);

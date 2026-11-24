@@ -9,7 +9,6 @@ import {
   StatusBar,
   TextInput,
   Modal,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp, ChatItem } from '../context/AppContext';
@@ -45,7 +44,7 @@ function stripHtml(text?: string) {
 
 export default function ChatsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, chats, usersMap, appTheme, addFriendByNick, createGroupOrChannel } = useApp();
+  const { me, chats, usersMap, appTheme, addFriendByNick, createGroupOrChannel, showToast } = useApp();
 
   const [activeFolder, setActiveFolder] = useState<'all' | 'dm' | 'groups' | 'channels'>('all');
   const [search, setSearch] = useState('');
@@ -127,7 +126,7 @@ export default function ChatsScreen({ navigation }: any) {
         navigation.navigate('ChatRoom', { chatId: chat.id, name: info.name });
       }
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message || 'Не удалось выполнить действие');
+      showToast('Ошибка', e?.message || 'Не удалось выполнить действие', 'error');
     } finally {
       setCreating(false);
     }

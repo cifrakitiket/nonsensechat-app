@@ -1,18 +1,20 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 import { PREFIX_SOUND_PRESETS } from '../constants/catalogs';
 import {
+  DeviceAudioItem,
+  encodeDeviceFile,
+  getRecentDeviceAudio,
   playPrefixSound,
-  pickNativeAudio,
   startNativeVoiceRecording,
   stopNativeVoiceRecording,
   cancelNativeVoiceRecording,
@@ -24,29 +26,49 @@ import { RADII } from '../theme/liquidGlass';
 
 export default function PrefixSoundScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, savePrefixSound, appTheme } = useApp();
+  const { me, savePrefixSound, appTheme, showToast } = useApp();
 
   const [tab, setTab] = useState<'presets' | 'upload' | 'mic'>('presets');
   const [selectedSource, setSelectedSource] = useState(me?.prefixSound || '');
   const [selectedName, setSelectedName] = useState(me?.prefixSoundName || 'Без звука');
   const [saving, setSaving] = useState(false);
+  const [deviceAudio, setDeviceAudio] = useState<DeviceAudioItem[]>([]);
+  const [loadingAudio, setLoadingAudio] = useState(false);
 
   // Mic 2.0s recorder
   const [recording, setRecording] = useState(false);
   const [recMs, setRecMs] = useState(0);
   const timerRef = useRef<any>(null);
 
-  const handlePickAudioFile = async () => {
+  const loadAudioList = async () => {
+    setLoadingAudio(true);
     try {
-      const res = await pickNativeAudio();
+      const list = await getRecentDeviceAudio(40);
+      setDeviceAudio(list || []);
+    } catch (e: any) {
+      showToast('Аудио', e?.message || 'Нет доступа к аудиофайлам', 'error');
+    } finally {
+      setLoadingAudio(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'upload' && deviceAudio.length === 0) {
+      loadAudioList();
+    }
+  }, [tab]);
+
+  const handlePickDeviceAudio = async (item: DeviceAudioItem) => {
+    try {
+      const res = await encodeDeviceFile(item.uri, Math.floor(1.5 * 1024 * 1024));
       if (res?.dataUrl) {
-        const cleanName = (res.fileName || 'Аудио').replace(/\.[^/.]+$/, '').slice(0, 18);
+        const cleanName = (res.fileName || item.fileName || 'Аудио').replace(/\.[^/.]+$/, '').slice(0, 18);
         setSelectedSource(res.dataUrl);
         setSelectedName(`Файл: ${cleanName}`);
         playPrefixSound(res.dataUrl);
       }
     } catch (e: any) {
-      if (e?.code !== 'CANCELLED') Alert.alert('Аудио', e?.message);
+      showToast('Аудио', e?.message || 'Не удалось загрузить аудио', 'error');
     }
   };
 
@@ -64,7 +86,7 @@ export default function PrefixSoundScreen({ navigation }: any) {
         }
       }, 100);
     } catch (e: any) {
-      Alert.alert('Микрофон', e?.message || 'Разрешите доступ к микрофону');
+      showToast('Микрофон', e?.message || 'Разрешите доступ к микрофону', 'error');
     }
   };
 
@@ -88,16 +110,16 @@ export default function PrefixSoundScreen({ navigation }: any) {
 
   const handleSave = async () => {
     if (!me?.prefix) {
-      Alert.alert('Сначала купите префикс', 'Откройте Магазин Пирожков → Префиксы');
+      showToast('Сначала купите префикс', 'Откройте Магазин Пирожков → Префиксы', 'info');
       return;
     }
     setSaving(true);
     try {
       await savePrefixSound(selectedSource, selectedName);
-      Alert.alert('Готово 🔊', `Звук "${selectedName}" сохранён для вашего префикса!`);
+      showToast('Готово 🔊', `Звук "${selectedName}" сохранён для вашего префикса!`, 'success');
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message);
+      showToast('Ошибка', e?.message, 'error');
     } finally {
       setSaving(false);
     }
@@ -188,18 +210,47 @@ export default function PrefixSoundScreen({ navigation }: any) {
             })}
 
           {tab === 'upload' && (
-            <GlassCard radius={RADII.CARD} style={styles.actionBox}>
-              <Text style={{ fontSize: 38, marginBottom: 10 }}>🎵</Text>
-              <Text style={{ color: '#fff', fontSize: 15.5, fontWeight: '800', marginBottom: 6 }}>
-                Загрузить аудиофайл с телефона
-              </Text>
-              <Text style={{ color: appTheme.textSub, fontSize: 12.5, textAlign: 'center', marginBottom: 18 }}>
-                MP3, WAV, M4A, OGG · Воспроизведение автоматически ограничивается 2.0 секундами
-              </Text>
-              <ScalePressable style={styles.bigGoldBtn} onPress={handlePickAudioFile}>
-                <Text style={{ color: '#000', fontWeight: '900' }}>📁 Выбрать аудиофайл</Text>
-              </ScalePressable>
-            </GlassCard>
+            <View style={{ gap: 10 }}>
+              <GlassCard radius={RADII.CARD} style={styles.actionBox}>
+                <Text style={{ fontSize: 34, marginBottom: 8 }}>🎵</Text>
+                <Text style={{ color: '#fff', fontSize: 15.5, fontWeight: '800', marginBottom: 4 }}>
+                  Аудиофайлы на устройстве
+                </Text>
+                <Text style={{ color: appTheme.textSub, fontSize: 12.5, textAlign: 'center', marginBottom: 12 }}>
+                  MP3, WAV, M4A, OGG (до 1.5 МБ · воспроизведение до 2.0с)
+                </Text>
+                <ScalePressable style={styles.bigGoldBtn} onPress={loadAudioList}>
+                  <Text style={{ color: '#000', fontWeight: '900' }}>🔄 Обновить список</Text>
+                </ScalePressable>
+              </GlassCard>
+
+              {loadingAudio ? (
+                <ActivityIndicator size="small" color="#f59e0b" style={{ marginTop: 14 }} />
+              ) : deviceAudio.length === 0 ? (
+                <Text style={{ color: appTheme.textSub, textAlign: 'center', marginTop: 10 }}>
+                  Аудиофайлы не найдены
+                </Text>
+              ) : (
+                deviceAudio.map((a) => (
+                  <ScalePressable key={a.uri} onPress={() => handlePickDeviceAudio(a)}>
+                    <GlassCard radius={20} style={styles.card}>
+                      <Text style={{ fontSize: 20 }}>🎶</Text>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.cardName} numberOfLines={1}>
+                          {a.fileName}
+                        </Text>
+                        <Text style={styles.cardSub}>
+                          {Math.max(1, Math.round((a.size || 0) / 1024))} КБ
+                        </Text>
+                      </View>
+                      <View style={styles.playBtn}>
+                        <Text style={{ color: '#fff', fontSize: 12 }}>▶</Text>
+                      </View>
+                    </GlassCard>
+                  </ScalePressable>
+                ))
+              )}
+            </View>
           )}
 
           {tab === 'mic' && (

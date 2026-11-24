@@ -6,7 +6,6 @@ import {
   Image,
   StyleSheet,
   TextInput,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp, UserProfile } from '../context/AppContext';
@@ -19,7 +18,7 @@ import { RADII } from '../theme/liquidGlass';
 
 export default function ContactsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, usersMap, appTheme, openOrCreateDm } = useApp();
+  const { me, usersMap, appTheme, openOrCreateDm, showToast } = useApp();
   const [search, setSearch] = useState('');
 
   const contacts = useMemo(() => {
@@ -44,7 +43,7 @@ export default function ContactsScreen({ navigation }: any) {
         navigation.navigate('ChatRoom', { chatId: chat.id, name: user.nick });
       }
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message || 'Не удалось открыть чат');
+      showToast('Ошибка', e?.message || 'Не удалось открыть чат', 'error');
     }
   };
 

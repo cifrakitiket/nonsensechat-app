@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ref, onValue } from 'firebase/database';
 import { rtdb } from '../services/firebase';
@@ -12,12 +12,12 @@ import { RADII } from '../theme/liquidGlass';
 
 export default function CallsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, usersMap, appTheme, openOrCreateDm } = useApp();
+  const { me, usersMap, appTheme, openOrCreateDm, showToast } = useApp();
   const [calls, setCalls] = useState<any[]>([]);
 
   useEffect(() => {
     if (!me) return;
-    const cRef = ref(rtdb, `users/${me.uid}/call_history`);
+    const cRef = ref(rtdb, `call_history/${me.uid}`);
     const unsub = onValue(cRef, (snap) => {
       const val = snap.val() || {};
       const list = Object.keys(val)
@@ -103,7 +103,7 @@ export default function CallsScreen({ navigation }: any) {
                     style={[styles.callbackBtn, { backgroundColor: appTheme.accentSoft }]}
                     onPress={() => {
                       if (item.peerUid) handleCallContact(item.peerUid, peerName);
-                      else Alert.alert('Звонок', `Контакт: ${peerName}`);
+                      else showToast('Звонок', `Контакт: ${peerName}`, 'info');
                     }}
                   >
                     <Text style={{ fontSize: 16 }}>💬</Text>

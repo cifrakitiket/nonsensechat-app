@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +18,7 @@ import { RADII } from '../theme/liquidGlass';
 
 export default function ProfileCustomizerScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, buyThemeOrFrame, equipThemeAndFrame, appTheme } = useApp();
+  const { me, buyThemeOrFrame, equipThemeAndFrame, appTheme, showToast, showDialog } = useApp();
 
   const [selectedTheme, setSelectedTheme] = useState(me?.steamTheme || 'classic');
   const [selectedFrame, setSelectedFrame] = useState(me?.steamFrame || 'none');
@@ -40,29 +39,37 @@ export default function ProfileCustomizerScreen({ navigation }: any) {
     if (!me) return;
     if (totalCost === 0) {
       await equipThemeAndFrame(selectedTheme, selectedFrame);
-      Alert.alert('Готово ✓', 'Оформление профиля обновлено!');
+      showToast('Готово ✓', 'Оформление профиля обновлено!', 'success');
       navigation.goBack();
       return;
     }
 
-    Alert.alert('Покупка оформления', `Приобрести и применить за ${totalCost} 🥟?`, [
-      { text: 'Отмена', style: 'cancel' },
-      {
-        text: `Купить за ${totalCost} 🥟`,
-        onPress: async () => {
-          try {
-            await buyThemeOrFrame(selectedTheme, selectedFrame, totalCost);
-            Alert.alert('Поздравляем! 🎉', 'Новое оформление куплено навсегда и применено!');
-            navigation.goBack();
-          } catch (e: any) {
-            Alert.alert('Недостаточно пирожков', e?.message, [
-              { text: 'Отмена', style: 'cancel' },
-              { text: 'Пополнить', onPress: () => navigation.navigate('PirozhkiStore', { initialTab: 'buy' }) },
-            ]);
-          }
+    showDialog({
+      title: 'Покупка оформления',
+      message: `Приобрести и применить за ${totalCost} 🥟?`,
+      buttons: [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: `Купить за ${totalCost} 🥟`,
+          onPress: async () => {
+            try {
+              await buyThemeOrFrame(selectedTheme, selectedFrame, totalCost);
+              showToast('Поздравляем! 🎉', 'Новое оформление куплено навсегда и применено!', 'success');
+              navigation.goBack();
+            } catch (e: any) {
+              showDialog({
+                title: 'Недостаточно пирожков',
+                message: e?.message,
+                buttons: [
+                  { text: 'Отмена', style: 'cancel' },
+                  { text: 'Пополнить', onPress: () => navigation.navigate('PirozhkiStore', { initialTab: 'buy' }) },
+                ],
+              });
+            }
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   return (

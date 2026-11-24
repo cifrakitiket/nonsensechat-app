@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Image,
   StyleSheet,
   Share,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
@@ -17,7 +16,7 @@ import {
   CREATOR_UID,
   PROFILE_THEMES_CATALOG,
 } from '../constants/catalogs';
-import { pickNativeImage, takeNativePhoto } from '../services/firebase';
+import { TelegramAttachSheet } from '../components/TelegramAttachSheet';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { PrefixBadge } from '../components/PrefixBadge';
 import { LiquidBackground } from '../components/LiquidBackground';
@@ -27,7 +26,8 @@ import { AppThemeKey, LIQUID_THEMES, RADII } from '../theme/liquidGlass';
 
 export default function ProfileScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, logout, grantSelfPirozhki, updateMyProfile, appTheme, appThemeKey, setAppTheme } = useApp();
+  const { me, logout, grantSelfPirozhki, updateMyProfile, appTheme, appThemeKey, setAppTheme, showToast, showDialog } = useApp();
+  const [showAvatarSheet, setShowAvatarSheet] = useState(false);
 
   if (!me) return null;
 
@@ -38,38 +38,18 @@ export default function ProfileScreen({ navigation }: any) {
     PROFILE_THEMES_CATALOG[0];
 
   const handleChangeAvatar = () => {
-    Alert.alert('Сменить аватар', 'Выберите источник фото', [
-      {
-        text: '🖼️ Из галереи',
-        onPress: async () => {
-          try {
-            const res = await pickNativeImage();
-            if (res?.dataUrl) await updateMyProfile({ avatar: res.dataUrl });
-          } catch (e: any) {
-            if (e?.code !== 'CANCELLED') Alert.alert('Ошибка', e?.message);
-          }
-        },
-      },
-      {
-        text: '📸 Сделать фото',
-        onPress: async () => {
-          try {
-            const res = await takeNativePhoto();
-            if (res?.dataUrl) await updateMyProfile({ avatar: res.dataUrl });
-          } catch (e: any) {
-            if (e?.code !== 'CANCELLED') Alert.alert('Ошибка', e?.message);
-          }
-        },
-      },
-      { text: 'Отмена', style: 'cancel' },
-    ]);
+    setShowAvatarSheet(true);
   };
 
   const handleLogout = () => {
-    Alert.alert('Выход', 'Вы уверены, что хотите выйти из аккаунта?', [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Выйти', style: 'destructive', onPress: () => logout() },
-    ]);
+    showDialog({
+      title: 'Выход',
+      message: 'Вы уверены, что хотите выйти из аккаунта?',
+      buttons: [
+        { text: 'Отмена', style: 'cancel' },
+        { text: 'Выйти', style: 'destructive', onPress: () => logout() },
+      ],
+    });
   };
 
   return (
@@ -185,7 +165,7 @@ export default function ProfileScreen({ navigation }: any) {
                   haptic
                   style={styles.creatorBtn}
                   onPress={() =>
-                    grantSelfPirozhki(500).then(() => Alert.alert('Готово 🥟', '+500 пирожков начислено!'))
+                    grantSelfPirozhki(500).then(() => showToast('Готово 🥟', '+500 пирожков начислено!', 'success'))
                   }
                 >
                   <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>⚡ +500 себе</Text>
@@ -333,6 +313,16 @@ export default function ProfileScreen({ navigation }: any) {
           </GlassCard>
         </View>
       </ScrollView>
+
+      <TelegramAttachSheet
+        visible={showAvatarSheet}
+        mode="avatar"
+        onClose={() => setShowAvatarSheet(false)}
+        onPickAvatar={async (dataUrl) => {
+          await updateMyProfile({ avatar: dataUrl });
+          showToast('Аватар обновлён ✓', undefined, 'success');
+        }}
+      />
     </LiquidBackground>
   );
 }

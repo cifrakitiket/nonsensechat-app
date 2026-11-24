@@ -1,13 +1,18 @@
 package com.nonsensechat.rn
 
+import android.Manifest
 import android.app.Activity
+import android.content.ContentUris
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Base64
+import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
@@ -22,10 +27,7 @@ import kotlin.math.roundToInt
 class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
     companion object {
-        private const val REQ_PICK_IMAGE = 4101
         private const val REQ_TAKE_PHOTO = 4102
-        private const val REQ_PICK_FILE = 4103
-        private const val REQ_PICK_AUDIO = 4104
     }
 
     private var pendingPromise: Promise? = null
@@ -33,7 +35,7 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
 
     private val activityListener = object : BaseActivityEventListener() {
         override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
-            if (requestCode !in listOf(REQ_PICK_IMAGE, REQ_TAKE_PHOTO, REQ_PICK_FILE, REQ_PICK_AUDIO)) return
+            if (requestCode != REQ_TAKE_PHOTO) return
             val promise = pendingPromise
             val mode = pendingMode
             pendingPromise = null
@@ -41,129 +43,32 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
 
             if (promise == null) return
             if (resultCode != Activity.RESULT_OK || data == null) {
-                promise.reject("CANCELLED", "Выбор отменён")
+                promise.reject("CANCELLED", "Съёмка отменена")
                 return
             }
 
             thread(start = true) {
                 try {
-                    when (mode) {
-                        REQ_TAKE_PHOTO -> {
-                            @Suppress("DEPRECATION")
-                            val bmp = data.extras?.get("data") as? Bitmap
-                            if (bmp == null) {
-                                promise.reject("NO_PHOTO", "Не удалось получить фото с камеры")
-                                return@thread
-                            }
-                            val baos = ByteArrayOutputStream()
-                            bmp.compress(Bitmap.CompressFormat.JPEG, 85, baos)
-                            val bytes = baos.toByteArray()
-                            val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                            val map = Arguments.createMap().apply {
-                                putString("dataUrl", "data:image/jpeg;base64,$b64")
-                                putString("fileName", "camera_${System.currentTimeMillis()}.jpg")
-                                putInt("fileSize", bytes.size)
-                            }
-                            promise.resolve(map)
+                    if (mode == REQ_TAKE_PHOTO) {
+                        @Suppress("DEPRECATION")
+                        val bmp = data.extras?.get("data") as? Bitmap
+                        if (bmp == null) {
+                            promise.reject("NO_PHOTO", "Не удалось получить фото с камеры")
+                            return@thread
                         }
-                        REQ_PICK_IMAGE -> {
-                            val uri = data.data
-                            if (uri == null) {
-                                promise.reject("NO_URI", "Изображение не выбрано")
-                                return@thread
-                            }
-                            val cr = reactApplicationContext.contentResolver
-                            val rawBytes = cr.openInputStream(uri)?.use { it.readBytes() }
-                            if (rawBytes == null) {
-                                promise.reject("READ_ERROR", "Не удалось прочитать изображение")
-                                return@thread
-                            }
-                            val bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size)
-                            if (bmp == null) {
-                                promise.reject("DECODE_ERROR", "Некорректный формат изображения")
-                                return@thread
-                            }
-                            val maxDim = 1280
-                            val curMax = max(bmp.width, bmp.height)
-                            val scaled = if (curMax > maxDim) {
-                                val ratio = maxDim.toFloat() / curMax.toFloat()
-                                Bitmap.createScaledBitmap(
-                                    bmp,
-                                    (bmp.width * ratio).roundToInt().coerceAtLeast(1),
-                                    (bmp.height * ratio).roundToInt().coerceAtLeast(1),
-                                    true
-                                )
-                            } else {
-                                bmp
-                            }
-                            val baos = ByteArrayOutputStream()
-                            scaled.compress(Bitmap.CompressFormat.JPEG, 82, baos)
-                            val outBytes = baos.toByteArray()
-                            val b64 = Base64.encodeToString(outBytes, Base64.NO_WRAP)
-                            val fileName = queryFileName(uri) ?: "photo_${System.currentTimeMillis()}.jpg"
-                            val map = Arguments.createMap().apply {
-                                putString("dataUrl", "data:image/jpeg;base64,$b64")
-                                putString("fileName", fileName)
-                                putInt("fileSize", outBytes.size)
-                            }
-                            promise.resolve(map)
+                        val baos = ByteArrayOutputStream()
+                        bmp.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+                        val bytes = baos.toByteArray()
+                        val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                        val map = Arguments.createMap().apply {
+                            putString("dataUrl", "data:image/jpeg;base64,$b64")
+                            putString("fileName", "camera_${System.currentTimeMillis()}.jpg")
+                            putInt("fileSize", bytes.size)
                         }
-                        REQ_PICK_FILE -> {
-                            val uri = data.data
-                            if (uri == null) {
-                                promise.reject("NO_URI", "Файл не выбран")
-                                return@thread
-                            }
-                            val cr = reactApplicationContext.contentResolver
-                            val bytes = cr.openInputStream(uri)?.use { it.readBytes() }
-                            if (bytes == null) {
-                                promise.reject("READ_ERROR", "Не удалось прочитать файл")
-                                return@thread
-                            }
-                            if (bytes.size > 4 * 1024 * 1024) {
-                                promise.reject("TOO_LARGE", "Максимальный размер файла — 4 МБ")
-                                return@thread
-                            }
-                            val mime = cr.getType(uri) ?: "application/octet-stream"
-                            val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                            val fileName = queryFileName(uri) ?: "file_${System.currentTimeMillis()}"
-                            val map = Arguments.createMap().apply {
-                                putString("dataUrl", "data:$mime;base64,$b64")
-                                putString("fileName", fileName)
-                                putInt("fileSize", bytes.size)
-                                putString("mimeType", mime)
-                            }
-                            promise.resolve(map)
-                        }
-                        REQ_PICK_AUDIO -> {
-                            val uri = data.data
-                            if (uri == null) {
-                                promise.reject("NO_URI", "Аудиофайл не выбран")
-                                return@thread
-                            }
-                            val cr = reactApplicationContext.contentResolver
-                            val bytes = cr.openInputStream(uri)?.use { it.readBytes() }
-                            if (bytes == null) {
-                                promise.reject("READ_ERROR", "Не удалось прочитать аудио")
-                                return@thread
-                            }
-                            if (bytes.size > (1.5 * 1024 * 1024).toInt()) {
-                                promise.reject("TOO_LARGE", "Максимальный размер аудио — 1.5 МБ")
-                                return@thread
-                            }
-                            val mime = cr.getType(uri) ?: "audio/mpeg"
-                            val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                            val fileName = queryFileName(uri) ?: "audio_${System.currentTimeMillis()}.mp3"
-                            val map = Arguments.createMap().apply {
-                                putString("dataUrl", "data:$mime;base64,$b64")
-                                putString("fileName", fileName)
-                                putInt("fileSize", bytes.size)
-                            }
-                            promise.resolve(map)
-                        }
+                        promise.resolve(map)
                     }
                 } catch (e: Exception) {
-                    promise.reject("PICK_ERROR", e.message ?: "Ошибка обработки файла", e)
+                    promise.reject("PICK_ERROR", e.message ?: "Ошибка обработки фото", e)
                 }
             }
         }
@@ -174,6 +79,26 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
     }
 
     override fun getName(): String = "MediaPickerModule"
+
+    private fun hasPermission(perm: String): Boolean {
+        return ContextCompat.checkSelfPermission(reactApplicationContext, perm) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasImagePermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            hasPermission(Manifest.permission.READ_MEDIA_IMAGES)
+        } else {
+            hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+    }
+
+    private fun hasAudioPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            hasPermission(Manifest.permission.READ_MEDIA_AUDIO)
+        } else {
+            hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+    }
 
     private fun queryFileName(uri: Uri): String? {
         return try {
@@ -186,7 +111,303 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
         }
     }
 
-    private fun launchPicker(intent: Intent, reqCode: Int, promise: Promise) {
+    @ReactMethod
+    fun getRecentPhotos(limit: Int, promise: Promise) {
+        if (!hasImagePermission()) {
+            promise.reject("PERMISSION_DENIED", "Нет доступа к фотографиям")
+            return
+        }
+        thread(start = true) {
+            try {
+                val cr = reactApplicationContext.contentResolver
+                val projection = arrayOf(
+                    MediaStore.Images.Media._ID,
+                    MediaStore.Images.Media.DISPLAY_NAME,
+                    MediaStore.Images.Media.SIZE,
+                    MediaStore.Images.Media.WIDTH,
+                    MediaStore.Images.Media.HEIGHT,
+                    MediaStore.Images.Media.DATE_ADDED,
+                    MediaStore.Images.Media.MIME_TYPE
+                )
+                val result = Arguments.createArray()
+                val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+                cr.query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    null,
+                    null,
+                    sortOrder
+                )?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                    val nameCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+                    val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
+                    val wCol = cursor.getColumnIndex(MediaStore.Images.Media.WIDTH)
+                    val hCol = cursor.getColumnIndex(MediaStore.Images.Media.HEIGHT)
+                    val dateCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
+                    val mimeCol = cursor.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
+
+                    var count = 0
+                    val cap = if (limit > 0) limit else 60
+                    while (cursor.moveToNext() && count < cap) {
+                        val id = cursor.getLong(idCol)
+                        val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                        val item = Arguments.createMap().apply {
+                            putString("id", id.toString())
+                            putString("uri", contentUri.toString())
+                            putString("fileName", if (nameCol >= 0) cursor.getString(nameCol) ?: "photo_$id.jpg" else "photo_$id.jpg")
+                            putDouble("size", if (sizeCol >= 0) cursor.getLong(sizeCol).toDouble() else 0.0)
+                            putInt("width", if (wCol >= 0) cursor.getInt(wCol) else 0)
+                            putInt("height", if (hCol >= 0) cursor.getInt(hCol) else 0)
+                            putDouble("dateAdded", if (dateCol >= 0) cursor.getLong(dateCol).toDouble() else 0.0)
+                            putString("mimeType", if (mimeCol >= 0) cursor.getString(mimeCol) ?: "image/jpeg" else "image/jpeg")
+                        }
+                        result.pushMap(item)
+                        count++
+                    }
+                }
+                promise.resolve(result)
+            } catch (se: SecurityException) {
+                promise.reject("PERMISSION_DENIED", "Нет доступа к фотографиям", se)
+            } catch (e: Exception) {
+                promise.reject("MEDIA_QUERY_ERROR", e.message ?: "Ошибка чтения галереи", e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun getRecentFiles(limit: Int, promise: Promise) {
+        thread(start = true) {
+            try {
+                val cr = reactApplicationContext.contentResolver
+                val result = Arguments.createArray()
+                val seen = HashSet<String>()
+                val cap = if (limit > 0) limit else 50
+
+                val queryUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                } else {
+                    MediaStore.Files.getContentUri("external")
+                }
+
+                val projection = arrayOf(
+                    MediaStore.Files.FileColumns._ID,
+                    MediaStore.Files.FileColumns.DISPLAY_NAME,
+                    MediaStore.Files.FileColumns.SIZE,
+                    MediaStore.Files.FileColumns.DATE_MODIFIED,
+                    MediaStore.Files.FileColumns.MIME_TYPE
+                )
+                val selection = "${MediaStore.Files.FileColumns.SIZE} > 0"
+                val sortOrder = "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
+
+                cr.query(queryUri, projection, selection, null, sortOrder)?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                    val nameCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                    val sizeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
+                    val dateCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED)
+                    val mimeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+
+                    while (cursor.moveToNext() && result.size() < cap) {
+                        val id = cursor.getLong(idCol)
+                        val contentUri = ContentUris.withAppendedId(queryUri, id)
+                        val uriStr = contentUri.toString()
+                        if (!seen.add(uriStr)) continue
+                        val fileName = if (nameCol >= 0) cursor.getString(nameCol) else null
+                        if (fileName.isNullOrBlank()) continue
+                        val item = Arguments.createMap().apply {
+                            putString("id", id.toString())
+                            putString("uri", uriStr)
+                            putString("fileName", fileName)
+                            putDouble("size", if (sizeCol >= 0) cursor.getLong(sizeCol).toDouble() else 0.0)
+                            putDouble("dateModified", if (dateCol >= 0) cursor.getLong(dateCol).toDouble() else 0.0)
+                            putString("mimeType", if (mimeCol >= 0) cursor.getString(mimeCol) ?: "application/octet-stream" else "application/octet-stream")
+                        }
+                        result.pushMap(item)
+                    }
+                }
+
+                // Also append recent images/audio if Downloads was sparse
+                if (result.size() < cap && hasImagePermission()) {
+                    val filesUri = MediaStore.Files.getContentUri("external")
+                    cr.query(filesUri, projection, selection, null, sortOrder)?.use { cursor ->
+                        val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                        val nameCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                        val sizeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
+                        val dateCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED)
+                        val mimeCol = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+
+                        while (cursor.moveToNext() && result.size() < cap) {
+                            val id = cursor.getLong(idCol)
+                            val contentUri = ContentUris.withAppendedId(filesUri, id)
+                            val uriStr = contentUri.toString()
+                            if (!seen.add(uriStr)) continue
+                            val fileName = if (nameCol >= 0) cursor.getString(nameCol) else null
+                            if (fileName.isNullOrBlank()) continue
+                            val item = Arguments.createMap().apply {
+                                putString("id", id.toString())
+                                putString("uri", uriStr)
+                                putString("fileName", fileName)
+                                putDouble("size", if (sizeCol >= 0) cursor.getLong(sizeCol).toDouble() else 0.0)
+                                putDouble("dateModified", if (dateCol >= 0) cursor.getLong(dateCol).toDouble() else 0.0)
+                                putString("mimeType", if (mimeCol >= 0) cursor.getString(mimeCol) ?: "application/octet-stream" else "application/octet-stream")
+                            }
+                            result.pushMap(item)
+                        }
+                    }
+                }
+
+                promise.resolve(result)
+            } catch (se: SecurityException) {
+                promise.reject("PERMISSION_DENIED", "Нет доступа к файлам", se)
+            } catch (e: Exception) {
+                promise.reject("FILE_QUERY_ERROR", e.message ?: "Ошибка чтения файлов", e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun getRecentAudio(limit: Int, promise: Promise) {
+        if (!hasAudioPermission()) {
+            promise.reject("PERMISSION_DENIED", "Нет доступа к аудиофайлам")
+            return
+        }
+        thread(start = true) {
+            try {
+                val cr = reactApplicationContext.contentResolver
+                val projection = arrayOf(
+                    MediaStore.Audio.Media._ID,
+                    MediaStore.Audio.Media.DISPLAY_NAME,
+                    MediaStore.Audio.Media.SIZE,
+                    MediaStore.Audio.Media.DURATION,
+                    MediaStore.Audio.Media.DATE_ADDED,
+                    MediaStore.Audio.Media.MIME_TYPE
+                )
+                val result = Arguments.createArray()
+                val selection = "${MediaStore.Audio.Media.SIZE} > 0"
+                val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC"
+                cr.query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    selection,
+                    null,
+                    sortOrder
+                )?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                    val nameCol = cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
+                    val sizeCol = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                    val durCol = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                    val dateCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
+                    val mimeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
+
+                    var count = 0
+                    val cap = if (limit > 0) limit else 50
+                    while (cursor.moveToNext() && count < cap) {
+                        val id = cursor.getLong(idCol)
+                        val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+                        val item = Arguments.createMap().apply {
+                            putString("id", id.toString())
+                            putString("uri", contentUri.toString())
+                            putString("fileName", if (nameCol >= 0) cursor.getString(nameCol) ?: "audio_$id.mp3" else "audio_$id.mp3")
+                            putDouble("size", if (sizeCol >= 0) cursor.getLong(sizeCol).toDouble() else 0.0)
+                            putDouble("duration", if (durCol >= 0) cursor.getLong(durCol).toDouble() else 0.0)
+                            putDouble("dateAdded", if (dateCol >= 0) cursor.getLong(dateCol).toDouble() else 0.0)
+                            putString("mimeType", if (mimeCol >= 0) cursor.getString(mimeCol) ?: "audio/mpeg" else "audio/mpeg")
+                        }
+                        result.pushMap(item)
+                        count++
+                    }
+                }
+                promise.resolve(result)
+            } catch (se: SecurityException) {
+                promise.reject("PERMISSION_DENIED", "Нет доступа к аудиофайлам", se)
+            } catch (e: Exception) {
+                promise.reject("AUDIO_QUERY_ERROR", e.message ?: "Ошибка чтения аудио", e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun encodeImageUri(uriStr: String, maxDim: Int, promise: Promise) {
+        thread(start = true) {
+            try {
+                val uri = Uri.parse(uriStr)
+                val cr = reactApplicationContext.contentResolver
+                val rawBytes = cr.openInputStream(uri)?.use { it.readBytes() }
+                if (rawBytes == null) {
+                    promise.reject("READ_ERROR", "Не удалось прочитать изображение")
+                    return@thread
+                }
+                val bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size)
+                if (bmp == null) {
+                    promise.reject("DECODE_ERROR", "Некорректный формат изображения")
+                    return@thread
+                }
+                val targetMax = if (maxDim > 0) maxDim else 1280
+                val curMax = max(bmp.width, bmp.height)
+                val scaled = if (curMax > targetMax) {
+                    val ratio = targetMax.toFloat() / curMax.toFloat()
+                    Bitmap.createScaledBitmap(
+                        bmp,
+                        (bmp.width * ratio).roundToInt().coerceAtLeast(1),
+                        (bmp.height * ratio).roundToInt().coerceAtLeast(1),
+                        true
+                    )
+                } else {
+                    bmp
+                }
+                val baos = ByteArrayOutputStream()
+                scaled.compress(Bitmap.CompressFormat.JPEG, 82, baos)
+                val outBytes = baos.toByteArray()
+                val b64 = Base64.encodeToString(outBytes, Base64.NO_WRAP)
+                val fileName = queryFileName(uri) ?: "photo_${System.currentTimeMillis()}.jpg"
+                val map = Arguments.createMap().apply {
+                    putString("dataUrl", "data:image/jpeg;base64,$b64")
+                    putString("fileName", fileName)
+                    putInt("fileSize", outBytes.size)
+                    putInt("width", scaled.width)
+                    putInt("height", scaled.height)
+                }
+                promise.resolve(map)
+            } catch (e: Exception) {
+                promise.reject("ENCODE_ERROR", e.message ?: "Ошибка сжатия фото", e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun encodeFileUri(uriStr: String, maxBytes: Int, promise: Promise) {
+        thread(start = true) {
+            try {
+                val uri = Uri.parse(uriStr)
+                val cr = reactApplicationContext.contentResolver
+                val bytes = cr.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null) {
+                    promise.reject("READ_ERROR", "Не удалось прочитать файл")
+                    return@thread
+                }
+                val limit = if (maxBytes > 0) maxBytes else 4 * 1024 * 1024
+                if (bytes.size > limit) {
+                    val mb = (limit / (1024.0 * 1024.0))
+                    promise.reject("TOO_LARGE", String.format("Максимальный размер файла — %.1f МБ", mb))
+                    return@thread
+                }
+                val mime = cr.getType(uri) ?: "application/octet-stream"
+                val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                val fileName = queryFileName(uri) ?: "file_${System.currentTimeMillis()}"
+                val map = Arguments.createMap().apply {
+                    putString("dataUrl", "data:$mime;base64,$b64")
+                    putString("fileName", fileName)
+                    putInt("fileSize", bytes.size)
+                    putString("mimeType", mime)
+                }
+                promise.resolve(map)
+            } catch (e: Exception) {
+                promise.reject("ENCODE_ERROR", e.message ?: "Ошибка чтения файла", e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun takePhoto(promise: Promise) {
         val activity = currentActivity
         if (activity == null) {
             promise.reject("NO_ACTIVITY", "Экран приложения недоступен")
@@ -194,46 +415,14 @@ class MediaPickerModule(reactContext: ReactApplicationContext) : ReactContextBas
         }
         pendingPromise?.reject("CANCELLED", "Прервано новым запросом")
         pendingPromise = promise
-        pendingMode = reqCode
+        pendingMode = REQ_TAKE_PHOTO
         try {
-            activity.startActivityForResult(intent, reqCode)
+            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            activity.startActivityForResult(intent, REQ_TAKE_PHOTO)
         } catch (e: Exception) {
             pendingPromise = null
             pendingMode = 0
             promise.reject("LAUNCH_ERROR", e.message, e)
         }
-    }
-
-    @ReactMethod
-    fun pickImage(promise: Promise) {
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-            type = "image/*"
-            addCategory(Intent.CATEGORY_OPENABLE)
-        }
-        launchPicker(Intent.createChooser(intent, "Выберите фото"), REQ_PICK_IMAGE, promise)
-    }
-
-    @ReactMethod
-    fun takePhoto(promise: Promise) {
-        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        launchPicker(intent, REQ_TAKE_PHOTO, promise)
-    }
-
-    @ReactMethod
-    fun pickFile(promise: Promise) {
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-            type = "*/*"
-            addCategory(Intent.CATEGORY_OPENABLE)
-        }
-        launchPicker(Intent.createChooser(intent, "Выберите файл"), REQ_PICK_FILE, promise)
-    }
-
-    @ReactMethod
-    fun pickAudio(promise: Promise) {
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-            type = "audio/*"
-            addCategory(Intent.CATEGORY_OPENABLE)
-        }
-        launchPicker(Intent.createChooser(intent, "Выберите аудиофайл"), REQ_PICK_AUDIO, promise)
     }
 }

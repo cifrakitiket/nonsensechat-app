@@ -61,20 +61,64 @@ export function stopVoiceMessage() {
   } catch (_) {}
 }
 
-export async function pickNativeImage(): Promise<{ dataUrl: string; fileName: string; fileSize: number }> {
-  return NativeModules.MediaPickerModule.pickImage();
+export interface DevicePhotoItem {
+  id: string;
+  uri: string;
+  fileName: string;
+  size: number;
+  width: number;
+  height: number;
+  dateAdded: number;
+  mimeType: string;
+}
+
+export interface DeviceFileItem {
+  id: string;
+  uri: string;
+  fileName: string;
+  size: number;
+  dateModified: number;
+  mimeType: string;
+}
+
+export interface DeviceAudioItem {
+  id: string;
+  uri: string;
+  fileName: string;
+  size: number;
+  duration: number;
+  dateAdded: number;
+  mimeType: string;
+}
+
+export async function getRecentDevicePhotos(limit = 60): Promise<DevicePhotoItem[]> {
+  return NativeModules.MediaPickerModule.getRecentPhotos(limit);
+}
+
+export async function getRecentDeviceFiles(limit = 50): Promise<DeviceFileItem[]> {
+  return NativeModules.MediaPickerModule.getRecentFiles(limit);
+}
+
+export async function getRecentDeviceAudio(limit = 50): Promise<DeviceAudioItem[]> {
+  return NativeModules.MediaPickerModule.getRecentAudio(limit);
+}
+
+export async function encodeDeviceImage(
+  uri: string,
+  maxDim = 1280
+): Promise<{ dataUrl: string; fileName: string; fileSize: number; width: number; height: number }> {
+  return NativeModules.MediaPickerModule.encodeImageUri(uri, maxDim);
+}
+
+export async function encodeDeviceFile(
+  uri: string,
+  maxBytes = 4 * 1024 * 1024
+): Promise<{ dataUrl: string; fileName: string; fileSize: number; mimeType: string }> {
+  return NativeModules.MediaPickerModule.encodeFileUri(uri, maxBytes);
 }
 
 export async function takeNativePhoto(): Promise<{ dataUrl: string; fileName: string; fileSize: number }> {
   return NativeModules.MediaPickerModule.takePhoto();
-}
-
-export async function pickNativeFile(): Promise<{ dataUrl: string; fileName: string; fileSize: number; mimeType: string }> {
-  return NativeModules.MediaPickerModule.pickFile();
-}
-
-export async function pickNativeAudio(): Promise<{ dataUrl: string; fileName: string; fileSize: number }> {
-  return NativeModules.MediaPickerModule.pickAudio();
 }
 
 export async function startNativeVoiceRecording(maxDurationMs = 120000): Promise<boolean> {

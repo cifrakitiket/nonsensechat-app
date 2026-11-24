@@ -58,7 +58,17 @@ function toArray<T>(val: any): T[] {
 function toMs(ts: any): number {
   if (!ts) return 0;
   if (typeof ts === 'number') return ts;
-  if (typeof ts === 'object' && typeof ts.seconds === 'number') return ts.seconds * 1000;
+  if (typeof ts === 'string') {
+    const parsed = Date.parse(ts);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof ts === 'object') {
+    if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+    if (typeof ts.__ts__ === 'string') {
+      const parsed = Date.parse(ts.__ts__);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+  }
   return 0;
 }
 
@@ -100,6 +110,25 @@ export function normalizeUser(uid: string, raw: any): UserProfile {
   };
 }
 
+export interface DialogButton {
+  text: string;
+  style?: 'default' | 'cancel' | 'destructive';
+  onPress?: () => void;
+}
+
+export interface DialogConfig {
+  title: string;
+  message?: string;
+  buttons?: DialogButton[];
+}
+
+export interface ToastState {
+  id: number;
+  title: string;
+  body?: string;
+  type: 'info' | 'success' | 'error';
+}
+
 interface AppContextValue {
   authUser: User | null;
   loadingAuth: boolean;
@@ -109,6 +138,11 @@ interface AppContextValue {
   appThemeKey: AppThemeKey;
   appTheme: LiquidTheme;
   setAppTheme: (key: AppThemeKey) => void;
+  toastState: ToastState | null;
+  dialogState: DialogConfig | null;
+  showToast: (title: string, body?: string, type?: 'info' | 'success' | 'error') => void;
+  showDialog: (cfg: DialogConfig) => void;
+  dismissDialog: () => void;
   loginWithNickOrEmail: (loginInput: string, password: string) => Promise<void>;
   registerAccount: (email: string, nick: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -133,6 +167,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, UserProfile>>({});
   const [appThemeKey, setAppThemeKeyState] = useState<AppThemeKey>('dark');
+  const [toastState, setToastState] = useState<ToastState | null>(null);
+  const [dialogState, setDialogState] = useState<DialogConfig | null>(null);
+
+  const showToast = (title: string, body?: string, type: 'info' | 'success' | 'error' = 'info') => {
+    const id = Date.now() + Math.random();
+    setToastState({ id, title, body, type });
+    setTimeout(() => {
+      setToastState((prev) => (prev && prev.id === id ? null : prev));
+    }, 3200);
+  };
+
+  const showDialog = (cfg: DialogConfig) => {
+    triggerHaptic(10);
+    setDialogState({
+      title: cfg.title,
+      message: cfg.message,
+      buttons: cfg.buttons && cfg.buttons.length > 0 ? cfg.buttons : [{ text: 'Понятно', style: 'default' }],
+    });
+  };
+
+  const dismissDialog = () => setDialogState(null);
 
   useEffect(() => {
     NativeModules.NativeStorageModule?.getItem?.('bch_app_theme')
@@ -564,6 +619,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         appThemeKey,
         appTheme,
         setAppTheme,
+        toastState,
+        dialogState,
+        showToast,
+        showDialog,
+        dismissDialog,
         loginWithNickOrEmail,
         registerAccount,
         logout,
