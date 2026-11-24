@@ -10,6 +10,7 @@ import {
 import { ref, onValue, get, set, update, push } from 'firebase/database';
 import { auth, rtdb, triggerHaptic } from '../services/firebase';
 import { CREATOR_UID } from '../constants/catalogs';
+import { AppThemeKey, LIQUID_THEMES, LiquidTheme } from '../theme/liquidGlass';
 
 export interface UserProfile {
   uid: string;
@@ -105,6 +106,9 @@ interface AppContextValue {
   me: UserProfile | null;
   chats: ChatItem[];
   usersMap: Record<string, UserProfile>;
+  appThemeKey: AppThemeKey;
+  appTheme: LiquidTheme;
+  setAppTheme: (key: AppThemeKey) => void;
   loginWithNickOrEmail: (loginInput: string, password: string) => Promise<void>;
   registerAccount: (email: string, nick: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -128,6 +132,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [me, setMe] = useState<UserProfile | null>(null);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, UserProfile>>({});
+  const [appThemeKey, setAppThemeKeyState] = useState<AppThemeKey>('dark');
+
+  useEffect(() => {
+    NativeModules.NativeStorageModule?.getItem?.('bch_app_theme')
+      .then((val: string | null) => {
+        if (val && (val === 'dark' || val === 'midnight' || val === 'coffee-dark' || val === 'moss')) {
+          setAppThemeKeyState(val);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const setAppTheme = (key: AppThemeKey) => {
+    setAppThemeKeyState(key);
+    triggerHaptic(12);
+    NativeModules.NativeStorageModule?.setItem?.('bch_app_theme', key).catch(() => {});
+  };
+
+  const appTheme = LIQUID_THEMES[appThemeKey] || LIQUID_THEMES.dark;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -538,6 +561,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         me,
         chats,
         usersMap,
+        appThemeKey,
+        appTheme,
+        setAppTheme,
         loginWithNickOrEmail,
         registerAccount,
         logout,

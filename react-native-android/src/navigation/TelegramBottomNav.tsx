@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
+import { RADII } from '../theme/liquidGlass';
 
 import ChatsScreen from '../screens/ChatsScreen';
 import ContactsScreen from '../screens/ContactsScreen';
@@ -11,75 +12,114 @@ import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
-function TelegramTabBar({ state, descriptors, navigation, userAvatar, unreadCount }: any) {
+function TelegramTabBar({ state, navigation, userAvatar, unreadCount }: any) {
   const insets = useSafeAreaInsets();
+  const { appTheme } = useApp();
 
   return (
-    <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 6) }]}>
-      {state.routes.map((route: any, index: number) => {
-        const isFocused = state.index === index;
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
+    <View
+      pointerEvents="box-none"
+      style={[
+        styles.floatingOuter,
+        { bottom: Math.max(insets.bottom, 10) + 6 },
+      ]}
+    >
+      <View
+        style={[
+          styles.capsule,
+          {
+            backgroundColor: appTheme.glassStrong,
+            borderColor: appTheme.border,
+            borderTopColor: appTheme.specular,
+          },
+        ]}
+      >
+        {state.routes.map((route: any, index: number) => {
+          const isFocused = state.index === index;
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          let label = 'Чаты';
+          let iconChar = '💬';
+          let badgeCount = 0;
+
+          if (route.name === 'Contacts') {
+            label = 'Контакты';
+            iconChar = '👤';
+          } else if (route.name === 'Calls') {
+            label = 'Звонки';
+            iconChar = '📞';
+          } else if (route.name === 'Chats') {
+            label = 'Чаты';
+            iconChar = '💬';
+            badgeCount = unreadCount || 0;
+          } else if (route.name === 'Profile') {
+            label = 'Профиль';
+            iconChar = '⚙️';
           }
-        };
 
-        let label = 'Чаты';
-        let iconChar = '💬';
-        let badgeCount = 0;
+          const isProfile = route.name === 'Profile';
 
-        if (route.name === 'Contacts') {
-          label = 'Контакты';
-          iconChar = '👤';
-        } else if (route.name === 'Calls') {
-          label = 'Звонки';
-          iconChar = '📞';
-        } else if (route.name === 'Chats') {
-          label = 'Чаты';
-          iconChar = '💬';
-          badgeCount = unreadCount || 0;
-        } else if (route.name === 'Profile') {
-          label = 'Профиль';
-          iconChar = '⚙️';
-        }
+          return (
+            <TouchableOpacity
+              key={route.key}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              onPress={onPress}
+              style={styles.tabItem}
+            >
+              <View
+                style={[
+                  styles.pillInner,
+                  isFocused && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.specular, borderWidth: 1 },
+                ]}
+              >
+                <View style={{ position: 'relative' }}>
+                  {isProfile && userAvatar ? (
+                    <Image
+                      source={{ uri: userAvatar }}
+                      style={[
+                        styles.profileAvatar,
+                        isFocused && { borderColor: appTheme.accent },
+                      ]}
+                    />
+                  ) : (
+                    <Text style={styles.tabIcon}>{iconChar}</Text>
+                  )}
 
-        const isProfile = route.name === 'Profile';
-
-        return (
-          <TouchableOpacity
-            key={route.key}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            onPress={onPress}
-            style={styles.tabItem}
-          >
-            <View style={[styles.pillContainer, isFocused && styles.pillActive]}>
-              {isProfile && userAvatar ? (
-                <Image
-                  source={{ uri: userAvatar }}
-                  style={[styles.profileAvatar, isFocused && styles.profileAvatarActive]}
-                />
-              ) : (
-                <Text style={[styles.tabIcon, isFocused && styles.tabIconActive]}>{iconChar}</Text>
-              )}
-
-              {badgeCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
+                  {badgeCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {badgeCount > 99 ? '99+' : badgeCount}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
 
-            <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{label}</Text>
-          </TouchableOpacity>
-        );
-      })}
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    { color: isFocused ? appTheme.accent : appTheme.textSub },
+                    isFocused && { fontWeight: '800' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -109,29 +149,43 @@ export default function TelegramBottomNav() {
 }
 
 const styles = StyleSheet.create({
-  tabBarContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#0e1420',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    elevation: 8,
-    paddingTop: 4,
-    height: Platform.OS === 'android' ? 62 : 56,
+  floatingOuter: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
     alignItems: 'center',
-    justifyContent: 'space-around',
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 },
-  pillContainer: {
-    width: 56,
-    height: 30,
-    borderRadius: 15,
+  capsule: {
+    width: '100%',
+    maxWidth: 440,
+    height: 64,
+    borderRadius: RADII.PILL,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+    elevation: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+  },
+  tabItem: {
+    flex: 1,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
-  pillActive: { backgroundColor: 'rgba(91,143,185,0.22)' },
-  tabIcon: { fontSize: 18, color: '#8e9aa8' },
-  tabIconActive: { color: '#5b8fb9' },
+  pillInner: {
+    width: '94%',
+    height: '100%',
+    borderRadius: RADII.PILL,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  tabIcon: { fontSize: 18 },
   profileAvatar: {
     width: 24,
     height: 24,
@@ -139,13 +193,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  profileAvatarActive: { borderColor: '#5b8fb9' },
-  tabLabel: { fontSize: 11, color: '#8e9aa8', marginTop: 2, fontWeight: '500' },
-  tabLabelActive: { color: '#5b8fb9', fontWeight: '700' },
+  tabLabel: { fontSize: 10.5, fontWeight: '600' },
   badge: {
     position: 'absolute',
-    top: -2,
-    right: 8,
+    top: -4,
+    right: -8,
     backgroundColor: '#ef4444',
     borderRadius: 9,
     minWidth: 16,
@@ -154,5 +206,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  badgeText: { color: '#fff', fontSize: 9.5, fontWeight: '900' },
 });

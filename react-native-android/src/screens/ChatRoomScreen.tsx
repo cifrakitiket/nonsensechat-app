@@ -10,13 +10,34 @@ import {
   Platform,
   Image,
   Alert,
+  Modal,
+  ScrollView,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ref, onValue, push, set, update, remove } from 'firebase/database';
-import { rtdb, triggerHaptic } from '../services/firebase';
+import {
+  rtdb,
+  triggerHaptic,
+  pickNativeImage,
+  takeNativePhoto,
+  pickNativeFile,
+  startNativeVoiceRecording,
+  stopNativeVoiceRecording,
+  cancelNativeVoiceRecording,
+  playVoiceMessage,
+  stopVoiceMessage,
+} from '../services/firebase';
 import { useApp } from '../context/AppContext';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { PrefixBadge } from '../components/PrefixBadge';
+import { LiquidBackground } from '../components/LiquidBackground';
+import { GlassCard } from '../components/GlassCard';
+import { ScalePressable } from '../components/ScalePressable';
+import { RADII } from '../theme/liquidGlass';
+
+const QUICK_REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '🥟'];
+const QUICK_EMOJIS = ['😀', '😂', '🥰', '😎', '🤔', '😭', '😡', '🔥', '❤️', '🥟', '🎉', '💯', '👍', '🙏', '✨', '🚀'];
 
 function decodeMsgText(raw?: string) {
   if (!raw) return '';
@@ -37,14 +58,49 @@ function toMs(ts: any): number {
   return 0;
 }
 
+function formatDuration(sec = 0) {
+  const s = Math.max(0, Math.floor(sec));
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}:${rem < 10 ? '0' : ''}${rem}`;
+}
+
+function formatBytes(bytes = 0) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 export default function ChatRoomScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { chatId, name: paramName } = route.params || {};
-  const { me, chats, usersMap } = useApp();
+  const { me, chats, usersMap, appTheme } = useApp();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; author: string; text: string } | null>(null);
+  const [editingMsg, setEditingMsg] = useState<{ id: string; text: string } | null>(null);
+
+  // Interactive UI sheets & modals
+  const [showAttachSheet, setShowAttachSheet] = useState(false);
+  const [showEmojiDrawer, setShowEmojiDrawer] = useState(false);
+  const [actionMsg, setActionMsg] = useState<any | null>(null);
+  const [forwardMsg, setForwardMsg] = useState<any | null>(null);
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+
+  // Poll Creator
+  const [showPollModal, setShowPollModal] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOpt1, setPollOpt1] = useState('');
+  const [pollOpt2, setPollOpt2] = useState('');
+  const [pollOpt3, setPollOpt3] = useState('');
+
+  // Voice recording & playback state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recSec, setRecSec] = useState(0);
+  const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
+  const recTimerRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
 
   const chat = chats.find((c) => c.id === chatId);
@@ -54,9 +110,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       ? (chat.members || []).find((m) => m !== me.uid)
       : undefined;
   const partner = partnerUid ? usersMap[partnerUid] : undefined;
-  const displayName = isSaved
-    ? 'Избранное'
-    : partner?.nick || chat?.name || paramName || 'Чат';
+  const displayName = isSaved ? 'Избранное' : partner?.nick || chat?.name || paramName || 'Чат';
 
   useEffect(() => {
     if (!chatId) return;
@@ -69,77 +123,257 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       setMessages(list);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 120);
     });
-    return () => unsub();
+    return () => {
+      unsub();
+      stopVoiceMessage();
+      if (recTimerRef.current) clearInterval(recTimerRef.current);
+    };
   }, [chatId]);
 
-  const sendMessage = async () => {
-    const clean = text.trim();
-    if (!clean || !me || !chatId) return;
-
-    const msgPayload: any = {
-      text: clean,
-      uid: me.uid,
-      author: chat?.type === 'channel' ? displayName : me.nick,
+  const buildBasePayload = () => {
+    const base: any = {
+      uid: me!.uid,
+      author: chat?.type === 'channel' ? displayName : me!.nick,
       at: Date.now(),
-      type: 'text',
     };
-    if (me.prefix) {
-      msgPayload.prefix = me.prefix;
-      msgPayload.prefixStyle = me.prefixStyle || 'gold';
+    if (me?.prefix) {
+      base.prefix = me.prefix;
+      base.prefixStyle = me.prefixStyle || 'gold';
       if (me.prefixSound) {
-        msgPayload.prefixSound = me.prefixSound;
-        msgPayload.prefixSoundName = me.prefixSoundName || '';
+        base.prefixSound = me.prefixSound;
+        base.prefixSoundName = me.prefixSoundName || '';
       }
     }
     if (replyTo) {
-      msgPayload.replyTo = replyTo;
+      base.replyTo = replyTo;
       setReplyTo(null);
     }
+    return base;
+  };
 
-    setText('');
+  const pushChatMessage = async (payload: any, previewText: string) => {
+    const newRef = push(ref(rtdb, `chats/${chatId}/messages`));
+    await set(newRef, payload);
+    await update(ref(rtdb, `chats/${chatId}`), {
+      lastMsg: previewText,
+      lastMsgAt: Date.now(),
+    });
+  };
+
+  const sendTextOrSaveEdit = async () => {
+    const clean = text.trim();
+    if (!clean || !me || !chatId) return;
     triggerHaptic(10);
 
-    try {
-      const newMsgRef = push(ref(rtdb, `chats/${chatId}/messages`));
-      await set(newMsgRef, msgPayload);
-      await update(ref(rtdb, `chats/${chatId}`), {
-        lastMsg: clean,
-        lastMsgAt: Date.now(),
+    if (editingMsg) {
+      setText('');
+      const targetId = editingMsg.id;
+      setEditingMsg(null);
+      await update(ref(rtdb, `chats/${chatId}/messages/${targetId}`), {
+        text: clean,
+        edited: true,
+        editedAt: Date.now(),
       });
+      return;
+    }
+
+    const payload = {
+      ...buildBasePayload(),
+      text: clean,
+      type: 'text',
+    };
+    setText('');
+    setShowEmojiDrawer(false);
+    await pushChatMessage(payload, clean);
+  };
+
+  const handleSendImage = async (fromCamera: boolean) => {
+    setShowAttachSheet(false);
+    try {
+      const res = fromCamera ? await takeNativePhoto() : await pickNativeImage();
+      if (!res?.dataUrl || !me) return;
+      const payload = {
+        ...buildBasePayload(),
+        type: 'photo',
+        photoUrl: res.dataUrl,
+        fileName: res.fileName || 'photo.jpg',
+        fileSize: res.fileSize || 0,
+        text: '',
+      };
+      await pushChatMessage(payload, '📷 Фото');
+      triggerHaptic(15);
     } catch (e: any) {
-      Alert.alert('Ошибка отправки', e?.message || 'Не удалось отправить сообщение');
+      if (e?.code !== 'CANCELLED') {
+        Alert.alert('Фото', e?.message || 'Не удалось прикрепить фото');
+      }
     }
   };
 
-  const handleLongPressMsg = (msg: any) => {
-    const isMine = msg.uid === me?.uid;
-    const buttons: any[] = [
-      {
-        text: 'Ответить',
-        onPress: () =>
-          setReplyTo({
-            id: msg.id,
-            author: msg.author || 'Пользователь',
-            text: decodeMsgText(msg.text).slice(0, 80),
-          }),
-      },
-    ];
-    if (isMine) {
-      buttons.push({
-        text: 'Удалить',
-        style: 'destructive',
-        onPress: () => remove(ref(rtdb, `chats/${chatId}/messages/${msg.id}`)),
-      });
+  const handleSendFile = async () => {
+    setShowAttachSheet(false);
+    try {
+      const res = await pickNativeFile();
+      if (!res?.dataUrl || !me) return;
+      const payload = {
+        ...buildBasePayload(),
+        type: 'file',
+        fileUrl: res.dataUrl,
+        fileName: res.fileName || 'document',
+        fileSize: res.fileSize || 0,
+        text: '',
+      };
+      await pushChatMessage(payload, `📎 ${res.fileName || 'Файл'}`);
+      triggerHaptic(15);
+    } catch (e: any) {
+      if (e?.code !== 'CANCELLED') {
+        Alert.alert('Файл', e?.message || 'Не удалось прикрепить файл');
+      }
     }
-    buttons.push({ text: 'Отмена', style: 'cancel' });
-    Alert.alert('Сообщение', decodeMsgText(msg.text).slice(0, 60) || 'Действие', buttons);
+  };
+
+  const handleCreatePoll = async () => {
+    const q = pollQuestion.trim();
+    const opts = [pollOpt1.trim(), pollOpt2.trim(), pollOpt3.trim()].filter(Boolean);
+    if (!q || opts.length < 2) {
+      Alert.alert('Опрос', 'Укажите вопрос и минимум 2 варианта ответа');
+      return;
+    }
+    setShowPollModal(false);
+    setPollQuestion('');
+    setPollOpt1('');
+    setPollOpt2('');
+    setPollOpt3('');
+
+    const payload = {
+      ...buildBasePayload(),
+      type: 'poll',
+      text: `📊 Опрос: ${q}`,
+      pollQuestion: q,
+      pollOptions: opts.map((label, idx) => ({ id: String(idx), text: label, votes: {} })),
+    };
+    await pushChatMessage(payload, `📊 ${q}`);
+    triggerHaptic(15);
+  };
+
+  const togglePollVote = async (msg: any, optIdx: number) => {
+    if (!me || !chatId) return;
+    triggerHaptic(10);
+    const options = Array.isArray(msg.pollOptions) ? [...msg.pollOptions] : [];
+    const targetOpt = options[optIdx];
+    if (!targetOpt) return;
+    const votes = { ...(targetOpt.votes || {}) };
+    if (votes[me.uid]) {
+      delete votes[me.uid];
+    } else {
+      votes[me.uid] = true;
+    }
+    options[optIdx] = { ...targetOpt, votes };
+    await update(ref(rtdb, `chats/${chatId}/messages/${msg.id}`), {
+      pollOptions: options,
+    });
+  };
+
+  const startVoiceRec = async () => {
+    try {
+      await startNativeVoiceRecording(120000);
+      setIsRecording(true);
+      setRecSec(0);
+      triggerHaptic(20);
+      recTimerRef.current = setInterval(() => {
+        setRecSec((prev) => prev + 1);
+      }, 1000);
+    } catch (e: any) {
+      Alert.alert('Микрофон', e?.message || 'Разрешите доступ к микрофону в настройках');
+    }
+  };
+
+  const finishVoiceRec = async () => {
+    if (recTimerRef.current) {
+      clearInterval(recTimerRef.current);
+      recTimerRef.current = null;
+    }
+    setIsRecording(false);
+    try {
+      const res = await stopNativeVoiceRecording();
+      if (!res?.dataUrl || !me) return;
+      const payload = {
+        ...buildBasePayload(),
+        type: 'voice',
+        audioUrl: res.dataUrl,
+        voiceUrl: res.dataUrl,
+        duration: res.duration || recSec || 1,
+        text: '',
+      };
+      await pushChatMessage(payload, `🎤 Голосовое (${formatDuration(res.duration)})`);
+      triggerHaptic(15);
+    } catch (e: any) {
+      Alert.alert('Ошибка записи', e?.message || 'Не удалось сохранить голосовое');
+    }
+  };
+
+  const cancelVoiceRec = () => {
+    if (recTimerRef.current) {
+      clearInterval(recTimerRef.current);
+      recTimerRef.current = null;
+    }
+    setIsRecording(false);
+    setRecSec(0);
+    cancelNativeVoiceRecording();
+    triggerHaptic(10);
+  };
+
+  const toggleReaction = async (msg: any, emoji: string) => {
+    if (!me || !chatId) return;
+    triggerHaptic(10);
+    const reactions = { ...(msg.reactions || {}) };
+    const usersForEmoji = { ...(reactions[emoji] || {}) };
+    if (usersForEmoji[me.uid]) {
+      delete usersForEmoji[me.uid];
+    } else {
+      usersForEmoji[me.uid] = true;
+    }
+    if (Object.keys(usersForEmoji).length === 0) {
+      delete reactions[emoji];
+    } else {
+      reactions[emoji] = usersForEmoji;
+    }
+    await update(ref(rtdb, `chats/${chatId}/messages/${msg.id}`), { reactions });
+  };
+
+  const handleForwardToChat = async (targetChatId: string) => {
+    if (!forwardMsg || !me) return;
+    const orig = forwardMsg;
+    setForwardMsg(null);
+    const fwdPayload: any = {
+      uid: me.uid,
+      author: me.nick,
+      at: Date.now(),
+      type: orig.type || 'text',
+      text: orig.text || '',
+      forwardedFrom: orig.author || 'Пользователь',
+    };
+    if (orig.photoUrl) fwdPayload.photoUrl = orig.photoUrl;
+    if (orig.audioUrl) fwdPayload.audioUrl = orig.audioUrl;
+    if (orig.voiceUrl) fwdPayload.voiceUrl = orig.voiceUrl;
+    if (orig.fileUrl) fwdPayload.fileUrl = orig.fileUrl;
+    if (orig.fileName) fwdPayload.fileName = orig.fileName;
+    if (orig.duration) fwdPayload.duration = orig.duration;
+
+    const newRef = push(ref(rtdb, `chats/${targetChatId}/messages`));
+    await set(newRef, fwdPayload);
+    await update(ref(rtdb, `chats/${targetChatId}`), {
+      lastMsg: `↪ ${decodeMsgText(orig.text) || 'Пересланное сообщение'}`,
+      lastMsgAt: Date.now(),
+    });
+    triggerHaptic(20);
+    Alert.alert('Переслано ✓', 'Сообщение отправлено');
   };
 
   const renderMessage = ({ item }: any) => {
     if (item.type === 'system') {
       return (
-        <View style={styles.sysWrap}>
-          <Text style={styles.sysText}>{decodeMsgText(item.text)}</Text>
+        <View style={[styles.sysWrap, { backgroundColor: appTheme.glass, borderColor: appTheme.border }]}>
+          <Text style={[styles.sysText, { color: appTheme.textSub }]}>{decodeMsgText(item.text)}</Text>
         </View>
       );
     }
@@ -150,285 +384,856 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     const prefix = sender?.prefix || item.prefix;
     const prefixStyle = sender?.prefixStyle || item.prefixStyle || 'gold';
     const prefixSound = sender?.prefixSound || item.prefixSound;
-    const imgUri = item.imageUrl || item.url || (item.type === 'image' ? item.fileUrl : '');
+    const photoUri = item.photoUrl || item.imageUrl || item.url;
+    const audioUri = item.audioUrl || item.voiceUrl;
+    const isVoice = item.type === 'voice' || item.type === 'audio' || !!audioUri;
+    const isFile = item.type === 'file' || (item.fileUrl && !photoUri && !audioUri);
+    const isPoll = item.type === 'poll' && Array.isArray(item.pollOptions);
+    const isPlaying = playingMsgId === item.id;
     const timeStr = item._atMs
       ? new Date(item._atMs).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
       : '';
 
+    const reactionEntries = item.reactions ? Object.entries(item.reactions) : [];
+
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onLongPress={() => handleLongPressMsg(item)}
+      <ScalePressable
+        scaleTo={0.985}
+        onLongPress={() => setActionMsg(item)}
         style={[styles.msgRow, isMine ? styles.msgRowOut : styles.msgRowIn]}
       >
-        <View style={[styles.bubble, isMine ? styles.bubbleOut : styles.bubbleIn]}>
+        <View
+          style={[
+            styles.bubble,
+            isMine
+              ? {
+                  backgroundColor: appTheme.bubbleOut,
+                  borderColor: appTheme.specular,
+                  borderBottomRightRadius: 8,
+                }
+              : {
+                  backgroundColor: appTheme.bubbleIn,
+                  borderColor: appTheme.border,
+                  borderBottomLeftRadius: 8,
+                },
+          ]}
+        >
+          {item.forwardedFrom ? (
+            <Text style={[styles.fwdLabel, { color: appTheme.accent }]}>
+              ↪ Переслано от {item.forwardedFrom}
+            </Text>
+          ) : null}
+
           {(!isMine || prefix) && (
             <View style={styles.bubbleAuthorRow}>
               {!isMine && (
                 <TouchableOpacity
                   onPress={() => item.uid && navigation.navigate('UserProfile', { uid: item.uid })}
                 >
-                  <Text style={styles.bubbleAuthor}>{authorName}</Text>
+                  <Text style={[styles.bubbleAuthor, { color: appTheme.accent }]}>{authorName}</Text>
                 </TouchableOpacity>
               )}
               {prefix ? (
-                <PrefixBadge
-                  prefix={prefix}
-                  prefixStyle={prefixStyle}
-                  prefixSound={prefixSound}
-                />
+                <PrefixBadge prefix={prefix} prefixStyle={prefixStyle} prefixSound={prefixSound} />
               ) : null}
             </View>
           )}
 
           {item.replyTo ? (
-            <View style={styles.replyBox}>
-              <Text style={styles.replyAuthor}>{item.replyTo.author}</Text>
+            <View style={[styles.replyBox, { borderLeftColor: appTheme.accent }]}>
+              <Text style={[styles.replyAuthor, { color: appTheme.accent }]}>{item.replyTo.author}</Text>
               <Text style={styles.replyText} numberOfLines={1}>
                 {decodeMsgText(item.replyTo.text)}
               </Text>
             </View>
           ) : null}
 
-          {imgUri ? (
-            <Image
-              source={{ uri: imgUri }}
-              style={styles.msgImage}
-              resizeMode="cover"
-            />
+          {/* Photo Preview -> Lightbox */}
+          {photoUri ? (
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setLightboxUri(photoUri)}>
+              <Image source={{ uri: photoUri }} style={styles.msgImage} resizeMode="cover" />
+            </TouchableOpacity>
           ) : null}
 
-          {decodeMsgText(item.text) ? (
-            <Text style={styles.msgText}>{decodeMsgText(item.text)}</Text>
+          {/* Voice Capsule */}
+          {isVoice && audioUri ? (
+            <TouchableOpacity
+              style={styles.voicePill}
+              activeOpacity={0.75}
+              onPress={() => {
+                if (isPlaying) {
+                  stopVoiceMessage();
+                  setPlayingMsgId(null);
+                } else {
+                  setPlayingMsgId(item.id);
+                  playVoiceMessage(audioUri);
+                  const durMs = ((item.duration || 3) + 0.5) * 1000;
+                  setTimeout(() => setPlayingMsgId((cur) => (cur === item.id ? null : cur)), durMs);
+                }
+              }}
+            >
+              <View style={[styles.voicePlayCircle, { backgroundColor: appTheme.accent }]}>
+                <Text style={{ color: '#000', fontSize: 13, fontWeight: '900' }}>
+                  {isPlaying ? '■' : '▶'}
+                </Text>
+              </View>
+              <View style={styles.waveBars}>
+                {[10, 18, 14, 22, 16, 20, 12, 19, 13, 15, 9].map((h, idx) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.waveBar,
+                      { height: h, backgroundColor: isPlaying ? appTheme.accent : 'rgba(255,255,255,0.45)' },
+                    ]}
+                  />
+                ))}
+              </View>
+              <Text style={styles.voiceDur}>{formatDuration(item.duration || 2)}</Text>
+            </TouchableOpacity>
           ) : null}
 
-          <Text style={styles.msgTime}>{timeStr}</Text>
+          {/* File Card */}
+          {isFile && item.fileUrl ? (
+            <TouchableOpacity
+              style={styles.fileCard}
+              onPress={() => {
+                if (String(item.fileUrl).startsWith('http')) Linking.openURL(item.fileUrl).catch(() => {});
+                else Alert.alert('Файл', `${item.fileName || 'Файл'} (${formatBytes(item.fileSize)})`);
+              }}
+            >
+              <View style={[styles.fileIconCircle, { backgroundColor: appTheme.accentSoft }]}>
+                <Text style={{ fontSize: 18 }}>📄</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fileName} numberOfLines={1}>
+                  {item.fileName || 'Документ'}
+                </Text>
+                <Text style={styles.fileSize}>{formatBytes(item.fileSize) || 'Файл'}</Text>
+              </View>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Interactive Poll */}
+          {isPoll ? (
+            <View style={styles.pollBox}>
+              <Text style={styles.pollQ}>📊 {item.pollQuestion}</Text>
+              {(() => {
+                const totalVotes = item.pollOptions.reduce(
+                  (acc: number, o: any) => acc + Object.keys(o.votes || {}).length,
+                  0
+                );
+                return item.pollOptions.map((opt: any, idx: number) => {
+                  const cnt = Object.keys(opt.votes || {}).length;
+                  const pct = totalVotes > 0 ? Math.round((cnt / totalVotes) * 100) : 0;
+                  const voted = !!(me && opt.votes && opt.votes[me.uid]);
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[
+                        styles.pollOpt,
+                        voted && { borderColor: appTheme.accent, backgroundColor: appTheme.accentSoft },
+                      ]}
+                      onPress={() => togglePollVote(item, idx)}
+                    >
+                      <Text style={styles.pollOptText}>
+                        {voted ? '✓ ' : ''}
+                        {opt.text}
+                      </Text>
+                      <Text style={[styles.pollPct, { color: appTheme.accent }]}>
+                        {pct}% ({cnt})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                });
+              })()}
+            </View>
+          ) : null}
+
+          {/* Text */}
+          {!isPoll && decodeMsgText(item.text) ? (
+            <Text style={[styles.msgText, { color: appTheme.text }]}>{decodeMsgText(item.text)}</Text>
+          ) : null}
+
+          {/* Reactions Chips */}
+          {reactionEntries.length > 0 && (
+            <View style={styles.reactionsRow}>
+              {reactionEntries.map(([emoji, usersObj]: any) => {
+                const count = Object.keys(usersObj || {}).length;
+                const mine = !!(me && usersObj && usersObj[me.uid]);
+                if (!count) return null;
+                return (
+                  <TouchableOpacity
+                    key={emoji}
+                    style={[
+                      styles.reactionChip,
+                      mine && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent },
+                    ]}
+                    onPress={() => toggleReaction(item, emoji)}
+                  >
+                    <Text style={styles.reactionTxt}>
+                      {emoji} {count}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          <Text style={styles.msgTime}>
+            {item.edited ? 'изм. · ' : ''}
+            {timeStr}
+          </Text>
         </View>
-      </TouchableOpacity>
+      </ScalePressable>
     );
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      {/* Native Chat Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
+    <LiquidBackground>
+      <KeyboardAvoidingView
+        style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Floating Liquid Glass Header */}
+        <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 4 }}>
+          <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
+            <ScalePressable style={styles.circleBtn} onPress={() => navigation.goBack()}>
+              <Text style={styles.backBtnText}>←</Text>
+            </ScalePressable>
 
-        <TouchableOpacity
-          style={styles.headerProfileTouch}
-          activeOpacity={0.75}
-          onPress={() => {
-            if (partnerUid) navigation.navigate('UserProfile', { uid: partnerUid });
-          }}
-        >
-          <FramedAvatar
-            uri={partner?.avatar}
-            name={displayName}
-            frameId={partner?.steamFrame || 'none'}
-            size={38}
-            online={!!partner?.online}
-          />
-          <View style={styles.headerMeta}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.chatTitle} numberOfLines={1}>
-                {displayName}
-              </Text>
-              {partner?.prefix ? (
-                <PrefixBadge
-                  prefix={partner.prefix}
-                  prefixStyle={partner.prefixStyle}
-                  prefixSound={partner.prefixSound}
+            <TouchableOpacity
+              style={styles.headerProfileTouch}
+              activeOpacity={0.75}
+              onPress={() => partnerUid && navigation.navigate('UserProfile', { uid: partnerUid })}
+            >
+              <FramedAvatar
+                uri={partner?.avatar}
+                name={displayName}
+                frameId={partner?.steamFrame || 'none'}
+                size={38}
+                online={!!partner?.online}
+              />
+              <View style={styles.headerMeta}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.chatTitle, { color: appTheme.text }]} numberOfLines={1}>
+                    {displayName}
+                  </Text>
+                  {partner?.prefix ? (
+                    <PrefixBadge
+                      prefix={partner.prefix}
+                      prefixStyle={partner.prefixStyle}
+                      prefixSound={partner.prefixSound}
+                    />
+                  ) : null}
+                </View>
+                <Text style={[styles.chatSub, { color: partner?.online ? '#4ade80' : appTheme.textSub }]}>
+                  {isSaved ? 'Облачное хранилище' : partner?.online ? 'в сети' : 'нажмите для профиля'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {partnerUid ? (
+              <ScalePressable
+                style={styles.giftBtn}
+                onPress={() =>
+                  navigation.navigate('PirozhkiStore', { initialTab: 'gift', targetUid: partnerUid })
+                }
+              >
+                <Image
+                  source={require('../../android/app/src/main/assets/public/pirozhok.png')}
+                  style={{ width: 20, height: 20 }}
                 />
-              ) : null}
-            </View>
-            <Text style={[styles.chatSub, partner?.online && { color: '#4ade80' }]}>
-              {isSaved ? 'Облачное хранилище' : partner?.online ? 'в сети' : 'чат'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {partnerUid ? (
-          <TouchableOpacity
-            style={styles.giftBtn}
-            onPress={() =>
-              navigation.navigate('PirozhkiStore', {
-                initialTab: 'gift',
-                targetUid: partnerUid,
-              })
-            }
-          >
-            <Image
-              source={require('../../android/app/src/main/assets/public/pirozhok.png')}
-              style={{ width: 20, height: 20 }}
-            />
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      {/* Messages Feed */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMessage}
-        contentContainerStyle={styles.feedContent}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-      />
-
-      {/* Reply Bar */}
-      {replyTo && (
-        <View style={styles.replyBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.replyBannerTitle}>Ответ для {replyTo.author}</Text>
-            <Text style={styles.replyBannerSub} numberOfLines={1}>
-              {replyTo.text}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => setReplyTo(null)}>
-            <Text style={{ color: '#94a3b8', fontSize: 18, paddingHorizontal: 8 }}>✕</Text>
-          </TouchableOpacity>
+              </ScalePressable>
+            ) : null}
+          </GlassCard>
         </View>
-      )}
 
-      {/* Composer */}
-      <View style={styles.composer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Сообщение..."
-          placeholderTextColor="#64748b"
-          multiline
-          value={text}
-          onChangeText={setText}
+        {/* Pinned Message Pill */}
+        {chat?.pinnedMsg ? (
+          <View style={{ paddingHorizontal: 14, paddingBottom: 4 }}>
+            <GlassCard radius={18} style={styles.pinnedCard}>
+              <Text style={[styles.pinnedLabel, { color: appTheme.accent }]}>📌 Закреплено:</Text>
+              <Text style={[styles.pinnedText, { color: appTheme.text }]} numberOfLines={1}>
+                {decodeMsgText(chat.pinnedMsg.text) || 'Медиа-сообщение'}
+              </Text>
+              <TouchableOpacity onPress={() => update(ref(rtdb, `chats/${chatId}`), { pinnedMsg: null })}>
+                <Text style={{ color: appTheme.textSub, paddingHorizontal: 6 }}>✕</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        ) : null}
+
+        {/* Messages Feed */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={styles.feedContent}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
-        <TouchableOpacity
-          style={[styles.sendBtn, !text.trim() && { opacity: 0.45 }]}
-          disabled={!text.trim()}
-          onPress={sendMessage}
-        >
-          <Text style={styles.sendBtnText}>➤</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+
+        {/* Reply / Edit Banner */}
+        {(replyTo || editingMsg) && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
+            <GlassCard radius={20} strong style={styles.replyBanner}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.replyBannerTitle, { color: appTheme.accent }]}>
+                  {editingMsg ? '✏️ Редактирование' : `Ответ для ${replyTo?.author}`}
+                </Text>
+                <Text style={[styles.replyBannerSub, { color: appTheme.textSub }]} numberOfLines={1}>
+                  {editingMsg ? editingMsg.text : replyTo?.text}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setReplyTo(null);
+                  setEditingMsg(null);
+                  if (editingMsg) setText('');
+                }}
+              >
+                <Text style={{ color: appTheme.textSub, fontSize: 18, paddingHorizontal: 8 }}>✕</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        )}
+
+        {/* Emoji / Sticker Quick Drawer */}
+        {showEmojiDrawer && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 6 }}>
+            <GlassCard radius={24} strong style={styles.emojiDrawer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {QUICK_EMOJIS.map((em) => (
+                  <TouchableOpacity
+                    key={em}
+                    style={styles.emojiItem}
+                    onPress={() => {
+                      triggerHaptic(8);
+                      setText((prev) => prev + em);
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>{em}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </GlassCard>
+          </View>
+        )}
+
+        {/* Floating Liquid Glass Pill Composer */}
+        <View style={styles.composerWrap}>
+          {isRecording ? (
+            <GlassCard radius={RADII.PILL} strong style={styles.recPill}>
+              <TouchableOpacity style={styles.recCancelBtn} onPress={cancelVoiceRec}>
+                <Text style={{ color: '#ef4444', fontWeight: '800', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center' }}>
+                <View style={styles.recDot} />
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
+                  Запись {formatDuration(recSec)}
+                </Text>
+              </View>
+              <ScalePressable style={[styles.sendCircle, { backgroundColor: '#ef4444' }]} onPress={finishVoiceRec}>
+                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800' }}>➤</Text>
+              </ScalePressable>
+            </GlassCard>
+          ) : (
+            <GlassCard radius={RADII.PILL} strong style={styles.composerPill}>
+              <ScalePressable style={styles.composerIconBtn} onPress={() => setShowAttachSheet(true)}>
+                <Text style={{ color: appTheme.accent, fontSize: 21, fontWeight: '700' }}>＋</Text>
+              </ScalePressable>
+
+              <TextInput
+                style={[styles.input, { color: appTheme.text }]}
+                placeholder="Сообщение..."
+                placeholderTextColor={appTheme.textSub}
+                multiline
+                value={text}
+                onChangeText={setText}
+              />
+
+              <ScalePressable
+                style={styles.composerIconBtn}
+                onPress={() => setShowEmojiDrawer((prev) => !prev)}
+              >
+                <Text style={{ fontSize: 19 }}>😊</Text>
+              </ScalePressable>
+
+              {text.trim() ? (
+                <ScalePressable
+                  style={[styles.sendCircle, { backgroundColor: appTheme.accent }]}
+                  onPress={sendTextOrSaveEdit}
+                >
+                  <Text style={{ color: '#000', fontSize: 16, fontWeight: '900' }}>➤</Text>
+                </ScalePressable>
+              ) : (
+                <ScalePressable
+                  style={[styles.sendCircle, { backgroundColor: appTheme.accentSoft }]}
+                  onPress={startVoiceRec}
+                >
+                  <Text style={{ fontSize: 18 }}>🎤</Text>
+                </ScalePressable>
+              )}
+            </GlassCard>
+          )}
+        </View>
+
+        {/* Attachment Glass Sheet */}
+        <Modal visible={showAttachSheet} transparent animationType="fade" onRequestClose={() => setShowAttachSheet(false)}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowAttachSheet(false)}>
+            <GlassCard radius={28} strong style={styles.sheetCard}>
+              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Прикрепить</Text>
+              <View style={styles.attachGrid}>
+                <ScalePressable style={styles.attachItem} onPress={() => handleSendImage(false)}>
+                  <View style={[styles.attachCircle, { backgroundColor: 'rgba(59,130,246,0.22)' }]}>
+                    <Text style={{ fontSize: 24 }}>🖼️</Text>
+                  </View>
+                  <Text style={styles.attachLbl}>Галерея</Text>
+                </ScalePressable>
+                <ScalePressable style={styles.attachItem} onPress={() => handleSendImage(true)}>
+                  <View style={[styles.attachCircle, { backgroundColor: 'rgba(236,72,153,0.22)' }]}>
+                    <Text style={{ fontSize: 24 }}>📸</Text>
+                  </View>
+                  <Text style={styles.attachLbl}>Камера</Text>
+                </ScalePressable>
+                <ScalePressable style={styles.attachItem} onPress={handleSendFile}>
+                  <View style={[styles.attachCircle, { backgroundColor: 'rgba(16,185,129,0.22)' }]}>
+                    <Text style={{ fontSize: 24 }}>📄</Text>
+                  </View>
+                  <Text style={styles.attachLbl}>Файл</Text>
+                </ScalePressable>
+                <ScalePressable
+                  style={styles.attachItem}
+                  onPress={() => {
+                    setShowAttachSheet(false);
+                    setShowPollModal(true);
+                  }}
+                >
+                  <View style={[styles.attachCircle, { backgroundColor: 'rgba(245,158,11,0.22)' }]}>
+                    <Text style={{ fontSize: 24 }}>📊</Text>
+                  </View>
+                  <Text style={styles.attachLbl}>Опрос</Text>
+                </ScalePressable>
+              </View>
+            </GlassCard>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Message Action & Reactions Sheet */}
+        <Modal visible={!!actionMsg} transparent animationType="fade" onRequestClose={() => setActionMsg(null)}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setActionMsg(null)}>
+            <GlassCard radius={28} strong style={styles.sheetCard}>
+              <View style={styles.quickReactRow}>
+                {QUICK_REACTIONS.map((em) => (
+                  <TouchableOpacity
+                    key={em}
+                    style={styles.quickReactBtn}
+                    onPress={() => {
+                      const m = actionMsg;
+                      setActionMsg(null);
+                      if (m) toggleReaction(m, em);
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>{em}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={() => {
+                  const m = actionMsg;
+                  setActionMsg(null);
+                  if (m) {
+                    setReplyTo({
+                      id: m.id,
+                      author: m.author || 'Пользователь',
+                      text: decodeMsgText(m.text) || 'Медиа',
+                    });
+                  }
+                }}
+              >
+                <Text style={styles.sheetRowText}>↩️ Ответить</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={() => {
+                  const m = actionMsg;
+                  setActionMsg(null);
+                  setForwardMsg(m);
+                }}
+              >
+                <Text style={styles.sheetRowText}>↪️ Переслать</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={async () => {
+                  const m = actionMsg;
+                  setActionMsg(null);
+                  if (m) {
+                    await update(ref(rtdb, `chats/${chatId}`), {
+                      pinnedMsg: { id: m.id, text: decodeMsgText(m.text) || 'Медиа', author: m.author || '' },
+                    });
+                  }
+                }}
+              >
+                <Text style={styles.sheetRowText}>📌 Закрепить</Text>
+              </TouchableOpacity>
+
+              {actionMsg?.uid === me?.uid && actionMsg?.type === 'text' && (
+                <TouchableOpacity
+                  style={styles.sheetRow}
+                  onPress={() => {
+                    const m = actionMsg;
+                    setActionMsg(null);
+                    setEditingMsg({ id: m.id, text: decodeMsgText(m.text) });
+                    setText(decodeMsgText(m.text));
+                  }}
+                >
+                  <Text style={styles.sheetRowText}>✏️ Редактировать</Text>
+                </TouchableOpacity>
+              )}
+
+              {actionMsg?.uid === me?.uid && (
+                <TouchableOpacity
+                  style={styles.sheetRow}
+                  onPress={() => {
+                    const m = actionMsg;
+                    setActionMsg(null);
+                    if (m) remove(ref(rtdb, `chats/${chatId}/messages/${m.id}`));
+                  }}
+                >
+                  <Text style={[styles.sheetRowText, { color: '#ef4444' }]}>🗑️ Удалить</Text>
+                </TouchableOpacity>
+              )}
+            </GlassCard>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Forward Chat Picker */}
+        <Modal visible={!!forwardMsg} transparent animationType="fade" onRequestClose={() => setForwardMsg(null)}>
+          <View style={styles.modalBackdrop}>
+            <GlassCard radius={28} strong style={styles.sheetCard}>
+              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Переслать в чат</Text>
+              <ScrollView style={{ maxHeight: 260 }}>
+                {chats.map((c) => {
+                  const otherId = c.type === 'dm' && me ? c.members.find((x) => x !== me.uid) : undefined;
+                  const title =
+                    c.type === 'saved'
+                      ? 'Избранное'
+                      : otherId
+                      ? usersMap[otherId]?.nick || c.name || 'Диалог'
+                      : c.name || 'Чат';
+                  return (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={styles.sheetRow}
+                      onPress={() => handleForwardToChat(c.id)}
+                    >
+                      <Text style={styles.sheetRowText}>💬 {title}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setForwardMsg(null)}>
+                <Text style={{ color: '#94a3b8', fontWeight: '700' }}>Отмена</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        </Modal>
+
+        {/* Poll Creator Modal */}
+        <Modal visible={showPollModal} transparent animationType="fade" onRequestClose={() => setShowPollModal(false)}>
+          <View style={styles.modalBackdrop}>
+            <GlassCard radius={28} strong style={styles.sheetCard}>
+              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Создать опрос 📊</Text>
+              <TextInput
+                style={styles.pollInput}
+                placeholder="Вопрос опроса..."
+                placeholderTextColor="#64748b"
+                value={pollQuestion}
+                onChangeText={setPollQuestion}
+              />
+              <TextInput
+                style={styles.pollInput}
+                placeholder="Вариант 1"
+                placeholderTextColor="#64748b"
+                value={pollOpt1}
+                onChangeText={setPollOpt1}
+              />
+              <TextInput
+                style={styles.pollInput}
+                placeholder="Вариант 2"
+                placeholderTextColor="#64748b"
+                value={pollOpt2}
+                onChangeText={setPollOpt2}
+              />
+              <TextInput
+                style={styles.pollInput}
+                placeholder="Вариант 3 (необязательно)"
+                placeholderTextColor="#64748b"
+                value={pollOpt3}
+                onChangeText={setPollOpt3}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setShowPollModal(false)}>
+                  <Text style={{ color: '#94a3b8', fontWeight: '700' }}>Отмена</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.createPollBtn, { backgroundColor: appTheme.accent }]}
+                  onPress={handleCreatePoll}
+                >
+                  <Text style={{ color: '#000', fontWeight: '800' }}>Создать</Text>
+                </TouchableOpacity>
+              </View>
+            </GlassCard>
+          </View>
+        </Modal>
+
+        {/* Fullscreen Lightbox Image Viewer */}
+        <Modal visible={!!lightboxUri} transparent animationType="fade" onRequestClose={() => setLightboxUri(null)}>
+          <View style={styles.lightboxBackdrop}>
+            <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxUri(null)}>
+              <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800' }}>✕</Text>
+            </TouchableOpacity>
+            {lightboxUri && (
+              <Image source={{ uri: lightboxUri }} style={styles.lightboxImg} resizeMode="contain" />
+            )}
+          </View>
+        </Modal>
+      </KeyboardAvoidingView>
+    </LiquidBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080C14' },
-  header: {
+  headerPill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: '#0e1420',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 7,
+    gap: 8,
   },
-  backBtn: { padding: 8, marginRight: 4 },
-  backBtnText: { fontSize: 22, color: '#fff', fontWeight: '700' },
-  headerProfileTouch: {
-    flex: 1,
-    flexDirection: 'row',
+  circleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
   },
+  backBtnText: { fontSize: 20, color: '#fff', fontWeight: '800' },
+  headerProfileTouch: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerMeta: { flex: 1 },
-  chatTitle: { fontSize: 16, fontWeight: '700', color: '#fff', flexShrink: 1 },
-  chatSub: { fontSize: 12, color: '#8aabb8', marginTop: 1 },
+  chatTitle: { fontSize: 15.5, fontWeight: '800', flexShrink: 1 },
+  chatSub: { fontSize: 11.5, marginTop: 1 },
   giftBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(245, 158, 11, 0.16)',
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderColor: 'rgba(245, 158, 11, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pinnedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  pinnedLabel: { fontSize: 11.5, fontWeight: '800' },
+  pinnedText: { flex: 1, fontSize: 12.5 },
   feedContent: { padding: 12, paddingBottom: 16, gap: 6 },
-  sysWrap: { alignSelf: 'center', marginVertical: 6, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
-  sysText: { color: '#94a3b8', fontSize: 12 },
+  sysWrap: {
+    alignSelf: 'center',
+    marginVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  sysText: { fontSize: 12, fontWeight: '600' },
   msgRow: { width: '100%', flexDirection: 'row', marginVertical: 2 },
   msgRowOut: { justifyContent: 'flex-end' },
   msgRowIn: { justifyContent: 'flex-start' },
   bubble: {
-    maxWidth: '82%',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    maxWidth: '83%',
+    borderRadius: RADII.BUBBLE,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  bubbleOut: {
-    backgroundColor: '#1e3a5f',
-    borderBottomRightRadius: 4,
-  },
-  bubbleIn: {
-    backgroundColor: '#17212b',
-    borderBottomLeftRadius: 4,
-  },
-  bubbleAuthorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 4,
-  },
-  bubbleAuthor: { fontSize: 12.5, fontWeight: '700', color: '#7ab3d9' },
+  fwdLabel: { fontSize: 11, fontWeight: '700', marginBottom: 4 },
+  bubbleAuthorRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+  bubbleAuthor: { fontSize: 12.5, fontWeight: '800' },
   replyBox: {
-    borderLeftWidth: 2.5,
-    borderLeftColor: '#60a5fa',
+    borderLeftWidth: 3,
     paddingLeft: 8,
-    marginBottom: 5,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: 4,
-    paddingVertical: 3,
+    marginBottom: 6,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderRadius: 8,
+    paddingVertical: 4,
   },
-  replyAuthor: { fontSize: 11, fontWeight: '700', color: '#60a5fa' },
+  replyAuthor: { fontSize: 11, fontWeight: '800' },
   replyText: { fontSize: 12, color: '#cbd5e1' },
-  msgImage: { width: 220, height: 180, borderRadius: 12, marginBottom: 4 },
-  msgText: { color: '#f1f5f9', fontSize: 15, lineHeight: 20 },
-  msgTime: { fontSize: 10.5, color: 'rgba(255,255,255,0.48)', alignSelf: 'flex-end', marginTop: 3 },
-  replyBanner: {
+  msgImage: { width: 225, height: 185, borderRadius: 18, marginBottom: 4 },
+  voicePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#131c2a',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
+    gap: 10,
+    paddingVertical: 4,
+    minWidth: 185,
   },
-  replyBannerTitle: { color: '#60a5fa', fontSize: 12, fontWeight: '700' },
-  replyBannerSub: { color: '#94a3b8', fontSize: 12 },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: '#0e1420',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#17212b',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    maxHeight: 110,
-    color: '#ffffff',
-    fontSize: 15,
-  },
-  sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#5b8fb9',
+  voicePlayCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  waveBars: { flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1 },
+  waveBar: { width: 3, borderRadius: 99 },
+  voiceDur: { color: '#cbd5e1', fontSize: 12, fontWeight: '700' },
+  fileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderRadius: 16,
+    padding: 8,
+    minWidth: 190,
+  },
+  fileIconCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  fileName: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  fileSize: { color: '#94a3b8', fontSize: 11 },
+  pollBox: { minWidth: 215, gap: 6 },
+  pollQ: { color: '#fff', fontSize: 14.5, fontWeight: '800', marginBottom: 4 },
+  pollOpt: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.26)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  pollOptText: { color: '#f1f5f9', fontSize: 13, fontWeight: '600', flex: 1, marginRight: 6 },
+  pollPct: { fontSize: 12, fontWeight: '800' },
+  msgText: { fontSize: 15, lineHeight: 20 },
+  reactionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 6 },
+  reactionChip: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  reactionTxt: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  msgTime: { fontSize: 10.5, color: 'rgba(255,255,255,0.48)', alignSelf: 'flex-end', marginTop: 4 },
+  replyBanner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 },
+  replyBannerTitle: { fontSize: 12, fontWeight: '800' },
+  replyBannerSub: { fontSize: 12 },
+  emojiDrawer: { paddingVertical: 8, paddingHorizontal: 10 },
+  emojiItem: { paddingHorizontal: 8, paddingVertical: 4 },
+  composerWrap: { paddingHorizontal: 12, paddingTop: 4, paddingBottom: 8 },
+  composerPill: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  recPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderColor: 'rgba(239,68,68,0.55)',
+  },
+  recCancelBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(239,68,68,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' },
+  composerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  input: {
+    flex: 1,
+    maxHeight: 110,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    fontSize: 15,
+  },
+  sendCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.68)',
+    justifyContent: 'flex-end',
+    padding: 14,
+  },
+  sheetCard: { padding: 18 },
+  sheetTitle: { fontSize: 17, fontWeight: '800', marginBottom: 14, textAlign: 'center' },
+  attachGrid: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 6 },
+  attachItem: { alignItems: 'center', gap: 8 },
+  attachCircle: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
+  attachLbl: { color: '#e2e8f0', fontSize: 12.5, fontWeight: '700' },
+  quickReactRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' },
+  quickReactBtn: { padding: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.06)' },
+  sheetRow: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  sheetRowText: { color: '#f1f5f9', fontSize: 15, fontWeight: '600' },
+  cancelModalBtn: { paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center' },
+  pollInput: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    color: '#fff',
+    marginBottom: 8,
+    fontSize: 14,
+  },
+  createPollBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
+  lightboxBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lightboxClose: {
+    position: 'absolute',
+    top: 44,
+    right: 20,
+    zIndex: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxImg: { width: '100%', height: '82%' },
 });

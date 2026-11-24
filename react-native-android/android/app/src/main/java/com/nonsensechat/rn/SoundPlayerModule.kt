@@ -21,6 +21,7 @@ import kotlin.random.Random
 class SoundPlayerModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
     private var activePlayer: MediaPlayer? = null
+    private var voicePlayer: MediaPlayer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun getName(): String = "SoundPlayerModule"
@@ -151,32 +152,14 @@ class SoundPlayerModule(reactContext: ReactApplicationContext) : ReactContextBas
         thread(start = true) {
             try {
                 stopActivePlayer()
-                val player = MediaPlayer()
-                player.setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
-                if (source.startsWith("data:audio")) {
-                    val commaIdx = source.indexOf(',')
-                    if (commaIdx == -1) return@thread
-                    val b64 = source.substring(commaIdx + 1)
-                    val bytes = Base64.decode(b64, Base64.DEFAULT)
-                    val tmp = File(reactApplicationContext.cacheDir, "prefix_sound_tmp.mp3")
-                    FileOutputStream(tmp).use { it.write(bytes) }
-                    player.setDataSource(tmp.absolutePath)
-                } else {
-                    player.setDataSource(source)
-                }
+                val player = preparePlayerFromSource(source, "prefix_sound_tmp.mp3") ?: return@thread
                 player.setOnCompletionListener {
                     it.release()
                     if (activePlayer === it) activePlayer = null
                 }
-                player.prepare()
                 activePlayer = player
                 player.start()
-                // Strict 2.0-second limit
+                // Strict 2.0-second limit for prefix sounds
                 mainHandler.postDelayed({
                     try {
                         if (activePlayer === player) {
@@ -188,6 +171,59 @@ class SoundPlayerModule(reactContext: ReactApplicationContext) : ReactContextBas
                 }, 2050)
             } catch (_: Exception) {}
         }
+    }
+
+    @ReactMethod
+    fun playVoiceAudio(source: String) {
+        thread(start = true) {
+            try {
+                stopVoiceAudio()
+                val player = preparePlayerFromSource(source, "voice_msg_tmp.m4a") ?: return@thread
+                player.setOnCompletionListener {
+                    it.release()
+                    if (voicePlayer === it) voicePlayer = null
+                }
+                voicePlayer = player
+                player.start()
+            } catch (_: Exception) {}
+        }
+    }
+
+    @ReactMethod
+    fun stopVoiceAudio() {
+        try {
+            voicePlayer?.let {
+                if (it.isPlaying) it.stop()
+                it.release()
+            }
+            voicePlayer = null
+        } catch (_: Exception) {}
+    }
+
+    private fun preparePlayerFromSource(source: String, cacheFileName: String): MediaPlayer? {
+        val player = MediaPlayer()
+        player.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+        )
+        if (source.startsWith("data:audio")) {
+            val commaIdx = source.indexOf(',')
+            if (commaIdx == -1) {
+                player.release()
+                return null
+            }
+            val b64 = source.substring(commaIdx + 1)
+            val bytes = Base64.decode(b64, Base64.DEFAULT)
+            val tmp = File(reactApplicationContext.cacheDir, cacheFileName)
+            FileOutputStream(tmp).use { it.write(bytes) }
+            player.setDataSource(tmp.absolutePath)
+        } else {
+            player.setDataSource(source)
+        }
+        player.prepare()
+        return player
     }
 
     private fun stopActivePlayer() {

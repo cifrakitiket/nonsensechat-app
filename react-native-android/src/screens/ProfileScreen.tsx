@@ -17,20 +17,53 @@ import {
   CREATOR_UID,
   PROFILE_THEMES_CATALOG,
 } from '../constants/catalogs';
+import { pickNativeImage, takeNativePhoto } from '../services/firebase';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { PrefixBadge } from '../components/PrefixBadge';
+import { LiquidBackground } from '../components/LiquidBackground';
+import { GlassCard } from '../components/GlassCard';
+import { ScalePressable } from '../components/ScalePressable';
+import { AppThemeKey, LIQUID_THEMES, RADII } from '../theme/liquidGlass';
 
 export default function ProfileScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, logout, grantSelfPirozhki } = useApp();
+  const { me, logout, grantSelfPirozhki, updateMyProfile, appTheme, appThemeKey, setAppTheme } = useApp();
 
   if (!me) return null;
 
   const isCreator = me.uid === CREATOR_UID;
   const bal = me.pirozhki || 0;
-  const theme =
+  const profileTheme =
     PROFILE_THEMES_CATALOG.find((t) => t.id === (me.steamTheme || 'classic')) ||
     PROFILE_THEMES_CATALOG[0];
+
+  const handleChangeAvatar = () => {
+    Alert.alert('Сменить аватар', 'Выберите источник фото', [
+      {
+        text: '🖼️ Из галереи',
+        onPress: async () => {
+          try {
+            const res = await pickNativeImage();
+            if (res?.dataUrl) await updateMyProfile({ avatar: res.dataUrl });
+          } catch (e: any) {
+            if (e?.code !== 'CANCELLED') Alert.alert('Ошибка', e?.message);
+          }
+        },
+      },
+      {
+        text: '📸 Сделать фото',
+        onPress: async () => {
+          try {
+            const res = await takeNativePhoto();
+            if (res?.dataUrl) await updateMyProfile({ avatar: res.dataUrl });
+          } catch (e: any) {
+            if (e?.code !== 'CANCELLED') Alert.alert('Ошибка', e?.message);
+          }
+        },
+      },
+      { text: 'Отмена', style: 'cancel' },
+    ]);
+  };
 
   const handleLogout = () => {
     Alert.alert('Выход', 'Вы уверены, что хотите выйти из аккаунта?', [
@@ -40,207 +73,291 @@ export default function ProfileScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Профиль</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
-          <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Изм.</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Themed Hero Card */}
-      <View style={[styles.heroCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <FramedAvatar
-          uri={me.avatar}
-          name={me.nick}
-          frameId={me.steamFrame || 'none'}
-          size={92}
-          online
-          square
-        />
-
-        <View style={styles.nameRow}>
-          <Text style={styles.userName}>{me.nick}</Text>
-          {me.prefix ? (
-            <PrefixBadge
-              prefix={me.prefix}
-              prefixStyle={me.prefixStyle}
-              prefixSound={me.prefixSound}
-              large
-            />
-          ) : null}
-          {isCreator && (
-            <View style={styles.devBadge}>
-              <Text style={styles.devBadgeTxt}>&lt;/&gt;</Text>
-            </View>
-          )}
+    <LiquidBackground>
+      <ScrollView
+        style={{ flex: 1, paddingTop: insets.top }}
+        contentContainerStyle={{ paddingBottom: 112 }}
+      >
+        <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 10 }}>
+          <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
+            <Text style={[styles.headerTitle, { color: appTheme.text }]}>Профиль</Text>
+            <ScalePressable onPress={() => navigation.navigate('EditProfile')}>
+              <Text style={{ color: appTheme.accent, fontWeight: '800', fontSize: 13.5 }}>Изм.</Text>
+            </ScalePressable>
+          </GlassCard>
         </View>
 
-        <Text style={styles.userUsername}>
-          @{me.nickLower || me.nick} · {isCreator ? 'СЕО БЧ' : 'в сети'}
-        </Text>
-        {!!me.bio && <Text style={styles.userBio}>{me.bio}</Text>}
-
-        <View style={styles.heroBtns}>
-          <TouchableOpacity
-            style={styles.heroBtnPri}
-            onPress={() => navigation.navigate('UserProfile', { uid: me.uid })}
+        {/* Liquid Glass Themed Hero Card */}
+        <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
+          <GlassCard
+            radius={RADII.CARD}
+            style={[
+              styles.heroCard,
+              {
+                backgroundColor:
+                  me.steamTheme && me.steamTheme !== 'classic' ? profileTheme.card : appTheme.glass,
+                borderColor: profileTheme.border,
+              },
+            ]}
           >
-            <Text style={styles.heroBtnTxt}>🪪 Мой профиль</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.heroBtnGold}
-            onPress={() => navigation.navigate('ProfileCustomizer')}
-          >
-            <Text style={styles.heroBtnTxt}>🎨 Темы и рамки</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <TouchableOpacity activeOpacity={0.85} onPress={handleChangeAvatar} style={{ position: 'relative' }}>
+              <FramedAvatar
+                uri={me.avatar}
+                name={me.nick}
+                frameId={me.steamFrame || 'none'}
+                size={94}
+                online
+              />
+              <View style={[styles.camBadge, { backgroundColor: appTheme.accent }]}>
+                <Text style={{ fontSize: 13 }}>📷</Text>
+              </View>
+            </TouchableOpacity>
 
-      {/* Pirozhki Store Card */}
-      <View style={styles.pirozhkiCard}>
-        <View style={styles.pirozhkiTop}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Image
-              source={require('../../android/app/src/main/assets/public/pirozhok.png')}
-              style={{ width: 34, height: 34 }}
-            />
-            <View>
-              <Text style={styles.pirozhkiLbl}>БАЛАНС ПИРОЖКОВ</Text>
-              <Text style={styles.pirozhkiVal}>
-                {bal.toLocaleString('ru-RU')} 🥟{' '}
-                <Text style={{ fontSize: 12, color: '#cbd5e1', fontWeight: '600' }}>
-                  (~{(bal * 0.42).toFixed(2)} ₽)
-                </Text>
-              </Text>
+            <View style={styles.nameRow}>
+              <Text style={[styles.userName, { color: appTheme.text }]}>{me.nick}</Text>
+              {me.prefix ? (
+                <PrefixBadge
+                  prefix={me.prefix}
+                  prefixStyle={me.prefixStyle}
+                  prefixSound={me.prefixSound}
+                  large
+                />
+              ) : null}
+              {isCreator && (
+                <View style={styles.devBadge}>
+                  <Text style={styles.devBadgeTxt}>&lt;/&gt;</Text>
+                </View>
+              )}
             </View>
-          </View>
-          {isCreator && (
+
+            <Text style={[styles.userUsername, { color: appTheme.textSub }]}>
+              @{me.nickLower || me.nick} · {isCreator ? 'СЕО БЧ' : 'в сети'}
+            </Text>
+            {!!me.bio && <Text style={styles.userBio}>{me.bio}</Text>}
+
+            <View style={styles.heroBtns}>
+              <ScalePressable
+                haptic
+                style={{ flex: 1 }}
+                onPress={() => navigation.navigate('UserProfile', { uid: me.uid })}
+              >
+                <View style={[styles.heroBtn, { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent }]}>
+                  <Text style={styles.heroBtnTxt}>🪪 Мой профиль</Text>
+                </View>
+              </ScalePressable>
+              <ScalePressable
+                haptic
+                style={{ flex: 1 }}
+                onPress={() => navigation.navigate('ProfileCustomizer')}
+              >
+                <View style={[styles.heroBtn, { backgroundColor: 'rgba(245,158,11,0.22)', borderColor: 'rgba(245,158,11,0.5)' }]}>
+                  <Text style={styles.heroBtnTxt}>🎨 Темы и рамки</Text>
+                </View>
+              </ScalePressable>
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* Pirozhki Glass Wallet */}
+        <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
+          <GlassCard
+            radius={RADII.CARD}
+            style={[styles.pirozhkiCard, { backgroundColor: 'rgba(245, 158, 11, 0.14)', borderColor: 'rgba(245, 158, 11, 0.4)' }]}
+          >
+            <View style={styles.pirozhkiTop}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Image
+                  source={require('../../android/app/src/main/assets/public/pirozhok.png')}
+                  style={{ width: 36, height: 36 }}
+                />
+                <View>
+                  <Text style={styles.pirozhkiLbl}>БАЛАНС ПИРОЖКОВ</Text>
+                  <Text style={styles.pirozhkiVal}>
+                    {bal.toLocaleString('ru-RU')} 🥟{' '}
+                    <Text style={{ fontSize: 12, color: '#cbd5e1', fontWeight: '600' }}>
+                      (~{(bal * 0.42).toFixed(2)} ₽)
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+              {isCreator && (
+                <ScalePressable
+                  haptic
+                  style={styles.creatorBtn}
+                  onPress={() =>
+                    grantSelfPirozhki(500).then(() => Alert.alert('Готово 🥟', '+500 пирожков начислено!'))
+                  }
+                >
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>⚡ +500 себе</Text>
+                </ScalePressable>
+              )}
+            </View>
+
+            <View style={styles.pirozhkiActions}>
+              <ScalePressable
+                haptic
+                style={{ flex: 1 }}
+                onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'buy' })}
+              >
+                <View style={[styles.pActBtn, { backgroundColor: '#f59e0b', borderColor: '#fbbf24' }]}>
+                  <Text style={{ color: '#000', fontWeight: '900', fontSize: 12.5 }}>+ Пополнить</Text>
+                </View>
+              </ScalePressable>
+              <ScalePressable
+                haptic
+                style={{ flex: 1 }}
+                onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'prefixes' })}
+              >
+                <View style={styles.pActBtn}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12.5 }}>🏷️ Префиксы</Text>
+                </View>
+              </ScalePressable>
+              <ScalePressable
+                haptic
+                style={{ flex: 1 }}
+                onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'gift' })}
+              >
+                <View style={styles.pActBtn}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12.5 }}>🎁 Угостить</Text>
+                </View>
+              </ScalePressable>
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* Liquid Glass App Theme Switcher */}
+        <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
+          <GlassCard radius={RADII.CARD} style={{ padding: 14 }}>
+            <Text style={[styles.themeTitle, { color: appTheme.textSub }]}>ТЕМА ИНТЕРФЕЙСА (LIQUID GLASS)</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {(Object.keys(LIQUID_THEMES) as AppThemeKey[]).map((k) => {
+                const t = LIQUID_THEMES[k];
+                const act = appThemeKey === k;
+                return (
+                  <TouchableOpacity
+                    key={k}
+                    style={[
+                      styles.themeChip,
+                      {
+                        backgroundColor: t.glass,
+                        borderColor: act ? t.accent : 'rgba(255,255,255,0.14)',
+                      },
+                    ]}
+                    onPress={() => setAppTheme(k)}
+                  >
+                    <View style={[styles.themeDot, { backgroundColor: t.accent }]} />
+                    <Text style={{ color: '#fff', fontSize: 12.5, fontWeight: act ? '800' : '600' }}>
+                      {t.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </GlassCard>
+        </View>
+
+        {/* Settings List */}
+        <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
+          <GlassCard radius={RADII.CARD}>
             <TouchableOpacity
-              style={styles.creatorBtn}
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('ProfileCustomizer')}
+            >
+              <Text style={styles.settingIcon}>🎨</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Темы профиля и рамки</Text>
+              <Text style={styles.settingVal}>{profileTheme.name}</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'prefixes' })}
+            >
+              <Text style={styles.settingIcon}>🏷️</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Кастомный префикс</Text>
+              <Text style={styles.settingVal}>{me.prefix || 'Выбрать'}</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('PrefixSound')}
+            >
+              <Text style={styles.settingIcon}>🔊</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Звук префикса (до 2с)</Text>
+              <Text style={styles.settingVal}>{me.prefixSoundName || 'Настроить'}</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('EditProfile')}
+            >
+              <Text style={styles.settingIcon}>✏️</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Редактировать данные и фото</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.settingItem, { borderBottomWidth: 0 }]}
               onPress={() =>
-                grantSelfPirozhki(500).then(() => Alert.alert('Готово 🥟', '+500 пирожков начислено!'))
+                Share.share({
+                  title: 'Беспонтовый Чат (NonsenseChat)',
+                  message: 'Присоединяйся к NonsenseChat: https://nonsensechat.ru',
+                })
               }
             >
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>⚡ +500 себе</Text>
+              <Text style={styles.settingIcon}>📤</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Поделиться приложением</Text>
+              <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
-          )}
+          </GlassCard>
         </View>
 
-        <View style={styles.pirozhkiActions}>
-          <TouchableOpacity
-            style={[styles.pActBtn, { backgroundColor: '#f59e0b' }]}
-            onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'buy' })}
-          >
-            <Text style={{ color: '#000', fontWeight: '800', fontSize: 12.5 }}>+ Пополнить</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.pActBtn}
-            onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'prefixes' })}
-          >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12.5 }}>🏷️ Префиксы</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.pActBtn}
-            onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'gift' })}
-          >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12.5 }}>🎁 Угостить</Text>
-          </TouchableOpacity>
+        <View style={{ paddingHorizontal: 12 }}>
+          <GlassCard radius={RADII.CARD}>
+            <View style={styles.settingItem}>
+              <Text style={styles.settingIcon}>📱</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Liquid Glass Native</Text>
+              <Text style={styles.settingVal}>
+                v{APP_VERSION} ({APP_VERSION_CODE})
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.settingItem, { borderBottomWidth: 0 }]}
+              onPress={handleLogout}
+            >
+              <Text style={styles.settingIcon}>🚪</Text>
+              <Text style={[styles.settingText, { color: '#ef4444' }]}>Выйти из аккаунта</Text>
+            </TouchableOpacity>
+          </GlassCard>
         </View>
-      </View>
-
-      {/* Settings List */}
-      <View style={styles.settingsGroup}>
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => navigation.navigate('ProfileCustomizer')}
-        >
-          <Text style={styles.settingIcon}>🎨</Text>
-          <Text style={styles.settingText}>Темы профиля и рамки аватара</Text>
-          <Text style={styles.settingVal}>{theme.name}</Text>
-          <Text style={styles.settingArrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'prefixes' })}
-        >
-          <Text style={styles.settingIcon}>🏷️</Text>
-          <Text style={styles.settingText}>Кастомный префикс</Text>
-          <Text style={styles.settingVal}>{me.prefix || 'Выбрать'}</Text>
-          <Text style={styles.settingArrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => navigation.navigate('PrefixSound')}
-        >
-          <Text style={styles.settingIcon}>🔊</Text>
-          <Text style={styles.settingText}>Звук префикса (до 2с)</Text>
-          <Text style={styles.settingVal}>{me.prefixSoundName || 'Настроить'}</Text>
-          <Text style={styles.settingArrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
-          <Text style={styles.settingIcon}>✏️</Text>
-          <Text style={styles.settingText}>Редактировать личные данные</Text>
-          <Text style={styles.settingArrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() =>
-            Share.share({
-              title: 'Беспонтовый Чат (NonsenseChat)',
-              message: 'Присоединяйся к NonsenseChat: https://nonsensechat.ru',
-            })
-          }
-        >
-          <Text style={styles.settingIcon}>📤</Text>
-          <Text style={styles.settingText}>Поделиться приложением</Text>
-          <Text style={styles.settingArrow}>›</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.settingsGroup}>
-        <View style={styles.settingItem}>
-          <Text style={styles.settingIcon}>📱</Text>
-          <Text style={styles.settingText}>Нативная сборка Android</Text>
-          <Text style={styles.settingVal}>
-            v{APP_VERSION} ({APP_VERSION_CODE})
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
-          <Text style={styles.settingIcon}>🚪</Text>
-          <Text style={[styles.settingText, { color: '#ef4444' }]}>Выйти из аккаунта</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={{ height: 24 }} />
-    </ScrollView>
+      </ScrollView>
+    </LiquidBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080C14' },
-  header: {
+  headerPill: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#ffffff' },
-  heroCard: {
-    margin: 14,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    padding: 18,
+  headerTitle: { fontSize: 17, fontWeight: '800' },
+  heroCard: { padding: 20, alignItems: 'center' },
+  camBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#050914',
   },
   nameRow: {
     flexDirection: 'row',
@@ -250,88 +367,57 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  userName: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  userName: { fontSize: 21, fontWeight: '800' },
   devBadge: {
     backgroundColor: 'rgba(139, 92, 246, 0.25)',
     borderWidth: 1,
     borderColor: '#8b5cf6',
-    borderRadius: 6,
-    paddingHorizontal: 6,
+    borderRadius: 999,
+    paddingHorizontal: 8,
     paddingVertical: 2,
   },
   devBadgeTxt: { color: '#c4b5fd', fontSize: 10.5, fontWeight: '800' },
-  userUsername: { fontSize: 13.5, color: '#94a3b8', marginTop: 4 },
-  userBio: { fontSize: 13, color: '#cbd5e1', marginTop: 8, textAlign: 'center' },
-  heroBtns: { flexDirection: 'row', gap: 10, marginTop: 14, width: '100%' },
-  heroBtnPri: {
-    flex: 1,
-    backgroundColor: 'rgba(91,143,185,0.28)',
-    borderWidth: 1,
-    borderColor: 'rgba(91,143,185,0.5)',
-    borderRadius: 11,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  heroBtnGold: {
-    flex: 1,
-    backgroundColor: 'rgba(245,158,11,0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.5)',
-    borderRadius: 11,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  heroBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  pirozhkiCard: {
-    marginHorizontal: 14,
-    marginBottom: 10,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: 'rgba(245, 158, 11, 0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.38)',
-  },
-  pirozhkiTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
+  userUsername: { fontSize: 13.5, marginTop: 4 },
+  userBio: { fontSize: 13.5, color: '#cbd5e1', marginTop: 8, textAlign: 'center' },
+  heroBtns: { flexDirection: 'row', gap: 10, marginTop: 16, width: '100%' },
+  heroBtn: { borderWidth: 1, borderRadius: 999, paddingVertical: 11, alignItems: 'center' },
+  heroBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  pirozhkiCard: { padding: 16 },
+  pirozhkiTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   pirozhkiLbl: { fontSize: 10.5, fontWeight: '800', color: '#cbd5e1', letterSpacing: 0.5 },
   pirozhkiVal: { fontSize: 19, fontWeight: '900', color: '#fbbf24' },
-  creatorBtn: {
-    backgroundColor: '#dc2626',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 9,
-  },
+  creatorBtn: { backgroundColor: '#dc2626', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 },
   pirozhkiActions: { flexDirection: 'row', gap: 8 },
   pActBtn: {
-    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.32)',
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 9,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.14)',
   },
-  settingsGroup: {
-    backgroundColor: '#101724',
-    marginHorizontal: 14,
-    marginVertical: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
+  themeTitle: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.6, marginBottom: 10 },
+  themeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    marginRight: 8,
   },
+  themeDot: { width: 10, height: 10, borderRadius: 5 },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   settingIcon: { fontSize: 17, marginRight: 12 },
-  settingText: { flex: 1, fontSize: 14.5, color: '#fff', fontWeight: '600' },
+  settingText: { flex: 1, fontSize: 14.5, fontWeight: '600' },
   settingVal: { fontSize: 12, color: '#fbbf24', marginRight: 6, maxWidth: 110 },
   settingArrow: { fontSize: 18, color: '#6c7a89' },
 });

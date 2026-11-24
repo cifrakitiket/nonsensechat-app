@@ -12,7 +12,9 @@ class NotificationPackage : ReactPackage {
         return listOf(
             NotificationModule(reactContext),
             SoundPlayerModule(reactContext),
-            NativeStorageModule(reactContext)
+            NativeStorageModule(reactContext),
+            MediaPickerModule(reactContext),
+            VoiceRecorderModule(reactContext)
         )
     }
 

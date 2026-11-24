@@ -44,9 +44,50 @@ export function playPrefixSound(soundSource?: string) {
   if (!soundSource) return;
   try {
     Vibration.vibrate(12);
-    if (NativeModules.SoundPlayerModule && NativeModules.SoundPlayerModule.playAudioSource) {
-      NativeModules.SoundPlayerModule.playAudioSource(soundSource);
-    }
+    NativeModules.SoundPlayerModule?.playAudioSource?.(soundSource);
+  } catch (_) {}
+}
+
+export function playVoiceMessage(soundSource?: string) {
+  if (!soundSource) return;
+  try {
+    NativeModules.SoundPlayerModule?.playVoiceAudio?.(soundSource);
+  } catch (_) {}
+}
+
+export function stopVoiceMessage() {
+  try {
+    NativeModules.SoundPlayerModule?.stopVoiceAudio?.();
+  } catch (_) {}
+}
+
+export async function pickNativeImage(): Promise<{ dataUrl: string; fileName: string; fileSize: number }> {
+  return NativeModules.MediaPickerModule.pickImage();
+}
+
+export async function takeNativePhoto(): Promise<{ dataUrl: string; fileName: string; fileSize: number }> {
+  return NativeModules.MediaPickerModule.takePhoto();
+}
+
+export async function pickNativeFile(): Promise<{ dataUrl: string; fileName: string; fileSize: number; mimeType: string }> {
+  return NativeModules.MediaPickerModule.pickFile();
+}
+
+export async function pickNativeAudio(): Promise<{ dataUrl: string; fileName: string; fileSize: number }> {
+  return NativeModules.MediaPickerModule.pickAudio();
+}
+
+export async function startNativeVoiceRecording(maxDurationMs = 120000): Promise<boolean> {
+  return NativeModules.VoiceRecorderModule.startRecording(maxDurationMs);
+}
+
+export async function stopNativeVoiceRecording(): Promise<{ dataUrl: string; duration: number; fileSize: number }> {
+  return NativeModules.VoiceRecorderModule.stopRecording();
+}
+
+export function cancelNativeVoiceRecording() {
+  try {
+    NativeModules.VoiceRecorderModule?.cancelRecording?.();
   } catch (_) {}
 }
 
