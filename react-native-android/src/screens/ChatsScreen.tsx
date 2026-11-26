@@ -9,15 +9,20 @@ import {
   StatusBar,
   TextInput,
   Modal,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { get, push, ref, set, update } from 'firebase/database';
+import { rtdb, triggerHaptic } from '../services/firebase';
 import { useApp, ChatItem } from '../context/AppContext';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { PrefixBadge } from '../components/PrefixBadge';
 import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
+import { StoriesBar } from '../components/StoriesBar';
 import { RADII } from '../theme/liquidGlass';
 
 function formatTime(ms?: number) {
@@ -66,19 +71,45 @@ export default function ChatsScreen({ navigation }: any) {
     declineFriendRequest,
     usersMap,
     appTheme,
+    openOrCreateDm,
     addFriendByNick,
     createGroupOrChannel,
     showToast,
     notificationsEnabled,
     openNotificationSettings,
+    pinnedChatIds,
+    mutedChatIds,
+    archivedChatIds,
+    markedUnreadIds,
+    drafts,
+    customFolders,
+    togglePinChat,
+    toggleMuteChat,
+    toggleArchiveChat,
+    toggleMarkUnread,
+    createCustomFolder,
+    deleteCustomFolder,
+    toggleChatInFolder,
   } = useApp();
 
-  const [activeFolder, setActiveFolder] = useState<'all' | 'dm' | 'groups' | 'channels' | 'reqs'>('all');
+  const [activeFolder, setActiveFolder] = useState<string>('all');
+  const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createMode, setCreateMode] = useState<'friend' | 'group' | 'channel'>('friend');
   const [createInput, setCreateInput] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Quick Peek & Context Menu state
+  const [peekChat, setPeekChat] = useState<ChatItem | null>(null);
+  const [peekMessages, setPeekMessages] = useState<any[]>([]);
+  const [loadingPeek, setLoadingPeek] = useState(false);
+
+  // Create Custom Folder Modal state
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderIcon, setNewFolderIcon] = useState('📁');
+  const [newFolderChatIds, setNewFolderChatIds] = useState<string[]>([]);
 
   const getChatDisplay = (chat: ChatItem) => {
     if (chat.type === 'saved') {
@@ -106,12 +137,60 @@ export default function ChatsScreen({ navigation }: any) {
     };
   };
 
+  const openChatPeek = async (chat: ChatItem) => {
+    triggerHaptic(16);
+    setPeekChat(chat);
+    setPeekMessages([]);
+    setLoadingPeek(true);
+    try {
+      const snap = await get(ref(rtdb, `messages/${chat.id}`));
+      const val = snap.val() || {};
+      const list = Object.keys(val)
+        .filter((k) => val[k] && typeof val[k] === 'object')
+        .map((k) => ({ id: k, ...val[k] }))
+        .sort((a, b) => (a.at || 0) - (b.at || 0))
+        .slice(-5);
+      setPeekMessages(list);
+    } catch (_) {
+    } finally {
+      setLoadingPeek(false);
+    }
+  };
+
+  const handleReplyToStory = async (authorUid: string, msgText: string) => {
+    const chat = await openOrCreateDm(authorUid);
+    if (chat && me) {
+      const newRef = push(ref(rtdb, `messages/${chat.id}`));
+      await set(newRef, {
+        uid: me.uid,
+        author: me.nick,
+        at: Date.now(),
+        type: 'text',
+        text: msgText,
+      });
+      await update(ref(rtdb, `chats/${chat.id}`), {
+        lastMsg: msgText,
+        lastMsgAt: Date.now(),
+        lastMsgUid: me.uid,
+      });
+      const info = getChatDisplay(chat);
+      navigation.navigate('ChatRoom', { chatId: chat.id, name: info.name });
+    }
+  };
+
   const filteredChats = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const custom = customFolders.find((f) => f.id === activeFolder);
+
     const base = chats.filter((c) => {
+      const isArch = archivedChatIds.includes(c.id);
+      if (showArchived ? !isArch : isArch) return false;
+
       if (activeFolder === 'dm' && c.type !== 'dm') return false;
       if (activeFolder === 'groups' && c.type !== 'group') return false;
       if (activeFolder === 'channels' && c.type !== 'channel') return false;
+      if (custom && !custom.chatIds.includes(c.id)) return false;
+
       if (q) {
         const info = getChatDisplay(c);
         return (
@@ -122,7 +201,14 @@ export default function ChatsScreen({ navigation }: any) {
       return true;
     });
 
-    if (!q && activeFolder === 'all' && me) {
+    const sorted = [...base].sort((a, b) => {
+      const ap = pinnedChatIds.includes(a.id) ? 1 : 0;
+      const bp = pinnedChatIds.includes(b.id) ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+      return (b.lastMsgAt || 0) - (a.lastMsgAt || 0);
+    });
+
+    if (!showArchived && !q && activeFolder === 'all' && me) {
       const savedCard: ChatItem = {
         id: `fav_${me.uid}`,
         type: 'saved',
@@ -131,10 +217,10 @@ export default function ChatsScreen({ navigation }: any) {
         lastMsg: 'Заметки, фото и облако',
         lastMsgAt: 0,
       };
-      return [savedCard, ...base.filter((c) => c.id !== `fav_${me.uid}`)];
+      return [savedCard, ...sorted.filter((c) => c.id !== `fav_${me.uid}`)];
     }
-    return base;
-  }, [chats, activeFolder, search, me, usersMap]);
+    return sorted;
+  }, [chats, activeFolder, showArchived, search, me, usersMap, archivedChatIds, pinnedChatIds, customFolders]);
 
   const handleCreateSubmit = async () => {
     if (!createInput.trim()) return;
@@ -163,12 +249,18 @@ export default function ChatsScreen({ navigation }: any) {
     const info = getChatDisplay(item);
     const partner = info.partner;
     const isSaved = item.type === 'saved';
+    const isPinned = pinnedChatIds.includes(item.id);
+    const isMuted = mutedChatIds.includes(item.id);
+    const isMarkedUnread = markedUnreadIds.includes(item.id);
+    const draftText = drafts[item.id];
+    const unreadCount = item.unread || 0;
 
     return (
       <ScalePressable
         haptic
         style={{ marginHorizontal: 12, marginVertical: 4 }}
         onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, name: info.name })}
+        onLongPress={() => !isSaved && openChatPeek(item)}
       >
         <GlassCard radius={RADII.ITEM} style={styles.chatCard}>
           <View style={styles.avatarWrap}>
@@ -205,6 +297,8 @@ export default function ChatsScreen({ navigation }: any) {
                     <Text style={[styles.typeTagText, { color: appTheme.accent }]}>КАНАЛ</Text>
                   </View>
                 )}
+                {isMuted && <Ionicons name="volume-mute" size={13} color={appTheme.textSub} />}
+                {isPinned && <Text style={{ fontSize: 11 }}>📌</Text>}
               </View>
               <Text style={[styles.chatTime, { color: appTheme.textSub }]}>
                 {formatTime(item.lastMsgAt)}
@@ -212,14 +306,28 @@ export default function ChatsScreen({ navigation }: any) {
             </View>
 
             <View style={styles.chatMsgRow}>
-              <Text style={[styles.lastMsg, { color: appTheme.textSub }]} numberOfLines={1}>
-                {formatLastMsgPreview(item.lastMsg, me ? item.lastMsgUid === me.uid : false)}
-              </Text>
-              {(item.unread || 0) > 0 && (
-                <View style={[styles.unreadBadge, { backgroundColor: appTheme.accent }]}>
-                  <Text style={styles.unreadBadgeText}>{item.unread}</Text>
-                </View>
+              {draftText ? (
+                <Text style={[styles.lastMsg, { color: appTheme.textSub }]} numberOfLines={1}>
+                  <Text style={{ color: '#f87171', fontWeight: '800' }}>Черновик: </Text>
+                  {draftText}
+                </Text>
+              ) : (
+                <Text style={[styles.lastMsg, { color: appTheme.textSub }]} numberOfLines={1}>
+                  {formatLastMsgPreview(item.lastMsg, me ? item.lastMsgUid === me.uid : false)}
+                </Text>
               )}
+              {unreadCount > 0 ? (
+                <View
+                  style={[
+                    styles.unreadBadge,
+                    { backgroundColor: isMuted ? 'rgba(148,163,184,0.35)' : appTheme.accent },
+                  ]}
+                >
+                  <Text style={[styles.unreadBadgeText, isMuted && { color: '#fff' }]}>{unreadCount}</Text>
+                </View>
+              ) : isMarkedUnread ? (
+                <View style={[styles.unreadBadge, { backgroundColor: appTheme.accent, minWidth: 12, height: 12, paddingHorizontal: 0 }]} />
+              ) : null}
             </View>
           </View>
         </GlassCard>
@@ -316,16 +424,24 @@ export default function ChatsScreen({ navigation }: any) {
           </GlassCard>
         </View>
 
-        {/* Pill Folder Tabs */}
-        <View style={styles.foldersRow}>
+        {/* Stories Bar */}
+        <StoriesBar onReplyToStory={handleReplyToStory} />
+
+        {/* Pill Folder Tabs (with Custom Folders) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.foldersRow, { alignItems: 'center' }]}
+        >
           {[
             { key: 'all', label: 'ВСЕ' },
             { key: 'dm', label: 'ЛС' },
             { key: 'groups', label: 'ГРУППЫ' },
             { key: 'channels', label: 'КАНАЛЫ' },
             { key: 'reqs', label: incomingRequests.length > 0 ? `ЗАЯВКИ (${incomingRequests.length})` : 'ЗАЯВКИ' },
+            ...customFolders.map((cf) => ({ key: cf.id, label: `${cf.icon} ${cf.name.toUpperCase()}` })),
           ].map((f) => {
-            const act = activeFolder === f.key;
+            const act = activeFolder === f.key && !showArchived;
             return (
               <TouchableOpacity
                 key={f.key}
@@ -336,7 +452,17 @@ export default function ChatsScreen({ navigation }: any) {
                     borderColor: act ? appTheme.accent : appTheme.border,
                   },
                 ]}
-                onPress={() => setActiveFolder(f.key as any)}
+                onPress={() => {
+                  setShowArchived(false);
+                  setActiveFolder(f.key);
+                }}
+                onLongPress={() => {
+                  if (f.key.startsWith('fld_')) {
+                    deleteCustomFolder(f.key);
+                    setActiveFolder('all');
+                    showToast('Папка удалена', f.label, 'info');
+                  }
+                }}
               >
                 <Text
                   style={[
@@ -349,7 +475,38 @@ export default function ChatsScreen({ navigation }: any) {
               </TouchableOpacity>
             );
           })}
-        </View>
+          <TouchableOpacity
+            style={[
+              styles.folderTab,
+              { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: appTheme.border, paddingHorizontal: 10 },
+            ]}
+            onPress={() => {
+              setNewFolderName('');
+              setNewFolderIcon('📁');
+              setNewFolderChatIds([]);
+              setShowFolderModal(true);
+            }}
+          >
+            <Text style={[styles.folderTabText, { color: appTheme.accent }]}>＋ Папка</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Archive Toggle Pill */}
+        {archivedChatIds.length > 0 && activeFolder !== 'reqs' && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={{ paddingHorizontal: 12, marginBottom: 6 }}
+            onPress={() => setShowArchived((v) => !v)}
+          >
+            <GlassCard radius={18} style={styles.archiveBar}>
+              <Text style={{ fontSize: 16 }}>📦</Text>
+              <Text style={{ color: appTheme.text, fontWeight: '700', fontSize: 13.5, flex: 1 }}>
+                {showArchived ? '← Назад ко всем чатам' : `Архив чатов (${archivedChatIds.length})`}
+              </Text>
+              <Ionicons name={showArchived ? 'arrow-back' : 'chevron-forward'} size={16} color={appTheme.textSub} />
+            </GlassCard>
+          </TouchableOpacity>
+        )}
 
         {/* Chats List or Friend Requests */}
         {activeFolder === 'reqs' ? (
@@ -512,6 +669,182 @@ export default function ChatsScreen({ navigation }: any) {
                   <Text style={{ color: '#000', fontWeight: '800' }}>
                     {creating ? 'Создание...' : 'Продолжить'}
                   </Text>
+                </TouchableOpacity>
+              </View>
+            </GlassCard>
+          </View>
+        </Modal>
+
+        {/* Quick Peek Preview + Chat Context Menu Modal */}
+        <Modal visible={!!peekChat} transparent animationType="fade" onRequestClose={() => setPeekChat(null)}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setPeekChat(null)}>
+            {peekChat && (
+              <GlassCard radius={RADII.CARD} strong style={styles.modalCard}>
+                <Text style={[styles.modalTitle, { color: appTheme.text, marginBottom: 8 }]}>
+                  👁️ {getChatDisplay(peekChat).name}
+                </Text>
+                <View style={styles.peekBox}>
+                  {loadingPeek ? (
+                    <ActivityIndicator color={appTheme.accent} />
+                  ) : peekMessages.length === 0 ? (
+                    <Text style={{ color: appTheme.textSub, fontSize: 12.5 }}>Сообщений пока нет</Text>
+                  ) : (
+                    peekMessages.map((pm) => (
+                      <View key={pm.id} style={{ marginBottom: 6 }}>
+                        <Text style={{ color: appTheme.accent, fontSize: 11.5, fontWeight: '700' }}>
+                          {pm.author || 'Участник'}
+                        </Text>
+                        <Text style={{ color: appTheme.text, fontSize: 13 }} numberOfLines={2}>
+                          {stripHtml(pm.text) || 'Медиа-сообщение'}
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+
+                <View style={{ marginTop: 10, gap: 4 }}>
+                  <TouchableOpacity
+                    style={styles.ctxRow}
+                    onPress={() => {
+                      const id = peekChat.id;
+                      setPeekChat(null);
+                      togglePinChat(id);
+                    }}
+                  >
+                    <Text style={styles.ctxText}>
+                      {pinnedChatIds.includes(peekChat.id) ? '📌 Открепить чат' : '📌 Закрепить сверху'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.ctxRow}
+                    onPress={() => {
+                      const id = peekChat.id;
+                      setPeekChat(null);
+                      toggleMuteChat(id);
+                    }}
+                  >
+                    <Text style={styles.ctxText}>
+                      {mutedChatIds.includes(peekChat.id) ? '🔔 Включить звук' : '🔇 Без звука'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.ctxRow}
+                    onPress={() => {
+                      const id = peekChat.id;
+                      setPeekChat(null);
+                      toggleArchiveChat(id);
+                    }}
+                  >
+                    <Text style={styles.ctxText}>
+                      {archivedChatIds.includes(peekChat.id) ? '📤 Убрать из архива' : '📦 В архив'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.ctxRow}
+                    onPress={() => {
+                      const id = peekChat.id;
+                      setPeekChat(null);
+                      toggleMarkUnread(id);
+                    }}
+                  >
+                    <Text style={styles.ctxText}>
+                      {markedUnreadIds.includes(peekChat.id) ? '✓ Снять непрочитанное' : '🔵 Пометить непрочитанным'}
+                    </Text>
+                  </TouchableOpacity>
+                  {customFolders.map((cf) => {
+                    const inFld = cf.chatIds.includes(peekChat.id);
+                    return (
+                      <TouchableOpacity
+                        key={cf.id}
+                        style={styles.ctxRow}
+                        onPress={() => {
+                          toggleChatInFolder(cf.id, peekChat.id);
+                          setPeekChat(null);
+                        }}
+                      >
+                        <Text style={styles.ctxText}>
+                          {cf.icon} {inFld ? `Убрать из «${cf.name}»` : `Добавить в «${cf.name}»`}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </GlassCard>
+            )}
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Create Custom Folder Modal */}
+        <Modal visible={showFolderModal} transparent animationType="fade" onRequestClose={() => setShowFolderModal(false)}>
+          <View style={styles.modalBackdrop}>
+            <GlassCard radius={RADII.CARD} strong style={styles.modalCard}>
+              <Text style={[styles.modalTitle, { color: appTheme.text }]}>Новая папка чатов</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                {['📁', '🔥', '💼', '🎮', '❤️', '🎓'].map((ic) => (
+                  <TouchableOpacity
+                    key={ic}
+                    onPress={() => setNewFolderIcon(ic)}
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: newFolderIcon === ic ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
+                      borderWidth: 1,
+                      borderColor: newFolderIcon === ic ? appTheme.accent : 'transparent',
+                    }}
+                  >
+                    <Text style={{ fontSize: 18 }}>{ic}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={[styles.modalInput, { color: appTheme.text, backgroundColor: appTheme.glassInput, marginBottom: 10 }]}
+                placeholder="Название папки (например: Работа)"
+                placeholderTextColor={appTheme.textSub}
+                value={newFolderName}
+                onChangeText={setNewFolderName}
+              />
+              <Text style={{ color: appTheme.textSub, fontSize: 12, marginBottom: 6 }}>
+                Выберите чаты ({newFolderChatIds.length}):
+              </Text>
+              <ScrollView style={{ maxHeight: 160 }}>
+                {chats.map((c) => {
+                  const sel = newFolderChatIds.includes(c.id);
+                  return (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={[styles.ctxRow, { flexDirection: 'row', justifyContent: 'space-between' }]}
+                      onPress={() =>
+                        setNewFolderChatIds((prev) =>
+                          prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id]
+                        )
+                      }
+                    >
+                      <Text style={{ color: '#fff', fontSize: 13.5 }}>{getChatDisplay(c).name}</Text>
+                      <Text style={{ color: appTheme.accent, fontWeight: '900' }}>{sel ? '✓' : '○'}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View style={styles.modalBtns}>
+                <TouchableOpacity style={styles.modalBtnSec} onPress={() => setShowFolderModal(false)}>
+                  <Text style={{ color: appTheme.textSub, fontWeight: '700' }}>Отмена</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtnPri, { backgroundColor: appTheme.accent }]}
+                  onPress={() => {
+                    if (!newFolderName.trim()) {
+                      showToast('Папка', 'Введите название папки', 'error');
+                      return;
+                    }
+                    createCustomFolder(newFolderName, newFolderIcon, newFolderChatIds);
+                    setShowFolderModal(false);
+                    showToast('Папка создана ✓', `${newFolderIcon} ${newFolderName}`, 'success');
+                  }}
+                >
+                  <Text style={{ color: '#000', fontWeight: '900' }}>Создать</Text>
                 </TouchableOpacity>
               </View>
             </GlassCard>
@@ -688,4 +1021,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 6,
   },
+  archiveBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  peekBox: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  ctxRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  ctxText: { color: '#f8fafc', fontSize: 14.5, fontWeight: '600' },
 });

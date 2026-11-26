@@ -4,9 +4,12 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
@@ -175,6 +178,11 @@ class SoundPlayerModule(reactContext: ReactApplicationContext) : ReactContextBas
 
     @ReactMethod
     fun playVoiceAudio(source: String) {
+        playVoiceAudioWithOptions(source, 1.0, 0.0)
+    }
+
+    @ReactMethod
+    fun playVoiceAudioWithOptions(source: String, speed: Double, startProgress: Double) {
         thread(start = true) {
             try {
                 stopVoiceAudio()
@@ -183,9 +191,66 @@ class SoundPlayerModule(reactContext: ReactApplicationContext) : ReactContextBas
                     it.release()
                     if (voicePlayer === it) voicePlayer = null
                 }
+                if (startProgress > 0.0 && startProgress < 0.99 && player.duration > 0) {
+                    player.seekTo((player.duration * startProgress).toInt())
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    try {
+                        val safeSpeed = speed.toFloat().coerceIn(0.5f, 2.5f)
+                        player.playbackParams = player.playbackParams.setSpeed(safeSpeed)
+                    } catch (_: Exception) {}
+                }
                 voicePlayer = player
                 player.start()
             } catch (_: Exception) {}
+        }
+    }
+
+    @ReactMethod
+    fun setVoiceSpeed(speed: Double) {
+        try {
+            val player = voicePlayer ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val safeSpeed = speed.toFloat().coerceIn(0.5f, 2.5f)
+                player.playbackParams = player.playbackParams.setSpeed(safeSpeed)
+            }
+        } catch (_: Exception) {}
+    }
+
+    @ReactMethod
+    fun seekVoiceProgress(progress: Double) {
+        try {
+            val player = voicePlayer ?: return
+            val dur = player.duration
+            if (dur > 0) {
+                val clamped = progress.coerceIn(0.0, 0.99)
+                player.seekTo((dur * clamped).toInt())
+            }
+        } catch (_: Exception) {}
+    }
+
+    @ReactMethod
+    fun getVoicePlaybackStatus(promise: Promise) {
+        try {
+            val player = voicePlayer
+            val map = Arguments.createMap()
+            if (player != null) {
+                map.putBoolean("isPlaying", player.isPlaying)
+                map.putInt("positionMs", player.currentPosition)
+                map.putInt("durationMs", player.duration)
+            } else {
+                map.putBoolean("isPlaying", false)
+                map.putInt("positionMs", 0)
+                map.putInt("durationMs", 0)
+            }
+            promise.resolve(map)
+        } catch (_: Exception) {
+            val map = Arguments.createMap().apply {
+                putBoolean("isPlaying", false)
+                putInt("positionMs", 0)
+                putInt("durationMs", 0)
+            }
+            promise.resolve(map)
         }
     }
 

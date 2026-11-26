@@ -8,8 +8,10 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
@@ -46,8 +48,16 @@ export default function ProfileScreen({ navigation }: any) {
     testNotification,
     bgSyncEnabled,
     setBgSyncEnabled,
+    chatWallpaper,
+    setChatWallpaper,
+    chatFontSize,
+    setChatFontSize,
+    pinCode,
+    setPinCode,
   } = useApp();
   const [showAvatarSheet, setShowAvatarSheet] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
 
   if (!me) return null;
 
@@ -365,6 +375,84 @@ export default function ProfileScreen({ navigation }: any) {
           </GlassCard>
         </View>
 
+        {/* Оформление чатов и Приватность (Обои, Шрифт, PIN) */}
+        <View style={{ paddingHorizontal: 12, marginBottom: 14 }}>
+          <GlassCard radius={RADII.CARD}>
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.border, flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
+              <Text style={[styles.settingText, { color: appTheme.text, fontWeight: '700' }]}>🖼️ Обои в чатах</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {[
+                  { key: 'stars', label: '✨ Звёзды' },
+                  { key: 'bubbles', label: '🫧 Пузыри' },
+                  { key: 'aurora', label: '🌌 Аврора' },
+                  { key: 'mesh', label: '🔮 Стекло' },
+                  { key: 'grid', label: '📐 Сетка' },
+                  { key: 'none', label: '🚫 Нет' },
+                ].map((wp) => {
+                  const act = chatWallpaper === wp.key;
+                  return (
+                    <TouchableOpacity
+                      key={wp.key}
+                      onPress={() => setChatWallpaper(wp.key as any)}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 14,
+                        backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
+                        borderWidth: 1,
+                        borderColor: act ? appTheme.accent : appTheme.border,
+                      }}
+                    >
+                      <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 12, fontWeight: '700' }}>
+                        {wp.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
+              <Text style={styles.settingIcon}>🔠</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingText, { color: appTheme.text }]}>Размер шрифта сообщений</Text>
+                <Text style={{ color: appTheme.textSub, fontSize: 11.5 }}>Предпросмотр: {chatFontSize}px</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => setChatFontSize(chatFontSize - 1)}
+                  style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ color: appTheme.text, fontWeight: '900', fontSize: 15 }}>A-</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setChatFontSize(chatFontSize + 1)}
+                  style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ color: appTheme.text, fontWeight: '900', fontSize: 15 }}>A+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.settingItem, { borderBottomWidth: 0 }]}
+              onPress={() => {
+                setPinInput('');
+                setShowPinModal(true);
+              }}
+            >
+              <Text style={styles.settingIcon}>🔐</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingText, { color: appTheme.text }]}>Код-пароль (PIN)</Text>
+                <Text style={{ fontSize: 11.5, color: pinCode ? '#22c55e' : appTheme.textSub }}>
+                  {pinCode ? 'Включён 🔒 (запрос при входе)' : 'Выключен'}
+                </Text>
+              </View>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+          </GlassCard>
+        </View>
+
         <View style={{ paddingHorizontal: 12, marginBottom: 20 }}>
           <GlassCard radius={RADII.CARD}>
             <TouchableOpacity
@@ -401,6 +489,77 @@ export default function ProfileScreen({ navigation }: any) {
           showToast('Аватар обновлён ✓', undefined, 'success');
         }}
       />
+
+      {/* PIN Setup Modal */}
+      <Modal visible={showPinModal} transparent animationType="fade" onRequestClose={() => setShowPinModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'center', padding: 20 }}>
+          <GlassCard radius={RADII.CARD} strong style={{ padding: 20 }}>
+            <Text style={{ color: appTheme.text, fontSize: 17, fontWeight: '800', marginBottom: 8 }}>
+              🔐 Код-пароль (4 цифры)
+            </Text>
+            <Text style={{ color: appTheme.textSub, fontSize: 12.5, marginBottom: 14 }}>
+              {pinCode
+                ? 'Введите новый 4-значный PIN или нажмите «Отключить PIN»'
+                : 'Защитите вход в приложение 4-значным кодом'}
+            </Text>
+            <TextInput
+              style={{
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: appTheme.border,
+                backgroundColor: appTheme.glassInput,
+                color: appTheme.text,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                fontSize: 18,
+                letterSpacing: 8,
+                textAlign: 'center',
+              }}
+              keyboardType="number-pad"
+              maxLength={4}
+              secureTextEntry
+              placeholder="••••"
+              placeholderTextColor={appTheme.textSub}
+              value={pinInput}
+              onChangeText={(t) => setPinInput(t.replace(/[^0-9]/g, ''))}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              {pinCode ? (
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 14, paddingVertical: 10 }}
+                  onPress={() => {
+                    setPinCode('');
+                    setShowPinModal(false);
+                    showToast('Код-пароль отключён', undefined, 'info');
+                  }}
+                >
+                  <Text style={{ color: '#ef4444', fontWeight: '700' }}>Отключить PIN</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity
+                style={{ paddingHorizontal: 14, paddingVertical: 10 }}
+                onPress={() => setShowPinModal(false)}
+              >
+                <Text style={{ color: appTheme.textSub, fontWeight: '700' }}>Отмена</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999, backgroundColor: appTheme.accent }}
+                onPress={() => {
+                  if (pinInput.length !== 4) {
+                    showToast('PIN', 'Введите ровно 4 цифры', 'error');
+                    return;
+                  }
+                  setPinCode(pinInput);
+                  setShowPinModal(false);
+                  showToast('Код-пароль установлен 🔐', undefined, 'success');
+                }}
+              >
+                <Text style={{ color: '#000', fontWeight: '900' }}>Сохранить</Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
     </LiquidBackground>
   );
 }

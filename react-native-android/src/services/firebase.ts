@@ -48,11 +48,40 @@ export function playPrefixSound(soundSource?: string) {
   } catch (_) {}
 }
 
-export function playVoiceMessage(soundSource?: string) {
+export function playVoiceMessage(soundSource?: string, speed = 1, startProgress = 0) {
   if (!soundSource) return;
   try {
-    NativeModules.SoundPlayerModule?.playVoiceAudio?.(soundSource);
+    if (NativeModules.SoundPlayerModule?.playVoiceAudioWithOptions) {
+      NativeModules.SoundPlayerModule.playVoiceAudioWithOptions(soundSource, speed, startProgress);
+    } else {
+      NativeModules.SoundPlayerModule?.playVoiceAudio?.(soundSource);
+    }
   } catch (_) {}
+}
+
+export function setVoicePlaybackSpeed(speed: number) {
+  try {
+    NativeModules.SoundPlayerModule?.setVoiceSpeed?.(speed);
+  } catch (_) {}
+}
+
+export function seekVoicePlayback(progress: number) {
+  try {
+    NativeModules.SoundPlayerModule?.seekVoiceProgress?.(progress);
+  } catch (_) {}
+}
+
+export async function getVoicePlaybackStatus(): Promise<{
+  isPlaying: boolean;
+  positionMs: number;
+  durationMs: number;
+}> {
+  try {
+    const res = await NativeModules.SoundPlayerModule?.getVoicePlaybackStatus?.();
+    return res || { isPlaying: false, positionMs: 0, durationMs: 0 };
+  } catch (_) {
+    return { isPlaying: false, positionMs: 0, durationMs: 0 };
+  }
 }
 
 export function stopVoiceMessage() {

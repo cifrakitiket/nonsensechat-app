@@ -139,6 +139,26 @@ export interface ToastState {
   type: 'info' | 'success' | 'error';
 }
 
+export interface CustomFolder {
+  id: string;
+  name: string;
+  icon: string;
+  chatIds: string[];
+}
+
+export interface StoryItem {
+  id: string;
+  uid: string;
+  nick: string;
+  avatar?: string;
+  imageUrl: string;
+  caption?: string;
+  createdAt: number;
+  views?: Record<string, boolean>;
+}
+
+export type ChatWallpaperKey = 'none' | 'stars' | 'bubbles' | 'mesh' | 'grid' | 'aurora';
+
 interface AppContextValue {
   authUser: User | null;
   loadingAuth: boolean;
@@ -183,6 +203,30 @@ interface AppContextValue {
   bgSyncEnabled: boolean;
   setBgSyncEnabled: (enabled: boolean) => Promise<void>;
   checkNotificationPermission: () => Promise<boolean>;
+  // Telegram Ultra features
+  pinnedChatIds: string[];
+  mutedChatIds: string[];
+  archivedChatIds: string[];
+  markedUnreadIds: string[];
+  drafts: Record<string, string>;
+  customFolders: CustomFolder[];
+  chatWallpaper: ChatWallpaperKey;
+  chatFontSize: number;
+  pinCode: string;
+  stories: StoryItem[];
+  togglePinChat: (chatId: string) => void;
+  toggleMuteChat: (chatId: string) => void;
+  toggleArchiveChat: (chatId: string) => void;
+  toggleMarkUnread: (chatId: string) => void;
+  setDraft: (chatId: string, text: string) => void;
+  createCustomFolder: (name: string, icon: string, chatIds: string[]) => void;
+  deleteCustomFolder: (id: string) => void;
+  toggleChatInFolder: (folderId: string, chatId: string) => void;
+  setChatWallpaper: (wp: ChatWallpaperKey) => void;
+  setChatFontSize: (size: number) => void;
+  setPinCode: (pin: string) => void;
+  publishStory: (imageDataUrl: string, caption: string) => Promise<void>;
+  markStoryViewed: (storyId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -203,6 +247,154 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [bgSyncEnabled, setBgSyncEnabledState] = useState(true);
+
+  // Telegram Ultra persisted preferences & Stories
+  const [pinnedChatIds, setPinnedChatIds] = useState<string[]>([]);
+  const [mutedChatIds, setMutedChatIds] = useState<string[]>([]);
+  const [archivedChatIds, setArchivedChatIds] = useState<string[]>([]);
+  const [markedUnreadIds, setMarkedUnreadIds] = useState<string[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [customFolders, setCustomFolders] = useState<CustomFolder[]>([]);
+  const [chatWallpaper, setChatWallpaperState] = useState<ChatWallpaperKey>('stars');
+  const [chatFontSize, setChatFontSizeState] = useState<number>(15);
+  const [pinCode, setPinCodeState] = useState<string>('');
+  const [stories, setStories] = useState<StoryItem[]>([]);
+  const mutedChatIdsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    mutedChatIdsRef.current = mutedChatIds;
+  }, [mutedChatIds]);
+
+  const tgPrefsLoadedRef = useRef(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await NativeModules.NativeStorageModule?.getItem?.('nc_tg_prefs_v1');
+        if (raw) {
+          const p = JSON.parse(raw);
+          if (Array.isArray(p.pinnedChatIds)) setPinnedChatIds(p.pinnedChatIds);
+          if (Array.isArray(p.mutedChatIds)) setMutedChatIds(p.mutedChatIds);
+          if (Array.isArray(p.archivedChatIds)) setArchivedChatIds(p.archivedChatIds);
+          if (Array.isArray(p.markedUnreadIds)) setMarkedUnreadIds(p.markedUnreadIds);
+          if (p.drafts && typeof p.drafts === 'object') setDrafts(p.drafts);
+          if (Array.isArray(p.customFolders)) setCustomFolders(p.customFolders);
+          if (p.chatWallpaper) setChatWallpaperState(p.chatWallpaper);
+          if (typeof p.chatFontSize === 'number') setChatFontSizeState(p.chatFontSize);
+          if (typeof p.pinCode === 'string') setPinCodeState(p.pinCode);
+        }
+      } catch (_) {}
+      tgPrefsLoadedRef.current = true;
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!tgPrefsLoadedRef.current) return;
+    try {
+      const payload = JSON.stringify({
+        pinnedChatIds,
+        mutedChatIds,
+        archivedChatIds,
+        markedUnreadIds,
+        drafts,
+        customFolders,
+        chatWallpaper,
+        chatFontSize,
+        pinCode,
+      });
+      NativeModules.NativeStorageModule?.setItem?.('nc_tg_prefs_v1', payload);
+    } catch (_) {}
+  }, [pinnedChatIds, mutedChatIds, archivedChatIds, markedUnreadIds, drafts, customFolders, chatWallpaper, chatFontSize, pinCode]);
+
+  const toggleIdInList = (setter: React.Dispatch<React.SetStateAction<string[]>>, id: string) => {
+    triggerHaptic(10);
+    setter((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const togglePinChat = (chatId: string) => toggleIdInList(setPinnedChatIds, chatId);
+  const toggleMuteChat = (chatId: string) => toggleIdInList(setMutedChatIds, chatId);
+  const toggleArchiveChat = (chatId: string) => toggleIdInList(setArchivedChatIds, chatId);
+  const toggleMarkUnread = (chatId: string) => toggleIdInList(setMarkedUnreadIds, chatId);
+
+  const setDraft = (chatId: string, text: string) => {
+    setDrafts((prev) => {
+      const clean = text;
+      if (!clean.trim()) {
+        if (!(chatId in prev)) return prev;
+        const next = { ...prev };
+        delete next[chatId];
+        return next;
+      }
+      if (prev[chatId] === clean) return prev;
+      return { ...prev, [chatId]: clean };
+    });
+  };
+
+  const createCustomFolder = (name: string, icon: string, chatIds: string[]) => {
+    const clean = name.trim();
+    if (!clean) return;
+    const folder: CustomFolder = {
+      id: `fld_${Date.now()}`,
+      name: clean,
+      icon: icon || '📁',
+      chatIds,
+    };
+    setCustomFolders((prev) => [...prev, folder]);
+    triggerHaptic(12);
+  };
+
+  const deleteCustomFolder = (id: string) => {
+    setCustomFolders((prev) => prev.filter((f) => f.id !== id));
+    triggerHaptic(10);
+  };
+
+  const toggleChatInFolder = (folderId: string, chatId: string) => {
+    setCustomFolders((prev) =>
+      prev.map((f) => {
+        if (f.id !== folderId) return f;
+        const exists = f.chatIds.includes(chatId);
+        return { ...f, chatIds: exists ? f.chatIds.filter((c) => c !== chatId) : [...f.chatIds, chatId] };
+      })
+    );
+    triggerHaptic(8);
+  };
+
+  const setChatWallpaper = (wp: ChatWallpaperKey) => {
+    triggerHaptic(8);
+    setChatWallpaperState(wp);
+  };
+
+  const setChatFontSize = (size: number) => {
+    const clamped = Math.max(13, Math.min(20, Math.round(size)));
+    setChatFontSizeState(clamped);
+  };
+
+  const setPinCode = (pin: string) => {
+    triggerHaptic(12);
+    setPinCodeState(pin);
+  };
+
+  const publishStory = async (imageDataUrl: string, caption: string) => {
+    if (!me) return;
+    const storyRef = push(ref(rtdb, 'stories'));
+    await set(storyRef, {
+      uid: me.uid,
+      nick: me.nick,
+      avatar: me.avatar || '',
+      imageUrl: imageDataUrl,
+      caption: caption.trim(),
+      createdAt: Date.now(),
+      views: { [me.uid]: true },
+    });
+    triggerHaptic(20);
+  };
+
+  const markStoryViewed = async (storyId: string) => {
+    if (!me || !storyId) return;
+    try {
+      await update(ref(rtdb, `stories/${storyId}/views`), { [me.uid]: true });
+    } catch (_) {}
+  };
 
   const checkNotificationPermission = async (): Promise<boolean> => {
     if (Platform.OS !== 'android') return true;
@@ -311,6 +503,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           NativeModules.NotificationModule?.clearAllNotifications?.();
         } catch (_) {}
       }
+      setMarkedUnreadIds((prev) => (prev.includes(chatId) ? prev.filter((id) => id !== chatId) : prev));
       setUnreadMap((prev) => {
         if (!prev[chatId]) return prev;
         const next = { ...prev, [chatId]: 0 };
@@ -461,12 +654,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               raw.name ||
               'Новое сообщение';
 
-            if (Platform.OS === 'android') {
+            const isMuted = mutedChatIdsRef.current.includes(cid);
+            const isSilent = raw.lastMsgSilent === true;
+            if (Platform.OS === 'android' && !isMuted && !isSilent) {
               try {
                 NativeModules.NotificationModule?.showNotification?.(title, cleanBody, cid);
               } catch (_) {}
             }
-            if (AppState.currentState === 'active') {
+            if (AppState.currentState === 'active' && !isMuted && !isSilent) {
               showToast(title, cleanBody, 'info');
             }
           }
@@ -485,7 +680,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       chatsInitializedRef.current = true;
       if (Object.keys(newUnreads).length > 0) {
-        setUnreadMap((prev) => {
+        setMarkedUnreadIds((prev) => (prev.includes(chatId) ? prev.filter((id) => id !== chatId) : prev));
+      setUnreadMap((prev) => {
           const merged = { ...prev };
           Object.keys(newUnreads).forEach((cid) => {
             merged[cid] = (merged[cid] || 0) + newUnreads[cid];
@@ -498,7 +694,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return merged;
         });
       } else {
-        setUnreadMap((prev) => {
+        setMarkedUnreadIds((prev) => (prev.includes(chatId) ? prev.filter((id) => id !== chatId) : prev));
+      setUnreadMap((prev) => {
           setChats(
             list
               .map((c) => ({ ...c, unread: prev[c.id] || 0 }))
@@ -558,11 +755,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setOutgoingRequests(outgoing);
     });
 
+    const storiesRef = ref(rtdb, 'stories');
+    const unsubStories = onValue(storiesRef, (snap) => {
+      const val = snap.val() || {};
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      const active: StoryItem[] = Object.keys(val)
+        .map((sid) => {
+          const s = val[sid];
+          if (!s || typeof s !== 'object') return null;
+          return {
+            id: sid,
+            uid: s.uid || '',
+            nick: s.nick || 'Пользователь',
+            avatar: s.avatar || '',
+            imageUrl: s.imageUrl || '',
+            caption: s.caption || '',
+            createdAt: toMs(s.createdAt),
+            views: s.views || {},
+          } as StoryItem;
+        })
+        .filter((s): s is StoryItem => !!s && !!s.imageUrl && s.createdAt > cutoff)
+        .sort((a, b) => b.createdAt - a.createdAt);
+      setStories(active);
+    });
+
     return () => {
       unsubMe();
       unsubUsers();
       unsubChats();
       unsubReqs();
+      unsubStories();
     };
   }, [authUser]);
 
@@ -984,6 +1206,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         bgSyncEnabled,
         setBgSyncEnabled,
         checkNotificationPermission,
+        pinnedChatIds,
+        mutedChatIds,
+        archivedChatIds,
+        markedUnreadIds,
+        drafts,
+        customFolders,
+        chatWallpaper,
+        chatFontSize,
+        pinCode,
+        stories,
+        togglePinChat,
+        toggleMuteChat,
+        toggleArchiveChat,
+        toggleMarkUnread,
+        setDraft,
+        createCustomFolder,
+        deleteCustomFolder,
+        toggleChatInFolder,
+        setChatWallpaper,
+        setChatFontSize,
+        setPinCode,
+        publishStory,
+        markStoryViewed,
       }}
     >
       {children}

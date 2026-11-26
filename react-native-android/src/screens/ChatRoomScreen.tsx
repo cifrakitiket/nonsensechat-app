@@ -26,6 +26,9 @@ import {
   cancelNativeVoiceRecording,
   playVoiceMessage,
   stopVoiceMessage,
+  setVoicePlaybackSpeed,
+  seekVoicePlayback,
+  getVoicePlaybackStatus,
 } from '../services/firebase';
 import { useApp, UserProfile } from '../context/AppContext';
 import {
@@ -39,6 +42,11 @@ import { PrefixBadge } from '../components/PrefixBadge';
 import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
+import { FormattedMessageText } from '../components/FormattedMessageText';
+import { SwipeableMessageRow } from '../components/SwipeableMessageRow';
+import { ChatWallpaperOverlay } from '../components/ChatWallpaperOverlay';
+import { SharedMediaModal } from '../components/SharedMediaModal';
+import { ChannelCommentsModal } from '../components/ChannelCommentsModal';
 import { RADII } from '../theme/liquidGlass';
 
 const QUICK_REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '🥟'];
@@ -99,10 +107,36 @@ function formatBytes(bytes = 0) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+function formatLastSeen(ts?: number) {
+  if (!ts) return 'был(а) недавно';
+  const diffSec = Math.floor((Date.now() - ts) / 1000);
+  if (diffSec < 60) return 'был(а) только что';
+  if (diffSec < 3600) return `был(а) ${Math.floor(diffSec / 60)} мин. назад`;
+  const d = new Date(ts);
+  const now = new Date();
+  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return `был(а) сегодня в ${time}`;
+  const yesterday = new Date(now.getTime() - 86400000);
+  if (d.toDateString() === yesterday.toDateString()) return `был(а) вчера в ${time}`;
+  return `был(а) ${d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} в ${time}`;
+}
+
 export default function ChatRoomScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { chatId, name: paramName } = route.params || {};
-  const { me, chats, usersMap, appTheme, showToast, showDialog, giftPirozhki, setActiveChatId } = useApp();
+  const {
+    me,
+    chats,
+    usersMap,
+    appTheme,
+    showToast,
+    giftPirozhki,
+    setActiveChatId,
+    drafts,
+    setDraft,
+    chatWallpaper,
+    chatFontSize,
+  } = useApp();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -115,13 +149,31 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   const [actionMsg, setActionMsg] = useState<any | null>(null);
   const [forwardMsg, setForwardMsg] = useState<any | null>(null);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [lightboxMsg, setLightboxMsg] = useState<any | null>(null);
+  const [destructLeft, setDestructLeft] = useState<number>(0);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+
+  // Telegram Ultra states
+  const [partnerTypingMode, setPartnerTypingMode] = useState<'typing' | 'recording' | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMatchIdx, setSearchMatchIdx] = useState(0);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showSharedMedia, setShowSharedMedia] = useState(false);
+  const [commentsMsg, setCommentsMsg] = useState<any | null>(null);
+  const [showSendOptions, setShowSendOptions] = useState(false);
+  const [showScheduledList, setShowScheduledList] = useState(false);
+  const [scheduledMsgs, setScheduledMsgs] = useState<any[]>([]);
 
   // Voice recording & playback state
   const [isRecording, setIsRecording] = useState(false);
   const [recSec, setRecSec] = useState(0);
   const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
+  const [voiceSpeed, setVoiceSpeed] = useState<1 | 1.5 | 2>(1);
+  const [voiceProgress, setVoiceProgress] = useState(0);
   const recTimerRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
 
   const chat = chats.find((c) => c.id === chatId);
@@ -136,6 +188,9 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   useEffect(() => {
     if (!chatId) return;
     setActiveChatId(chatId);
+    if (drafts[chatId] && !text) {
+      setText(drafts[chatId]);
+    }
     const msgsRef = ref(rtdb, `messages/${chatId}`);
     const unsub = onValue(msgsRef, (snap) => {
       const val = snap.val() || {};
@@ -149,13 +204,138 @@ export default function ChatRoomScreen({ route, navigation }: any) {
         .sort((a, b) => (a._atMs - b._atMs) || a.id.localeCompare(b.id));
       setMessages(list);
     });
+
+    const typingRef = ref(rtdb, `typing/${chatId}`);
+    const unsubTyping = onValue(typingRef, (snap) => {
+      const val = snap.val() || {};
+      const now = Date.now();
+      let found: 'typing' | 'recording' | null = null;
+      Object.keys(val).forEach((u) => {
+        if (u === me?.uid) return;
+        const entry = val[u];
+        if (entry && now - (entry.at || 0) < 6000) {
+          found = entry.mode === 'recording' ? 'recording' : 'typing';
+        }
+      });
+      setPartnerTypingMode(found);
+    });
+
+    const schedRef = ref(rtdb, `scheduled_messages/${chatId}`);
+    const unsubSched = onValue(schedRef, (snap) => {
+      const val = snap.val() || {};
+      const arr = Object.keys(val)
+        .map((k) => ({ id: k, ...val[k] }))
+        .filter((s) => s.uid === me?.uid)
+        .sort((a, b) => (a.sendAt || 0) - (b.sendAt || 0));
+      setScheduledMsgs(arr);
+    });
+
     return () => {
       setActiveChatId(null);
       unsub();
+      unsubTyping();
+      unsubSched();
       stopVoiceMessage();
       if (recTimerRef.current) clearInterval(recTimerRef.current);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (me?.uid) {
+        remove(ref(rtdb, `typing/${chatId}/${me.uid}`)).catch(() => {});
+      }
     };
   }, [chatId]);
+
+  // Auto-dispatch due scheduled messages while chat is open
+  useEffect(() => {
+    if (!chatId || !me || scheduledMsgs.length === 0) return;
+    const iv = setInterval(() => {
+      const now = Date.now();
+      scheduledMsgs.forEach(async (s) => {
+        if ((s.sendAt || 0) <= now) {
+          await remove(ref(rtdb, `scheduled_messages/${chatId}/${s.id}`)).catch(() => {});
+          const payload = { ...s };
+          delete payload.id;
+          delete payload.sendAt;
+          payload.at = now;
+          await pushChatMessage(payload, payload.text || 'Отложенное сообщение');
+        }
+      });
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [scheduledMsgs, chatId, me?.uid]);
+
+  // Record channel post views automatically
+  useEffect(() => {
+    if (chat?.type !== 'channel' || !me?.uid || !chatId || messages.length === 0) return;
+    messages.slice(-15).forEach((m) => {
+      if (m.id && (!m.views || !m.views[me.uid])) {
+        update(ref(rtdb, `messages/${chatId}/${m.id}/views`), { [me.uid]: true }).catch(() => {});
+      }
+    });
+  }, [chat?.type, messages.length, chatId, me?.uid]);
+
+  // Poll voice playback progress while playing
+  useEffect(() => {
+    if (!playingMsgId) {
+      setVoiceProgress(0);
+      return;
+    }
+    const iv = setInterval(async () => {
+      const st = await getVoicePlaybackStatus();
+      if (st.isPlaying && st.durationMs > 0) {
+        setVoiceProgress(Math.min(1, st.positionMs / st.durationMs));
+      } else if (!st.isPlaying && st.positionMs === 0) {
+        setPlayingMsgId(null);
+        setVoiceProgress(0);
+      }
+    }, 180);
+    return () => clearInterval(iv);
+  }, [playingMsgId]);
+
+  // Self-destruct countdown inside Lightbox
+  useEffect(() => {
+    if (!lightboxMsg || !lightboxMsg.selfDestructSec) return;
+    setDestructLeft(lightboxMsg.selfDestructSec);
+    const iv = setInterval(() => {
+      setDestructLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(iv);
+          const targetId = lightboxMsg.id;
+          setLightboxUri(null);
+          setLightboxMsg(null);
+          update(ref(rtdb, `messages/${chatId}/${targetId}`), {
+            destroyed: true,
+            photoUrl: null,
+            imageUrl: null,
+          }).catch(() => {});
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [lightboxMsg?.id]);
+
+  const emitTypingStatus = (mode: 'typing' | 'recording' | null) => {
+    if (!chatId || !me?.uid) return;
+    if (!mode) {
+      remove(ref(rtdb, `typing/${chatId}/${me.uid}`)).catch(() => {});
+      return;
+    }
+    set(ref(rtdb, `typing/${chatId}/${me.uid}`), { mode, at: Date.now() }).catch(() => {});
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (mode === 'typing') {
+      typingTimeoutRef.current = setTimeout(() => {
+        remove(ref(rtdb, `typing/${chatId}/${me.uid}`)).catch(() => {});
+      }, 4500);
+    }
+  };
+
+  const handleTextChange = (val: string) => {
+    setText(val);
+    if (chatId) setDraft(chatId, val);
+    if (val.trim()) emitTypingStatus('typing');
+    else emitTypingStatus(null);
+  };
 
   const invertedFeed = useMemo(() => {
     const items: any[] = [];
@@ -197,20 +377,54 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     return base;
   };
 
-  const pushChatMessage = async (payload: any, previewText: string) => {
+  const searchMatchIndices = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    const indices: number[] = [];
+    invertedFeed.forEach((item, idx) => {
+      if (item.type !== '__date__' && decodeMsgText(item.text).toLowerCase().includes(q)) {
+        indices.push(idx);
+      }
+    });
+    return indices;
+  }, [invertedFeed, searchQuery]);
+
+  const jumpToSearchMatch = (nextIdx: number) => {
+    if (searchMatchIndices.length === 0) return;
+    const wrapped = (nextIdx + searchMatchIndices.length) % searchMatchIndices.length;
+    setSearchMatchIdx(wrapped);
+    const feedIdx = searchMatchIndices[wrapped];
+    try {
+      flatListRef.current?.scrollToIndex({ index: feedIdx, animated: true, viewPosition: 0.5 });
+    } catch (_) {}
+  };
+
+  const mentionSuggestions = useMemo(() => {
+    const m = text.match(/@([a-zA-Zа-яА-ЯёЁ0-9_]*)$/);
+    if (!m) return [];
+    const q = m[1].toLowerCase();
+    return Object.values(usersMap)
+      .filter((u) => u.uid !== me?.uid && (!q || u.nick.toLowerCase().includes(q)))
+      .slice(0, 6);
+  }, [text, usersMap, me?.uid]);
+
+  const pushChatMessage = async (payload: any, previewText: string, silent = false) => {
     const newRef = push(ref(rtdb, `messages/${chatId}`));
     await set(newRef, payload);
     await update(ref(rtdb, `chats/${chatId}`), {
       lastMsg: previewText,
       lastMsgAt: Date.now(),
       lastMsgUid: me?.uid || '',
+      lastMsgSilent: silent,
     });
   };
 
-  const sendTextOrSaveEdit = async () => {
+  const sendTextOrSaveEdit = async (silent = false) => {
     const clean = text.trim();
     if (!clean || !me || !chatId) return;
     triggerHaptic(10);
+    emitTypingStatus(null);
+    setDraft(chatId, '');
 
     if (editingMsg) {
       setText('');
@@ -224,22 +438,42 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       return;
     }
 
-    const payload = {
+    const payload: any = {
       ...buildBasePayload(),
       text: clean,
       type: 'text',
     };
+    if (silent) payload.silent = true;
     setText('');
     setShowEmojiDrawer(false);
-    await pushChatMessage(payload, clean);
+    await pushChatMessage(payload, silent ? `🔇 ${clean}` : clean, silent);
   };
 
-  const handleSendPhotos = async (photos: EncodedPhotoResult[], caption: string) => {
+  const handleScheduleMessage = async (delayMs: number) => {
+    const clean = text.trim();
+    if (!clean || !me || !chatId) return;
+    setShowSendOptions(false);
+    setText('');
+    setDraft(chatId, '');
+    emitTypingStatus(null);
+    const sendAt = Date.now() + delayMs;
+    const schedRef = push(ref(rtdb, `scheduled_messages/${chatId}`));
+    await set(schedRef, {
+      ...buildBasePayload(),
+      text: clean,
+      type: 'text',
+      sendAt,
+    });
+    const min = Math.max(1, Math.round(delayMs / 60000));
+    showToast('Отложено ⏰', `Сообщение отправится через ${min} мин.`, 'success');
+  };
+
+  const handleSendPhotos = async (photos: EncodedPhotoResult[], caption: string, selfDestructSec = 0) => {
     if (!me || photos.length === 0) return;
     for (let i = 0; i < photos.length; i++) {
       const p = photos[i];
       const cap = i === photos.length - 1 ? caption : '';
-      const payload = {
+      const payload: any = {
         ...buildBasePayload(),
         type: 'photo',
         photoUrl: p.dataUrl,
@@ -248,7 +482,13 @@ export default function ChatRoomScreen({ route, navigation }: any) {
         caption: cap,
         text: cap,
       };
-      await pushChatMessage(payload, cap ? `📷 ${cap}` : '📷 Фото');
+      if (selfDestructSec > 0) {
+        payload.selfDestructSec = selfDestructSec;
+      }
+      await pushChatMessage(
+        payload,
+        selfDestructSec > 0 ? `🔥 Сгорающее фото (${selfDestructSec}с)` : cap ? `📷 ${cap}` : '📷 Фото'
+      );
     }
     triggerHaptic(15);
   };
@@ -347,6 +587,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       await startNativeVoiceRecording(120000);
       setIsRecording(true);
       setRecSec(0);
+      emitTypingStatus('recording');
       triggerHaptic(20);
       recTimerRef.current = setInterval(() => {
         setRecSec((prev) => prev + 1);
@@ -362,6 +603,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       recTimerRef.current = null;
     }
     setIsRecording(false);
+    emitTypingStatus(null);
     try {
       const res = await stopNativeVoiceRecording();
       if (!res?.dataUrl || !me) return;
@@ -387,6 +629,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     }
     setIsRecording(false);
     setRecSec(0);
+    emitTypingStatus(null);
     cancelNativeVoiceRecording();
     triggerHaptic(10);
   };
@@ -409,34 +652,67 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     await update(ref(rtdb, `messages/${chatId}/${msg.id}`), { reactions });
   };
 
+  const toggleSelectMsg = (id: string) => {
+    triggerHaptic(8);
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleBatchCopy = () => {
+    const picked = messages.filter((m) => selectedIds.includes(m.id));
+    const joined = picked.map((m) => decodeMsgText(m.text)).filter(Boolean).join('\n');
+    setSelectionMode(false);
+    setSelectedIds([]);
+    if (joined) {
+      Share.share({ message: joined }).catch(() => {});
+    } else {
+      showToast('Копирование', 'Нет текста в выбранных сообщениях', 'info');
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (!me || !chatId) return;
+    const own = messages.filter((m) => selectedIds.includes(m.id) && m.uid === me.uid);
+    for (const m of own) {
+      await remove(ref(rtdb, `messages/${chatId}/${m.id}`)).catch(() => {});
+    }
+    setSelectionMode(false);
+    setSelectedIds([]);
+    triggerHaptic(15);
+    showToast('Удалено', `Удалено сообщений: ${own.length}`, 'info');
+  };
+
   const handleForwardToChat = async (targetChatId: string) => {
     if (!forwardMsg || !me) return;
-    const orig = forwardMsg;
+    const listToFwd = Array.isArray(forwardMsg) ? forwardMsg : [forwardMsg];
     setForwardMsg(null);
-    const fwdPayload: any = {
-      uid: me.uid,
-      author: me.nick,
-      at: Date.now(),
-      type: orig.type || 'text',
-      text: orig.text || '',
-      forwardedFrom: orig.author || 'Пользователь',
-    };
-    if (orig.photoUrl) fwdPayload.photoUrl = orig.photoUrl;
-    if (orig.audioUrl) fwdPayload.audioUrl = orig.audioUrl;
-    if (orig.voiceUrl) fwdPayload.voiceUrl = orig.voiceUrl;
-    if (orig.fileUrl) fwdPayload.fileUrl = orig.fileUrl;
-    if (orig.fileName) fwdPayload.fileName = orig.fileName;
-    if (orig.duration) fwdPayload.duration = orig.duration;
+    setSelectionMode(false);
+    setSelectedIds([]);
+    for (const orig of listToFwd) {
+      const fwdPayload: any = {
+        uid: me.uid,
+        author: me.nick,
+        at: Date.now(),
+        type: orig.type || 'text',
+        text: orig.text || '',
+        forwardedFrom: orig.author || 'Пользователь',
+      };
+      if (orig.photoUrl) fwdPayload.photoUrl = orig.photoUrl;
+      if (orig.audioUrl) fwdPayload.audioUrl = orig.audioUrl;
+      if (orig.voiceUrl) fwdPayload.voiceUrl = orig.voiceUrl;
+      if (orig.fileUrl) fwdPayload.fileUrl = orig.fileUrl;
+      if (orig.fileName) fwdPayload.fileName = orig.fileName;
+      if (orig.duration) fwdPayload.duration = orig.duration;
 
-    const newRef = push(ref(rtdb, `messages/${targetChatId}`));
-    await set(newRef, fwdPayload);
-    await update(ref(rtdb, `chats/${targetChatId}`), {
-      lastMsg: `↪ ${decodeMsgText(orig.text) || 'Пересланное сообщение'}`,
-      lastMsgAt: Date.now(),
-      lastMsgUid: me.uid,
-    });
+      const newRef = push(ref(rtdb, `messages/${targetChatId}`));
+      await set(newRef, fwdPayload);
+      await update(ref(rtdb, `chats/${targetChatId}`), {
+        lastMsg: `↪ ${decodeMsgText(orig.text) || 'Пересланное сообщение'}`,
+        lastMsgAt: Date.now(),
+        lastMsgUid: me.uid,
+      });
+    }
     triggerHaptic(20);
-    showToast('Переслано ✓', 'Сообщение отправлено', 'success');
+    showToast('Переслано ✓', `Отправлено сообщений: ${listToFwd.length}`, 'success');
   };
 
   const renderMessage = ({ item }: any) => {
@@ -541,268 +817,494 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       : '';
 
     const reactionEntries = item.reactions ? Object.entries(item.reactions) : [];
+    const isSelected = selectedIds.includes(item.id);
+    const isChannelPost = chat?.type === 'channel';
+    const viewsCount = item.views ? Object.keys(item.views).length : 0;
+    const commentsCount = item.comments ? Object.keys(item.comments).length : 0;
 
     return (
-      <ScalePressable
-        scaleTo={0.985}
+      <SwipeableMessageRow
+        accent={appTheme.accent}
+        selectionMode={selectionMode}
+        onSwipeReply={() =>
+          setReplyTo({
+            id: item.id,
+            author: authorName,
+            text: decodeMsgText(item.text) || 'Медиа',
+          })
+        }
+        onDoubleTapReact={() => toggleReaction(item, '❤️')}
         onLongPress={() => setActionMsg(item)}
-        style={[styles.msgRow, isMine ? styles.msgRowOut : styles.msgRowIn]}
+        onPressInSelection={() => toggleSelectMsg(item.id)}
       >
-        <View
-          style={[
-            styles.bubble,
-            isMine
-              ? {
-                  backgroundColor: appTheme.bubbleOut,
-                  borderColor: appTheme.specular,
-                  borderBottomRightRadius: 8,
-                }
-              : {
-                  backgroundColor: appTheme.bubbleIn,
-                  borderColor: appTheme.border,
-                  borderBottomLeftRadius: 8,
-                },
-          ]}
-        >
-          {item.forwardedFrom ? (
-            <Text style={[styles.fwdLabel, { color: appTheme.accent }]}>
-              ↪ Переслано от {item.forwardedFrom}
-            </Text>
-          ) : null}
-
-          {(!isMine || prefix) && (
-            <View style={styles.bubbleAuthorRow}>
-              {!isMine && (
-                <TouchableOpacity
-                  onPress={() => item.uid && navigation.navigate('UserProfile', { uid: item.uid })}
-                >
-                  <Text style={[styles.bubbleAuthor, { color: appTheme.accent }]}>{authorName}</Text>
-                </TouchableOpacity>
-              )}
-              {prefix ? (
-                <PrefixBadge prefix={prefix} prefixStyle={prefixStyle} prefixSound={prefixSound} />
-              ) : null}
-            </View>
+        <View style={[styles.msgRow, isMine ? styles.msgRowOut : styles.msgRowIn, isSelected && styles.msgRowSelected]}>
+          {selectionMode && (
+            <TouchableOpacity onPress={() => toggleSelectMsg(item.id)} style={styles.selectCheckWrap}>
+              <View
+                style={[
+                  styles.selectCheck,
+                  isSelected
+                    ? { backgroundColor: appTheme.accent, borderColor: appTheme.accent }
+                    : { borderColor: 'rgba(255,255,255,0.45)' },
+                ]}
+              >
+                {isSelected && <Ionicons name="checkmark" size={14} color="#000" />}
+              </View>
+            </TouchableOpacity>
           )}
-
-          {item.replyTo ? (
-            <View style={[styles.replyBox, { borderLeftColor: appTheme.accent }]}>
-              <Text style={[styles.replyAuthor, { color: appTheme.accent }]}>{item.replyTo.author}</Text>
-              <Text style={styles.replyText} numberOfLines={1}>
-                {decodeMsgText(item.replyTo.text)}
+          <View
+            style={[
+              styles.bubble,
+              isMine
+                ? {
+                    backgroundColor: appTheme.bubbleOut,
+                    borderColor: appTheme.specular,
+                    borderBottomRightRadius: 8,
+                  }
+                : {
+                    backgroundColor: appTheme.bubbleIn,
+                    borderColor: appTheme.border,
+                    borderBottomLeftRadius: 8,
+                  },
+            ]}
+          >
+            {item.forwardedFrom ? (
+              <Text style={[styles.fwdLabel, { color: appTheme.accent }]}>
+                ↪ Переслано от {item.forwardedFrom}
               </Text>
-            </View>
-          ) : null}
+            ) : null}
 
-          {/* Photo Preview -> Lightbox */}
-          {photoUri ? (
-            <TouchableOpacity activeOpacity={0.9} onPress={() => setLightboxUri(photoUri)}>
-              <Image source={{ uri: photoUri }} style={styles.msgImage} resizeMode="cover" />
-            </TouchableOpacity>
-          ) : null}
+            {(!isMine || prefix) && (
+              <View style={styles.bubbleAuthorRow}>
+                {!isMine && (
+                  <TouchableOpacity
+                    onPress={() => item.uid && navigation.navigate('UserProfile', { uid: item.uid })}
+                  >
+                    <Text style={[styles.bubbleAuthor, { color: appTheme.accent }]}>{authorName}</Text>
+                  </TouchableOpacity>
+                )}
+                {prefix ? (
+                  <PrefixBadge prefix={prefix} prefixStyle={prefixStyle} prefixSound={prefixSound} />
+                ) : null}
+              </View>
+            )}
 
-          {/* Voice Capsule */}
-          {isVoice && audioUri ? (
-            <TouchableOpacity
-              style={styles.voicePill}
-              activeOpacity={0.75}
-              onPress={() => {
-                if (isPlaying) {
-                  stopVoiceMessage();
-                  setPlayingMsgId(null);
-                } else {
-                  setPlayingMsgId(item.id);
-                  playVoiceMessage(audioUri);
-                  const durMs = ((item.duration || 3) + 0.5) * 1000;
-                  setTimeout(() => setPlayingMsgId((cur) => (cur === item.id ? null : cur)), durMs);
-                }
-              }}
-            >
-              <View style={[styles.voicePlayCircle, { backgroundColor: appTheme.accent }]}>
-                <Text style={{ color: '#000', fontSize: 13, fontWeight: '900' }}>
-                  {isPlaying ? '■' : '▶'}
+            {item.replyTo ? (
+              <View style={[styles.replyBox, { borderLeftColor: appTheme.accent }]}>
+                <Text style={[styles.replyAuthor, { color: appTheme.accent }]}>{item.replyTo.author}</Text>
+                <Text style={styles.replyText} numberOfLines={1}>
+                  {decodeMsgText(item.replyTo.text)}
                 </Text>
               </View>
-              <View style={styles.waveBars}>
-                {[10, 18, 14, 22, 16, 20, 12, 19, 13, 15, 9].map((h, idx) => (
-                  <View
-                    key={idx}
-                    style={[
-                      styles.waveBar,
-                      { height: h, backgroundColor: isPlaying ? appTheme.accent : 'rgba(255,255,255,0.45)' },
-                    ]}
-                  />
-                ))}
-              </View>
-              <Text style={styles.voiceDur}>{formatDuration(item.duration || 2)}</Text>
-            </TouchableOpacity>
-          ) : null}
+            ) : null}
 
-          {/* File Card */}
-          {isFile && item.fileUrl ? (
-            <TouchableOpacity
-              style={styles.fileCard}
-              onPress={() => {
-                if (String(item.fileUrl).startsWith('http')) Linking.openURL(item.fileUrl).catch(() => {});
-                else showToast('Файл', `${item.fileName || 'Файл'} (${formatBytes(item.fileSize)})`, 'info');
-              }}
-            >
-              <View style={[styles.fileIconCircle, { backgroundColor: appTheme.accentSoft }]}>
-                <Text style={{ fontSize: 18 }}>📄</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fileName} numberOfLines={1}>
-                  {item.fileName || 'Документ'}
+            {/* Photo Preview -> Self-destruct or Lightbox */}
+            {item.destroyed ? (
+              <View style={styles.destroyedBox}>
+                <Text style={{ color: '#fb923c', fontSize: 12.5, fontWeight: '700' }}>
+                  🔥 Сгорающее фото исчезло
                 </Text>
-                <Text style={styles.fileSize}>{formatBytes(item.fileSize) || 'Файл'}</Text>
               </View>
-            </TouchableOpacity>
-          ) : null}
+            ) : photoUri ? (
+              item.selfDestructSec > 0 ? (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.selfDestructTile}
+                  onPress={() => {
+                    setLightboxMsg(item);
+                    setLightboxUri(photoUri);
+                  }}
+                >
+                  <Ionicons name="flame" size={28} color="#fb923c" />
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13, marginTop: 4 }}>
+                    Сгорающее фото ({item.selfDestructSec}с)
+                  </Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
+                    Нажмите, чтобы посмотреть
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setLightboxMsg(null);
+                    setLightboxUri(photoUri);
+                  }}
+                >
+                  <Image source={{ uri: photoUri }} style={styles.msgImage} resizeMode="cover" />
+                </TouchableOpacity>
+              )
+            ) : null}
 
-          {/* Interactive Poll */}
-          {isPoll ? (
-            <View style={styles.pollBox}>
-              <Text style={styles.pollQ}>📊 {item.pollQuestion}</Text>
-              {(() => {
-                const totalVotes = item.pollOptions.reduce(
-                  (acc: number, o: any) => acc + Object.keys(o.votes || {}).length,
-                  0
-                );
-                return item.pollOptions.map((opt: any, idx: number) => {
-                  const cnt = Object.keys(opt.votes || {}).length;
-                  const pct = totalVotes > 0 ? Math.round((cnt / totalVotes) * 100) : 0;
-                  const voted = !!(me && opt.votes && opt.votes[me.uid]);
+            {/* Voice Capsule with 1x/1.5x/2x Speed & Waveform Scrubber */}
+            {isVoice && audioUri ? (
+              <View style={styles.voicePill}>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    if (isPlaying) {
+                      stopVoiceMessage();
+                      setPlayingMsgId(null);
+                    } else {
+                      setPlayingMsgId(item.id);
+                      playVoiceMessage(audioUri, voiceSpeed, 0);
+                    }
+                  }}
+                >
+                  <View style={[styles.voicePlayCircle, { backgroundColor: appTheme.accent }]}>
+                    <Text style={{ color: '#000', fontSize: 13, fontWeight: '900' }}>
+                      {isPlaying ? '■' : '▶'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <View style={styles.waveBars}>
+                  {[10, 18, 14, 22, 16, 20, 12, 19, 13, 15, 9].map((h, idx, arr) => {
+                    const barRatio = idx / arr.length;
+                    const filled = isPlaying && voiceProgress >= barRatio;
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        activeOpacity={0.7}
+                        style={{ paddingVertical: 4, paddingHorizontal: 1 }}
+                        onPress={() => {
+                          if (isPlaying) {
+                            seekVoicePlayback(barRatio);
+                            setVoiceProgress(barRatio);
+                          } else {
+                            setPlayingMsgId(item.id);
+                            playVoiceMessage(audioUri, voiceSpeed, barRatio);
+                          }
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.waveBar,
+                            {
+                              height: h,
+                              backgroundColor: filled
+                                ? appTheme.accent
+                                : isPlaying
+                                ? 'rgba(255,255,255,0.65)'
+                                : 'rgba(255,255,255,0.4)',
+                            },
+                          ]}
+                        />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <Text style={styles.voiceDur}>{formatDuration(item.duration || 2)}</Text>
+                <TouchableOpacity
+                  style={styles.speedPill}
+                  onPress={() => {
+                    const next: 1 | 1.5 | 2 = voiceSpeed === 1 ? 1.5 : voiceSpeed === 1.5 ? 2 : 1;
+                    setVoiceSpeed(next);
+                    if (isPlaying) setVoicePlaybackSpeed(next);
+                    triggerHaptic(8);
+                  }}
+                >
+                  <Text style={{ color: appTheme.accent, fontSize: 10.5, fontWeight: '900' }}>
+                    {voiceSpeed}x
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {/* File Card */}
+            {isFile && item.fileUrl ? (
+              <TouchableOpacity
+                style={styles.fileCard}
+                onPress={() => {
+                  if (String(item.fileUrl).startsWith('http')) Linking.openURL(item.fileUrl).catch(() => {});
+                  else showToast('Файл', `${item.fileName || 'Файл'} (${formatBytes(item.fileSize)})`, 'info');
+                }}
+              >
+                <View style={[styles.fileIconCircle, { backgroundColor: appTheme.accentSoft }]}>
+                  <Text style={{ fontSize: 18 }}>📄</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fileName} numberOfLines={1}>
+                    {item.fileName || 'Документ'}
+                  </Text>
+                  <Text style={styles.fileSize}>{formatBytes(item.fileSize) || 'Файл'}</Text>
+                </View>
+              </TouchableOpacity>
+            ) : null}
+
+            {/* Interactive Poll */}
+            {isPoll ? (
+              <View style={styles.pollBox}>
+                <Text style={styles.pollQ}>📊 {item.pollQuestion}</Text>
+                {(() => {
+                  const totalVotes = item.pollOptions.reduce(
+                    (acc: number, o: any) => acc + Object.keys(o.votes || {}).length,
+                    0
+                  );
+                  return item.pollOptions.map((opt: any, idx: number) => {
+                    const cnt = Object.keys(opt.votes || {}).length;
+                    const pct = totalVotes > 0 ? Math.round((cnt / totalVotes) * 100) : 0;
+                    const voted = !!(me && opt.votes && opt.votes[me.uid]);
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.pollOpt,
+                          voted && { borderColor: appTheme.accent, backgroundColor: appTheme.accentSoft },
+                        ]}
+                        onPress={() => togglePollVote(item, idx)}
+                      >
+                        <Text style={styles.pollOptText}>
+                          {voted ? '✓ ' : ''}
+                          {opt.text}
+                        </Text>
+                        <Text style={[styles.pollPct, { color: appTheme.accent }]}>
+                          {pct}% ({cnt})
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  });
+                })()}
+              </View>
+            ) : null}
+
+            {/* Formatted Text (spoilers, bold, italic, code, quotes, @mentions, search highlight) */}
+            {!isPoll && decodeMsgText(item.text) ? (
+              <FormattedMessageText
+                text={decodeMsgText(item.text)}
+                color={appTheme.text}
+                accent={appTheme.accent}
+                fontSize={chatFontSize}
+                highlightQuery={searchOpen ? searchQuery : ''}
+                usersMap={usersMap}
+                onMentionPress={(uid) => navigation.navigate('UserProfile', { uid })}
+              />
+            ) : null}
+
+            {/* Reactions Chips */}
+            {reactionEntries.length > 0 && (
+              <View style={styles.reactionsRow}>
+                {reactionEntries.map(([emoji, usersObj]: any) => {
+                  const count = Object.keys(usersObj || {}).length;
+                  const mine = !!(me && usersObj && usersObj[me.uid]);
+                  if (!count) return null;
                   return (
                     <TouchableOpacity
-                      key={idx}
+                      key={emoji}
                       style={[
-                        styles.pollOpt,
-                        voted && { borderColor: appTheme.accent, backgroundColor: appTheme.accentSoft },
+                        styles.reactionChip,
+                        mine && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent },
                       ]}
-                      onPress={() => togglePollVote(item, idx)}
+                      onPress={() => toggleReaction(item, emoji)}
                     >
-                      <Text style={styles.pollOptText}>
-                        {voted ? '✓ ' : ''}
-                        {opt.text}
-                      </Text>
-                      <Text style={[styles.pollPct, { color: appTheme.accent }]}>
-                        {pct}% ({cnt})
+                      <Text style={styles.reactionTxt}>
+                        {emoji} {count}
                       </Text>
                     </TouchableOpacity>
                   );
-                });
-              })()}
+                })}
+              </View>
+            )}
+
+            <View style={styles.bubbleFooter}>
+              {isChannelPost && (
+                <Text style={{ color: appTheme.textSub, fontSize: 10.5, marginRight: 6 }}>
+                  👁️ {viewsCount}
+                </Text>
+              )}
+              {item.silent && (
+                <Ionicons name="notifications-off-outline" size={11} color="rgba(255,255,255,0.45)" style={{ marginRight: 3 }} />
+              )}
+              <Text style={[styles.msgTime, { color: isMine ? 'rgba(255,255,255,0.7)' : appTheme.textSub }]}>
+                {item.edited ? 'изм. · ' : ''}
+                {timeStr}
+              </Text>
+              {isMine && (
+                <Ionicons
+                  name="checkmark-done"
+                  size={14}
+                  color={appTheme.accent}
+                  style={{ marginLeft: 3 }}
+                />
+              )}
             </View>
-          ) : null}
 
-          {/* Text */}
-          {!isPoll && decodeMsgText(item.text) ? (
-            <Text style={[styles.msgText, { color: appTheme.text }]}>{decodeMsgText(item.text)}</Text>
-          ) : null}
-
-          {/* Reactions Chips */}
-          {reactionEntries.length > 0 && (
-            <View style={styles.reactionsRow}>
-              {reactionEntries.map(([emoji, usersObj]: any) => {
-                const count = Object.keys(usersObj || {}).length;
-                const mine = !!(me && usersObj && usersObj[me.uid]);
-                if (!count) return null;
-                return (
-                  <TouchableOpacity
-                    key={emoji}
-                    style={[
-                      styles.reactionChip,
-                      mine && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent },
-                    ]}
-                    onPress={() => toggleReaction(item, emoji)}
-                  >
-                    <Text style={styles.reactionTxt}>
-                      {emoji} {count}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-
-          <View style={styles.bubbleFooter}>
-            <Text style={[styles.msgTime, { color: isMine ? 'rgba(255,255,255,0.7)' : appTheme.textSub }]}>
-              {item.edited ? 'изм. · ' : ''}
-              {timeStr}
-            </Text>
-            {isMine && (
-              <Ionicons
-                name="checkmark-done"
-                size={14}
-                color={appTheme.accent}
-                style={{ marginLeft: 3 }}
-              />
+            {isChannelPost && (
+              <TouchableOpacity
+                style={[styles.commentsFooterBtn, { borderTopColor: 'rgba(255,255,255,0.1)' }]}
+                onPress={() => setCommentsMsg(item)}
+              >
+                <Text style={{ color: appTheme.accent, fontSize: 12, fontWeight: '700' }}>
+                  💬 Комментарии {commentsCount > 0 ? `(${commentsCount})` : ''}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={appTheme.accent} />
+              </TouchableOpacity>
             )}
           </View>
         </View>
-      </ScalePressable>
+      </SwipeableMessageRow>
     );
   };
 
   return (
     <LiquidBackground>
+      <ChatWallpaperOverlay wallpaper={chatWallpaper} accent={appTheme.accent} />
       <KeyboardAvoidingView
         style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Floating Liquid Glass Header */}
+        {/* Floating Liquid Glass Header (or Multi-Select Toolbar) */}
         <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 4 }}>
-          <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
-            <ScalePressable style={styles.circleBtn} onPress={() => navigation.goBack()}>
-              <Text style={styles.backBtnText}>←</Text>
-            </ScalePressable>
-
-            <TouchableOpacity
-              style={styles.headerProfileTouch}
-              activeOpacity={0.75}
-              onPress={() => partnerUid && navigation.navigate('UserProfile', { uid: partnerUid })}
-            >
-              <FramedAvatar
-                uri={partner?.avatar}
-                name={displayName}
-                frameId={partner?.steamFrame || 'none'}
-                size={38}
-                online={!!partner?.online}
-              />
-              <View style={styles.headerMeta}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[styles.chatTitle, { color: appTheme.text }]} numberOfLines={1}>
-                    {displayName}
-                  </Text>
-                  {partner?.prefix ? (
-                    <PrefixBadge
-                      prefix={partner.prefix}
-                      prefixStyle={partner.prefixStyle}
-                      prefixSound={partner.prefixSound}
-                    />
-                  ) : null}
-                </View>
-                <Text style={[styles.chatSub, { color: partner?.online ? '#4ade80' : appTheme.textSub }]}>
-                  {isSaved ? 'Облачное хранилище' : partner?.online ? 'в сети' : 'нажмите для профиля'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            {partnerUid ? (
-              <ScalePressable
-                style={styles.giftBtn}
-                onPress={() =>
-                  navigation.navigate('PirozhkiStore', { initialTab: 'gift', targetUid: partnerUid })
-                }
+          {selectionMode ? (
+            <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
+              <TouchableOpacity
+                style={styles.circleBtn}
+                onPress={() => {
+                  setSelectionMode(false);
+                  setSelectedIds([]);
+                }}
               >
-                <Image
-                  source={require('../../android/app/src/main/assets/public/pirozhok.png')}
-                  style={{ width: 20, height: 20 }}
-                />
+                <Ionicons name="close" size={20} color="#fff" />
+              </TouchableOpacity>
+              <Text style={[styles.chatTitle, { color: appTheme.text, flex: 1, marginLeft: 8 }]}>
+                Выбрано: {selectedIds.length}
+              </Text>
+              <TouchableOpacity style={styles.circleBtn} onPress={handleBatchCopy}>
+                <Ionicons name="copy-outline" size={18} color={appTheme.accent} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.circleBtn}
+                onPress={() => {
+                  const picked = messages.filter((m) => selectedIds.includes(m.id));
+                  if (picked.length > 0) setForwardMsg(picked);
+                }}
+              >
+                <Ionicons name="arrow-redo-outline" size={19} color={appTheme.accent} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.circleBtn} onPress={handleBatchDelete}>
+                <Ionicons name="trash-outline" size={18} color="#f87171" />
+              </TouchableOpacity>
+            </GlassCard>
+          ) : (
+            <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
+              <ScalePressable style={styles.circleBtn} onPress={() => navigation.goBack()}>
+                <Text style={styles.backBtnText}>←</Text>
               </ScalePressable>
-            ) : null}
-          </GlassCard>
+
+              <TouchableOpacity
+                style={styles.headerProfileTouch}
+                activeOpacity={0.75}
+                onPress={() => partnerUid && navigation.navigate('UserProfile', { uid: partnerUid })}
+              >
+                <FramedAvatar
+                  uri={partner?.avatar}
+                  name={displayName}
+                  frameId={partner?.steamFrame || 'none'}
+                  size={38}
+                  online={!!partner?.online}
+                />
+                <View style={styles.headerMeta}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.chatTitle, { color: appTheme.text }]} numberOfLines={1}>
+                      {displayName}
+                    </Text>
+                    {partner?.prefix ? (
+                      <PrefixBadge
+                        prefix={partner.prefix}
+                        prefixStyle={partner.prefixStyle}
+                        prefixSound={partner.prefixSound}
+                      />
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.chatSub,
+                      {
+                        color: partnerTypingMode
+                          ? appTheme.accent
+                          : partner?.online
+                          ? '#4ade80'
+                          : appTheme.textSub,
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {partnerTypingMode === 'recording'
+                      ? 'записывает голосовое...'
+                      : partnerTypingMode === 'typing'
+                      ? 'печатает...'
+                      : isSaved
+                      ? 'Облачное хранилище'
+                      : partner?.online
+                      ? 'в сети'
+                      : partner
+                      ? formatLastSeen(partner.lastSeen)
+                      : 'нажмите для профиля'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <ScalePressable
+                style={styles.circleBtn}
+                onPress={() => {
+                  setSearchOpen((v) => !v);
+                  setSearchQuery('');
+                  setSearchMatchIdx(0);
+                }}
+              >
+                <Ionicons name={searchOpen ? 'close' : 'search'} size={18} color={appTheme.text} />
+              </ScalePressable>
+
+              <ScalePressable style={styles.circleBtn} onPress={() => setShowSharedMedia(true)}>
+                <Ionicons name="images-outline" size={18} color={appTheme.accent} />
+              </ScalePressable>
+
+              {partnerUid ? (
+                <ScalePressable
+                  style={styles.giftBtn}
+                  onPress={() =>
+                    navigation.navigate('PirozhkiStore', { initialTab: 'gift', targetUid: partnerUid })
+                  }
+                >
+                  <Image
+                    source={require('../../android/app/src/main/assets/public/pirozhok.png')}
+                    style={{ width: 20, height: 20 }}
+                  />
+                </ScalePressable>
+              ) : null}
+            </GlassCard>
+          )}
         </View>
+
+        {/* In-Chat Search Bar */}
+        {searchOpen && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
+            <GlassCard radius={18} strong style={styles.searchBarCard}>
+              <Ionicons name="search" size={16} color={appTheme.textSub} />
+              <TextInput
+                style={[styles.searchBarInput, { color: appTheme.text }]}
+                placeholder="Поиск по сообщениям..."
+                placeholderTextColor={appTheme.textSub}
+                value={searchQuery}
+                onChangeText={(q) => {
+                  setSearchQuery(q);
+                  setSearchMatchIdx(0);
+                }}
+                autoFocus
+              />
+              {searchMatchIndices.length > 0 && (
+                <Text style={{ color: appTheme.accent, fontSize: 12, fontWeight: '700' }}>
+                  {searchMatchIdx + 1}/{searchMatchIndices.length}
+                </Text>
+              )}
+              <TouchableOpacity onPress={() => jumpToSearchMatch(searchMatchIdx + 1)} style={{ padding: 4 }}>
+                <Ionicons name="chevron-up" size={18} color={appTheme.text} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => jumpToSearchMatch(searchMatchIdx - 1)} style={{ padding: 4 }}>
+                <Ionicons name="chevron-down" size={18} color={appTheme.text} />
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        )}
 
         {/* Pinned Message Pill */}
         {chat?.pinnedMsg ? (
@@ -832,6 +1334,11 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           contentContainerStyle={styles.feedContent}
           onScroll={(e) => setShowScrollBottom(e.nativeEvent.contentOffset.y > 140)}
           scrollEventThrottle={32}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+            }, 250);
+          }}
         />
 
         {/* Floating Scroll to Bottom Button */}
@@ -885,6 +1392,28 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           />
         )}
 
+        {/* @Mention Autocomplete Bar */}
+        {mentionSuggestions.length > 0 && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
+            <GlassCard radius={18} strong style={{ paddingVertical: 6, paddingHorizontal: 8 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {mentionSuggestions.map((u) => (
+                  <TouchableOpacity
+                    key={u.uid}
+                    style={[styles.mentionChip, { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent }]}
+                    onPress={() => {
+                      const next = text.replace(/@([a-zA-Zа-яА-ЯёЁ0-9_]*)$/, `@${u.nick} `);
+                      handleTextChange(next);
+                    }}
+                  >
+                    <Text style={{ color: appTheme.text, fontWeight: '700', fontSize: 12.5 }}>@{u.nick}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </GlassCard>
+          </View>
+        )}
+
         {/* Floating Liquid Glass Pill Composer */}
         <View style={styles.composerWrap}>
           {isRecording ? (
@@ -914,8 +1443,17 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                 placeholderTextColor={appTheme.textSub}
                 multiline
                 value={text}
-                onChangeText={setText}
+                onChangeText={handleTextChange}
               />
+
+              {scheduledMsgs.length > 0 && (
+                <ScalePressable
+                  style={styles.composerIconBtn}
+                  onPress={() => setShowScheduledList(true)}
+                >
+                  <Ionicons name="time-outline" size={20} color={appTheme.accent} />
+                </ScalePressable>
+              )}
 
               <ScalePressable
                 style={styles.composerIconBtn}
@@ -925,12 +1463,17 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               </ScalePressable>
 
               {text.trim() ? (
-                <ScalePressable
+                <TouchableOpacity
+                  activeOpacity={0.8}
                   style={[styles.sendCircle, { backgroundColor: appTheme.accent }]}
-                  onPress={sendTextOrSaveEdit}
+                  onPress={() => sendTextOrSaveEdit(false)}
+                  onLongPress={() => {
+                    triggerHaptic(15);
+                    setShowSendOptions(true);
+                  }}
                 >
                   <Text style={{ color: '#000', fontSize: 16, fontWeight: '900' }}>➤</Text>
-                </ScalePressable>
+                </TouchableOpacity>
               ) : (
                 <ScalePressable
                   style={[styles.sendCircle, { backgroundColor: appTheme.accentSoft }]}
@@ -1006,6 +1549,20 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
               <TouchableOpacity
                 style={styles.sheetRow}
+                onPress={() => {
+                  const m = actionMsg;
+                  setActionMsg(null);
+                  if (m) {
+                    setSelectionMode(true);
+                    setSelectedIds([m.id]);
+                  }
+                }}
+              >
+                <Text style={styles.sheetRowText}>☑️ Выбрать несколько</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetRow}
                 onPress={async () => {
                   const m = actionMsg;
                   setActionMsg(null);
@@ -1018,6 +1575,20 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                 }}
               >
                 <Text style={styles.sheetRowText}>📋 Поделиться / Скопировать</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={() => {
+                  const m = actionMsg;
+                  setActionMsg(null);
+                  if (m) {
+                    setSelectionMode(true);
+                    setSelectedIds([m.id]);
+                  }
+                }}
+              >
+                <Text style={styles.sheetRowText}>☑️ Выбрать несколько</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1097,17 +1668,150 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
         </Modal>
 
-        {/* Fullscreen Lightbox Image Viewer */}
-        <Modal visible={!!lightboxUri} transparent animationType="fade" onRequestClose={() => setLightboxUri(null)}>
+        {/* Fullscreen Lightbox Image Viewer (with Self-Destruct Countdown) */}
+        <Modal
+          visible={!!lightboxUri}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            if (lightboxMsg?.selfDestructSec) {
+              update(ref(rtdb, `messages/${chatId}/${lightboxMsg.id}`), {
+                destroyed: true,
+                photoUrl: null,
+                imageUrl: null,
+              }).catch(() => {});
+            }
+            setLightboxMsg(null);
+            setLightboxUri(null);
+          }}
+        >
           <View style={styles.lightboxBackdrop}>
-            <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxUri(null)}>
+            <TouchableOpacity
+              style={styles.lightboxClose}
+              onPress={() => {
+                if (lightboxMsg?.selfDestructSec) {
+                  update(ref(rtdb, `messages/${chatId}/${lightboxMsg.id}`), {
+                    destroyed: true,
+                    photoUrl: null,
+                    imageUrl: null,
+                  }).catch(() => {});
+                }
+                setLightboxMsg(null);
+                setLightboxUri(null);
+              }}
+            >
               <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800' }}>✕</Text>
             </TouchableOpacity>
+            {lightboxMsg?.selfDestructSec ? (
+              <View style={styles.destructBadge}>
+                <Text style={{ color: '#fb923c', fontWeight: '900', fontSize: 15 }}>
+                  🔥 Исчезнет через {destructLeft}с
+                </Text>
+              </View>
+            ) : null}
             {lightboxUri && (
               <Image source={{ uri: lightboxUri }} style={styles.lightboxImg} resizeMode="contain" />
             )}
           </View>
         </Modal>
+
+        {/* Long-Press Send Options (Silent / Scheduled) */}
+        <Modal visible={showSendOptions} transparent animationType="fade" onRequestClose={() => setShowSendOptions(false)}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSendOptions(false)}>
+            <GlassCard radius={26} strong style={styles.sheetCard}>
+              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Особая отправка</Text>
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={() => {
+                  setShowSendOptions(false);
+                  sendTextOrSaveEdit(true);
+                }}
+              >
+                <Text style={styles.sheetRowText}>🔇 Отправить без звука</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetRow} onPress={() => handleScheduleMessage(60 * 1000)}>
+                <Text style={styles.sheetRowText}>⏰ Отложить на 1 минуту</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetRow} onPress={() => handleScheduleMessage(5 * 60 * 1000)}>
+                <Text style={styles.sheetRowText}>⏰ Отложить на 5 минут</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetRow} onPress={() => handleScheduleMessage(30 * 60 * 1000)}>
+                <Text style={styles.sheetRowText}>⏰ Отложить на 30 минут</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetRow} onPress={() => handleScheduleMessage(60 * 60 * 1000)}>
+                <Text style={styles.sheetRowText}>⏰ Отложить на 1 час</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Scheduled Messages Queue Modal */}
+        <Modal visible={showScheduledList} transparent animationType="fade" onRequestClose={() => setShowScheduledList(false)}>
+          <View style={styles.modalBackdrop}>
+            <GlassCard radius={26} strong style={styles.sheetCard}>
+              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>
+                ⏰ Отложенные ({scheduledMsgs.length})
+              </Text>
+              <ScrollView style={{ maxHeight: 260 }}>
+                {scheduledMsgs.map((s) => (
+                  <View key={s.id} style={[styles.sheetRow, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#fff', fontSize: 14 }} numberOfLines={2}>{s.text}</Text>
+                      <Text style={{ color: appTheme.accent, fontSize: 11, marginTop: 2 }}>
+                        {new Date(s.sendAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await remove(ref(rtdb, `scheduled_messages/${chatId}/${s.id}`));
+                        const payload = { ...s };
+                        delete payload.id;
+                        delete payload.sendAt;
+                        payload.at = Date.now();
+                        await pushChatMessage(payload, payload.text);
+                      }}
+                    >
+                      <Ionicons name="send" size={18} color={appTheme.accent} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => remove(ref(rtdb, `scheduled_messages/${chatId}/${s.id}`))}>
+                      <Ionicons name="trash-outline" size={18} color="#f87171" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+              <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setShowScheduledList(false)}>
+                <Text style={{ color: '#94a3b8', fontWeight: '700' }}>Закрыть</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        </Modal>
+
+        {/* Shared Media Modal */}
+        <SharedMediaModal
+          visible={showSharedMedia}
+          onClose={() => setShowSharedMedia(false)}
+          messages={messages}
+          chatName={displayName}
+          onOpenPhoto={(uri) => {
+            setLightboxMsg(null);
+            setLightboxUri(uri);
+          }}
+          onPlayVoice={(m) => {
+            const audioUri = m.audioUrl || m.voiceUrl;
+            if (audioUri) {
+              setPlayingMsgId(m.id);
+              playVoiceMessage(audioUri, voiceSpeed, 0);
+            }
+          }}
+        />
+
+        {/* Channel Comments Modal */}
+        <ChannelCommentsModal
+          visible={!!commentsMsg}
+          onClose={() => setCommentsMsg(null)}
+          chatId={chatId}
+          message={commentsMsg}
+        />
       </KeyboardAvoidingView>
     </LiquidBackground>
   );
@@ -1131,6 +1835,59 @@ const styles = StyleSheet.create({
   },
   backBtnText: { fontSize: 20, color: '#fff', fontWeight: '800' },
   headerProfileTouch: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchBarCard: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, gap: 8 },
+  searchBarInput: { flex: 1, fontSize: 14, paddingVertical: 4 },
+  mentionChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  msgRowSelected: { backgroundColor: 'rgba(96, 165, 250, 0.12)', borderRadius: 14, paddingVertical: 2 },
+  selectCheckWrap: { justifyContent: 'center', paddingHorizontal: 8 },
+  selectCheck: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  destroyedBox: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.3)',
+    marginBottom: 4,
+  },
+  selfDestructTile: {
+    width: 210,
+    height: 150,
+    borderRadius: 16,
+    backgroundColor: 'rgba(249, 115, 22, 0.16)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(249, 115, 22, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  destructBadge: {
+    position: 'absolute',
+    top: 46,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    borderWidth: 1,
+    borderColor: '#f97316',
+    zIndex: 20,
+  },
+  speedPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginLeft: 4,
+  },
+  commentsFooterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+  },
   headerMeta: { flex: 1 },
   chatTitle: { fontSize: 15.5, fontWeight: '800', flexShrink: 1 },
   chatSub: { fontSize: 11.5, marginTop: 1 },

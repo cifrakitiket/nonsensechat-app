@@ -53,7 +53,7 @@ interface TelegramAttachSheetProps {
   visible: boolean;
   mode?: 'chat' | 'avatar';
   onClose: () => void;
-  onSendPhotos?: (photos: EncodedPhotoResult[], caption: string) => Promise<void> | void;
+  onSendPhotos?: (photos: EncodedPhotoResult[], caption: string, selfDestructSec?: number) => Promise<void> | void;
   onSendFile?: (file: EncodedFileResult) => Promise<void> | void;
   onSendPoll?: (question: string, options: string[]) => Promise<void> | void;
   onSendPirozhki?: (amount: number, note: string) => Promise<void> | void;
@@ -96,6 +96,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   const [photoPermDenied, setPhotoPermDenied] = useState(false);
   const [selectedUris, setSelectedUris] = useState<string[]>([]);
   const [caption, setCaption] = useState('');
+  const [selfDestructSec, setSelfDestructSec] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -118,6 +119,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       sheetAnim.setValue(0);
       setSelectedUris([]);
       setCaption('');
+      setSelfDestructSec(0);
       setSearchOpen(false);
       setSearchQuery('');
       setBusy(false);
@@ -295,7 +297,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
           fileSize: enc.fileSize,
         });
       }
-      await onSendPhotos?.(encodedList, caption.trim());
+      await onSendPhotos?.(encodedList, caption.trim(), selfDestructSec);
       onClose();
     } catch (e: any) {
       showToast('Ошибка отправки', e?.message || 'Не удалось сжать фото', 'error');
@@ -620,6 +622,26 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                           placeholderTextColor={appTheme.textSub}
                           style={[styles.captionInput, { color: appTheme.text }]}
                         />
+                        <TouchableOpacity
+                          onPress={() => {
+                            triggerHaptic(8);
+                            setSelfDestructSec((cur) => (cur === 0 ? 5 : cur === 5 ? 10 : cur === 10 ? 30 : 0));
+                          }}
+                          style={{
+                            paddingHorizontal: 10,
+                            height: 34,
+                            borderRadius: 17,
+                            backgroundColor: selfDestructSec > 0 ? 'rgba(249,115,22,0.28)' : 'rgba(255,255,255,0.08)',
+                            borderWidth: 1,
+                            borderColor: selfDestructSec > 0 ? '#f97316' : 'rgba(255,255,255,0.14)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ color: selfDestructSec > 0 ? '#fb923c' : appTheme.textSub, fontSize: 12, fontWeight: '800' }}>
+                            {selfDestructSec > 0 ? `🔥 ${selfDestructSec}с` : '🔥'}
+                          </Text>
+                        </TouchableOpacity>
                         <TouchableOpacity
                           onPress={handleSendSelectedPhotos}
                           disabled={busy}
