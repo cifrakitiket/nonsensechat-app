@@ -680,8 +680,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       chatsInitializedRef.current = true;
       if (Object.keys(newUnreads).length > 0) {
-        setMarkedUnreadIds((prev) => (prev.includes(chatId) ? prev.filter((id) => id !== chatId) : prev));
-      setUnreadMap((prev) => {
+        setUnreadMap((prev) => {
           const merged = { ...prev };
           Object.keys(newUnreads).forEach((cid) => {
             merged[cid] = (merged[cid] || 0) + newUnreads[cid];
@@ -694,8 +693,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return merged;
         });
       } else {
-        setMarkedUnreadIds((prev) => (prev.includes(chatId) ? prev.filter((id) => id !== chatId) : prev));
-      setUnreadMap((prev) => {
+        setUnreadMap((prev) => {
           setChats(
             list
               .map((c) => ({ ...c, unread: prev[c.id] || 0 }))
