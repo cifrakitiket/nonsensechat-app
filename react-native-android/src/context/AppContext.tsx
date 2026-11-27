@@ -50,6 +50,8 @@ export interface UserProfile {
   avatarHistory?: string[];
   blockedUids?: string[];
   linkedChannelId?: string;
+  gender?: 'male' | 'female' | '';
+  verified?: boolean;
 }
 
 export interface FriendRequestItem {
@@ -136,8 +138,73 @@ export function normalizeUser(uid: string, raw: any): UserProfile {
     avatarHistory: toArray<string>(data.avatarHistory),
     blockedUids: toArray<string>(data.blockedUids),
     linkedChannelId: data.linkedChannelId || '',
+    gender: data.gender === 'female' || data.isFemale ? 'female' : data.gender || '',
+    verified: !!data.verified,
   };
 }
+
+export type AiProviderKey =
+  | 'gemini'
+  | 'grok'
+  | 'claude'
+  | 'openai'
+  | 'deepseek'
+  | 'openrouter'
+  | 'custom';
+
+export interface AiHubSettings {
+  activeProvider: AiProviderKey;
+  geminiKey: string;
+  geminiModel: string;
+  grokKey: string;
+  grokModel: string;
+  claudeKey: string;
+  claudeModel: string;
+  openaiKey: string;
+  openaiModel: string;
+  deepseekKey: string;
+  deepseekModel: string;
+  openrouterKey: string;
+  openrouterModel: string;
+  customUrl: string;
+  customModel: string;
+  customKey: string;
+  systemPrompt: string;
+  temperature: number;
+  historyLimit: number;
+}
+
+export const DEFAULT_AI_HUB_SETTINGS: AiHubSettings = {
+  activeProvider: 'gemini',
+  geminiKey: '',
+  geminiModel: 'gemini-1.5-flash',
+  grokKey: '',
+  grokModel: 'grok-beta',
+  claudeKey: '',
+  claudeModel: 'claude-3-5-haiku-20241022',
+  openaiKey: '',
+  openaiModel: 'gpt-4o-mini',
+  deepseekKey: '',
+  deepseekModel: 'deepseek-chat',
+  openrouterKey: '',
+  openrouterModel: 'google/gemini-2.0-flash-exp:free',
+  customUrl: 'http://localhost:11434/v1',
+  customModel: 'llama3',
+  customKey: '',
+  systemPrompt:
+    'Ты дружелюбный, умный и лаконичный ИИ-ассистент в NonsenseChat. Отвечай структурированно, понятно и по делу.',
+  temperature: 0.7,
+  historyLimit: 10,
+};
+
+export interface ClearVoiceConfig {
+  enabled: boolean;
+  echoCancel: boolean;
+  autoGain: boolean;
+  mode: 'studio' | 'voice' | 'music';
+}
+
+export type AppLangKey = 'ru' | 'en' | 'uk' | 'ru-pre';
 
 export interface GlobalAudioTrack {
   id: string;
@@ -312,6 +379,25 @@ interface AppContextValue {
   joinChatByInvite: (inviteCode: string) => Promise<{ joined: boolean; pending?: boolean; chat?: ChatItem }>;
   unlockPaidPostWithPirozhki: (chatId: string, msgId: string, authorUid: string, cost: number) => Promise<void>;
   boostChannelWithPirozhki: (chatId: string, cost?: number) => Promise<void>;
+  // Unified SuperApp v6.0 features
+  aiSettings: AiHubSettings;
+  setAiSettings: (next: AiHubSettings) => void;
+  callAiHubProvider: (
+    prompt: string,
+    opts?: { providerOverride?: string; maxChars?: number; systemOverride?: string }
+  ) => Promise<string>;
+  openAiHubChat: () => Promise<ChatItem | null>;
+  appLang: AppLangKey;
+  setAppLang: (lang: AppLangKey) => void;
+  clearVoiceConfig: ClearVoiceConfig;
+  setClearVoiceConfig: (cfg: ClearVoiceConfig) => void;
+  installedPackIds: string[];
+  toggleInstallStickerPack: (packId: string) => void;
+  lastWheelSpinAt: number;
+  claimDailyWheelBonus: (amount: number) => Promise<void>;
+  grantPirozhkiToUser: (targetUid: string, amount: number) => Promise<void>;
+  creatorAddFriendDirect: (uidOrNick: string) => Promise<ChatItem | null>;
+  removeMyPrefix: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -369,6 +455,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [deviceSessionId, setDeviceSessionId] = useState<string>('dev_android_main');
   const lastAuthPassRef = useRef<string>('');
 
+  // Unified SuperApp v6.0 states
+  const [aiSettings, setAiSettingsState] = useState<AiHubSettings>(DEFAULT_AI_HUB_SETTINGS);
+  const [appLang, setAppLangState] = useState<AppLangKey>('ru');
+  const [clearVoiceConfig, setClearVoiceConfigState] = useState<ClearVoiceConfig>({
+    enabled: true,
+    echoCancel: true,
+    autoGain: true,
+    mode: 'voice',
+  });
+  const [installedPackIds, setInstalledPackIds] = useState<string[]>([]);
+  const [lastWheelSpinAt, setLastWheelSpinAt] = useState<number>(0);
+
   // Global Floating Audio Player state
   const [globalAudioTrack, setGlobalAudioTrack] = useState<GlobalAudioTrack | null>(null);
   const [globalAudioPlaying, setGlobalAudioPlaying] = useState<boolean>(false);
@@ -409,6 +507,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (Array.isArray(p.hiddenVaultChatIds)) setHiddenVaultChatIds(p.hiddenVaultChatIds);
           if (typeof p.vaultPasscode === 'string' && p.vaultPasscode) setVaultPasscodeState(p.vaultPasscode);
           if (Array.isArray(p.savedAccounts)) setSavedAccounts(p.savedAccounts);
+          if (p.aiSettings && typeof p.aiSettings === 'object') {
+            setAiSettingsState({ ...DEFAULT_AI_HUB_SETTINGS, ...p.aiSettings });
+          }
+          if (p.appLang) setAppLangState(p.appLang);
+          if (p.clearVoiceConfig && typeof p.clearVoiceConfig === 'object') {
+            setClearVoiceConfigState(p.clearVoiceConfig);
+          }
+          if (Array.isArray(p.installedPackIds)) setInstalledPackIds(p.installedPackIds);
+          if (typeof p.lastWheelSpinAt === 'number') setLastWheelSpinAt(p.lastWheelSpinAt);
           if (typeof p.deviceSessionId === 'string' && p.deviceSessionId) {
             setDeviceSessionId(p.deviceSessionId);
           } else {
@@ -445,6 +552,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         vaultPasscode,
         savedAccounts,
         deviceSessionId,
+        aiSettings,
+        appLang,
+        clearVoiceConfig,
+        installedPackIds,
+        lastWheelSpinAt,
       });
       NativeModules.NativeStorageModule?.setItem?.('nc_tg_prefs_v1', payload);
     } catch (_) {}
@@ -468,6 +580,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     vaultPasscode,
     savedAccounts,
     deviceSessionId,
+    aiSettings,
+    appLang,
+    clearVoiceConfig,
+    installedPackIds,
+    lastWheelSpinAt,
   ]);
 
   const toggleIdInList = (setter: React.Dispatch<React.SetStateAction<string[]>>, id: string) => {
@@ -838,6 +955,242 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       [`boosters/${me.uid}`]: (Number(chats.find((c) => c.id === chatId)?.boosters?.[me.uid]) || 0) + 1,
     });
     triggerHaptic(25);
+  };
+
+  const setAiSettings = (next: AiHubSettings) => {
+    setAiSettingsState(next);
+    triggerHaptic(8);
+  };
+
+  const setAppLang = (lang: AppLangKey) => {
+    setAppLangState(lang);
+    triggerHaptic(8);
+  };
+
+  const setClearVoiceConfig = (cfg: ClearVoiceConfig) => {
+    setClearVoiceConfigState(cfg);
+    triggerHaptic(8);
+  };
+
+  const toggleInstallStickerPack = (packId: string) => {
+    if (!packId) return;
+    triggerHaptic(10);
+    setInstalledPackIds((prev) =>
+      prev.includes(packId) ? prev.filter((id) => id !== packId) : [packId, ...prev]
+    );
+  };
+
+  const claimDailyWheelBonus = async (amount: number) => {
+    if (!me) throw new Error('Войдите в аккаунт');
+    const now = Date.now();
+    if (now - lastWheelSpinAt < 24 * 60 * 60 * 1000) {
+      throw new Error('Колесо Фортуны доступно раз в 24 часа');
+    }
+    const amt = Math.max(1, Math.floor(amount));
+    const newBal = (me.pirozhki || 0) + amt;
+    await update(ref(rtdb, `users/${me.uid}`), { pirozhki: newBal });
+    await set(ref(rtdb, `users/${me.uid}/pirozhki_history/${now}`), {
+      amount: amt,
+      timestamp: now,
+      type: 'daily_wheel',
+      note: `🎡 Колесо Фортуны Супераппа (+${amt} 🥟)`,
+    });
+    setLastWheelSpinAt(now);
+    triggerHaptic(28);
+  };
+
+  const grantPirozhkiToUser = async (targetUid: string, amount: number) => {
+    if (!me || me.uid !== CREATOR_UID) {
+      throw new Error('Доступно только Создателю');
+    }
+    const cleanUid = targetUid.trim() || me.uid;
+    const amt = Math.max(1, Math.min(1000000, Math.floor(amount)));
+    const snap = await get(ref(rtdb, `users/${cleanUid}/pirozhki`));
+    const curBal = parseInt(String(snap.val() ?? 0), 10) || 0;
+    const now = Date.now();
+    await update(ref(rtdb, `users/${cleanUid}`), { pirozhki: curBal + amt });
+    await set(ref(rtdb, `users/${cleanUid}/pirozhki_history/${now}`), {
+      amount: amt,
+      timestamp: now,
+      type: 'creator_grant',
+      note: `⚡ Начислено Создателем @${me.nick}`,
+    });
+    triggerHaptic(30);
+  };
+
+  const creatorAddFriendDirect = async (uidOrNick: string): Promise<ChatItem | null> => {
+    if (!me || me.uid !== CREATOR_UID) {
+      throw new Error('Доступно только Создателю');
+    }
+    const raw = uidOrNick.trim().replace(/^@+/, '');
+    if (!raw) throw new Error('Введите UID или @юзернейм');
+    let targetUid = '';
+    if (usersMap[raw]) {
+      targetUid = raw;
+    } else {
+      const lower = raw.toLowerCase();
+      const hit = Object.values(usersMap).find(
+        (u) => u.uid !== me.uid && (u.nickLower === lower || u.nick.toLowerCase() === lower)
+      );
+      if (hit) {
+        targetUid = hit.uid;
+      } else {
+        const directSnap = await get(ref(rtdb, `users/${raw}`));
+        if (directSnap.exists()) {
+          targetUid = raw;
+        } else {
+          const unSnap = await get(ref(rtdb, `usernames/${lower}`));
+          if (unSnap.exists() && unSnap.val()?.uid) {
+            targetUid = unSnap.val().uid;
+          }
+        }
+      }
+    }
+    if (!targetUid || targetUid === me.uid) {
+      throw new Error('Пользователь не найден');
+    }
+    const chat = await openOrCreateDm(targetUid);
+    triggerHaptic(22);
+    return chat;
+  };
+
+  const removeMyPrefix = async () => {
+    if (!me) return;
+    await update(ref(rtdb, `users/${me.uid}`), {
+      prefix: '',
+      prefixStyle: 'gold',
+      prefixSound: '',
+      prefixSoundName: '',
+    });
+    triggerHaptic(12);
+  };
+
+  const callAiHubProvider = async (
+    prompt: string,
+    opts?: { providerOverride?: string; maxChars?: number; systemOverride?: string }
+  ): Promise<string> => {
+    const rawProv = (opts?.providerOverride || aiSettings.activeProvider || 'gemini').toLowerCase();
+    const prov = rawProv === 'ai' ? aiSettings.activeProvider : rawProv === 'gpt' ? 'openai' : rawProv;
+    const maxChars = opts?.maxChars || 1500;
+    const sysInstruction = opts?.systemOverride || aiSettings.systemPrompt || DEFAULT_AI_HUB_SETTINGS.systemPrompt;
+    const temp = aiSettings.temperature ?? 0.7;
+
+    if (prov === 'gemini' && aiSettings.geminiKey.trim()) {
+      const model = aiSettings.geminiModel || 'gemini-1.5-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        model
+      )}:generateContent?key=${encodeURIComponent(aiSettings.geminiKey.trim())}`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: sysInstruction }] },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: temp, maxOutputTokens: maxChars <= 250 ? 140 : 700 },
+        }),
+      });
+      if (!resp.ok) throw new Error(`Gemini HTTP ${resp.status}`);
+      const json = await resp.json();
+      const txt = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (txt) return txt.trim();
+    }
+
+    if (prov === 'claude' && aiSettings.claudeKey.trim()) {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': aiSettings.claudeKey.trim(),
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: aiSettings.claudeModel || 'claude-3-5-haiku-20241022',
+          max_tokens: maxChars <= 250 ? 140 : 700,
+          system: sysInstruction,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (!resp.ok) throw new Error(`Claude HTTP ${resp.status}`);
+      const json = await resp.json();
+      const txt = json?.content?.[0]?.text;
+      if (txt) return txt.trim();
+    }
+
+    if (
+      (prov === 'grok' && aiSettings.grokKey.trim()) ||
+      (prov === 'openai' && aiSettings.openaiKey.trim()) ||
+      (prov === 'deepseek' && aiSettings.deepseekKey.trim()) ||
+      (prov === 'openrouter' && aiSettings.openrouterKey.trim()) ||
+      (prov === 'custom' && aiSettings.customUrl.trim())
+    ) {
+      let endpoint = 'https://api.openai.com/v1/chat/completions';
+      let bearer = aiSettings.openaiKey.trim();
+      let model = aiSettings.openaiModel || 'gpt-4o-mini';
+      if (prov === 'grok') {
+        endpoint = 'https://api.x.ai/v1/chat/completions';
+        bearer = aiSettings.grokKey.trim();
+        model = aiSettings.grokModel || 'grok-beta';
+      } else if (prov === 'deepseek') {
+        endpoint = 'https://api.deepseek.com/chat/completions';
+        bearer = aiSettings.deepseekKey.trim();
+        model = aiSettings.deepseekModel || 'deepseek-chat';
+      } else if (prov === 'openrouter') {
+        endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+        bearer = aiSettings.openrouterKey.trim();
+        model = aiSettings.openrouterModel || 'google/gemini-2.0-flash-exp:free';
+      } else if (prov === 'custom') {
+        endpoint = `${aiSettings.customUrl.replace(/\/+$/, '')}/chat/completions`;
+        bearer = aiSettings.customKey.trim();
+        model = aiSettings.customModel || 'llama3';
+      }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (bearer) headers.Authorization = `Bearer ${bearer}`;
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: sysInstruction },
+            { role: 'user', content: prompt },
+          ],
+          temperature: temp,
+          max_tokens: maxChars <= 250 ? 140 : 700,
+        }),
+      });
+      if (!resp.ok) throw new Error(`${prov.toUpperCase()} HTTP ${resp.status}`);
+      const json = await resp.json();
+      const txt = json?.choices?.[0]?.message?.content;
+      if (txt) return txt.trim();
+    }
+
+    // Free public fallback gateway (works out of the box without API key)
+    const q = encodeURIComponent(`[${sysInstruction}] ${prompt}`);
+    const fallbackResp = await fetch(`https://text.pollinations.ai/${q}`);
+    if (fallbackResp.ok) {
+      const txt = (await fallbackResp.text()).trim();
+      if (txt) return txt.slice(0, maxChars);
+    }
+    throw new Error('ИИ временно недоступен — укажите свой API-ключ в настройках ИИ Хаба');
+  };
+
+  const openAiHubChat = async (): Promise<ChatItem | null> => {
+    if (!me?.uid) return null;
+    const chatId = `aihub_${me.uid}`;
+    const existing = chats.find((c) => c.id === chatId);
+    if (existing) return existing;
+    const now = Date.now();
+    const obj: any = {
+      type: 'ai_hub',
+      members: [me.uid],
+      name: '🤖 ИИ Хаб',
+      desc: 'Персональный ИИ-ассистент NonsenseChat',
+      lastMsg: 'Готов к работе! Задайте вопрос или настройте нейросеть ⚙️',
+      lastMsgAt: now,
+      createdAt: now,
+    };
+    await set(ref(rtdb, `chats/${chatId}`), obj);
+    return { ...obj, id: chatId };
   };
 
   const checkNotificationPermission = async (): Promise<boolean> => {
@@ -1716,6 +2069,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         joinChatByInvite,
         unlockPaidPostWithPirozhki,
         boostChannelWithPirozhki,
+        aiSettings,
+        setAiSettings,
+        callAiHubProvider,
+        openAiHubChat,
+        appLang,
+        setAppLang,
+        clearVoiceConfig,
+        setClearVoiceConfig,
+        installedPackIds,
+        toggleInstallStickerPack,
+        lastWheelSpinAt,
+        claimDailyWheelBonus,
+        grantPirozhkiToUser,
+        creatorAddFriendDirect,
+        removeMyPrefix,
       }}
     >
       {children}

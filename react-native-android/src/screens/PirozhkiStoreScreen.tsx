@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { onValue, ref } from 'firebase/database';
+import { rtdb } from '../services/firebase';
 import { useApp } from '../context/AppContext';
 import {
   CREATOR_UID,
@@ -27,13 +29,27 @@ import { RADII } from '../theme/liquidGlass';
 export default function PirozhkiStoreScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { initialTab = 'buy', targetUid = '' } = route.params || {};
-  const { me, usersMap, grantSelfPirozhki, giftPirozhki, buyPrefix, appTheme, showToast, showDialog } = useApp();
+  const {
+    me,
+    usersMap,
+    grantSelfPirozhki,
+    grantPirozhkiToUser,
+    giftPirozhki,
+    buyPrefix,
+    removeMyPrefix,
+    appTheme,
+    showToast,
+    showDialog,
+  } = useApp();
 
-  const [tab, setTab] = useState<'buy' | 'prefixes' | 'gift'>(initialTab);
+  const [tab, setTab] = useState<'buy' | 'prefixes' | 'gift' | 'history'>(initialTab);
   const [selectedPack, setSelectedPack] = useState(PIROZHKI_PACKS[1]);
+  const [customBuyCount, setCustomBuyCount] = useState('');
   const [payLoading, setPayLoading] = useState(false);
 
   const [grantAmount, setGrantAmount] = useState('500');
+  const [grantTargetUid, setGrantTargetUid] = useState('');
+  const [historyList, setHistoryList] = useState<any[]>([]);
   const [customText, setCustomText] = useState('');
   const [customStyle, setCustomStyle] = useState('gold');
 
@@ -45,6 +61,23 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
   const isCreator = me?.uid === CREATOR_UID;
   const bal = me?.pirozhki || 0;
 
+  useEffect(() => {
+    if (!me?.uid) return;
+    const hRef = ref(rtdb, `users/${me.uid}/pirozhki_history`);
+    const unsub = onValue(hRef, (snap) => {
+      const val = snap.val() || {};
+      const list = Object.keys(val)
+        .map((k) => ({ id: k, ...val[k] }))
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      setHistoryList(list);
+    });
+    return () => unsub();
+  }, [me?.uid]);
+
+  const customCountNum = Math.max(0, parseInt(customBuyCount.replace(/[^0-9]/g, ''), 10) || 0);
+  const activeBuyCount = customCountNum >= 10 ? customCountNum : selectedPack.count;
+  const activeBuyRub = customCountNum >= 10 ? Math.max(5, Math.round(customCountNum * 0.42)) : selectedPack.priceRub;
+
   const handleYooKassaCheckout = async () => {
     if (!me) return;
     setPayLoading(true);
@@ -53,12 +86,12 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: selectedPack.priceRub,
-          pirozhki: selectedPack.count,
+          amount: activeBuyRub,
+          pirozhki: activeBuyCount,
           uid: me.uid,
           email: me.email || '',
           returnUrl: 'https://nonsensechat.ru/',
-          description: `Покупка ${selectedPack.count} пирожков в NonsenseChat (Android)`,
+          description: `Покупка ${activeBuyCount} пирожков в NonsenseChat (Android)`,
         }),
       });
       const data = await resp.json().catch(() => null);
@@ -160,6 +193,7 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
               { k: 'buy', l: '🥟 Купить' },
               { k: 'prefixes', l: '🏷️ Префиксы' },
               { k: 'gift', l: '🎁 Угостить' },
+              { k: 'history', l: '📜 История' },
             ].map((t) => (
               <TouchableOpacity
                 key={t.k}
@@ -195,14 +229,35 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
                       keyboardType="numeric"
                       value={grantAmount}
                       onChangeText={setGrantAmount}
+                      placeholder="Кол-во"
                     />
                     <TouchableOpacity
                       style={styles.creatorSubmitBtn}
-                      onPress={() => handleGrantSelf(parseInt(grantAmount, 10) || 100)}
+                      onPress={async () => {
+                        const amt = parseInt(grantAmount, 10) || 100;
+                        if (grantTargetUid.trim()) {
+                          try {
+                            await grantPirozhkiToUser(grantTargetUid, amt);
+                            showToast('Выдано ⚡', `+${amt} 🥟 пользователю ${grantTargetUid}`, 'success');
+                          } catch (e: any) {
+                            showToast('Ошибка', e?.message, 'error');
+                          }
+                        } else {
+                          handleGrantSelf(amt);
+                        }
+                      }}
                     >
                       <Text style={{ color: '#fff', fontWeight: '800' }}>Выдать</Text>
                     </TouchableOpacity>
                   </View>
+                  <TextInput
+                    style={[styles.input, { marginTop: 8, backgroundColor: appTheme.glassInput }]}
+                    value={grantTargetUid}
+                    onChangeText={setGrantTargetUid}
+                    placeholder="UID получателя (пусто = себе)"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="none"
+                  />
                 </GlassCard>
               )}
 
@@ -236,6 +291,15 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
                 })}
               </View>
 
+              <TextInput
+                style={[styles.input, { marginBottom: 12, backgroundColor: appTheme.glassInput }]}
+                keyboardType="numeric"
+                value={customBuyCount}
+                onChangeText={setCustomBuyCount}
+                placeholder="Или введите своё количество (от 10 шт.)"
+                placeholderTextColor="#64748b"
+              />
+
               <ScalePressable
                 haptic
                 style={[styles.checkoutBtn, payLoading && { opacity: 0.6 }]}
@@ -246,7 +310,7 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
                   <ActivityIndicator color="#000" />
                 ) : (
                   <Text style={styles.checkoutText}>
-                    Оплатить {selectedPack.priceRub} ₽ через ЮKassa / СБП
+                    Оплатить {activeBuyRub} ₽ ({activeBuyCount} 🥟) через ЮKassa / СБП
                   </Text>
                 )}
               </ScalePressable>
@@ -266,14 +330,27 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
                       large
                     />
                   </View>
-                  <ScalePressable
-                    style={styles.soundConfigBtn}
-                    onPress={() => navigation.navigate('PrefixSound')}
-                  >
-                    <Text style={{ color: '#fbbf24', fontWeight: '800', fontSize: 12 }}>
-                      🔊 Звук (до 2с)
-                    </Text>
-                  </ScalePressable>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <ScalePressable
+                      style={styles.soundConfigBtn}
+                      onPress={() => navigation.navigate('PrefixSound')}
+                    >
+                      <Text style={{ color: '#fbbf24', fontWeight: '800', fontSize: 12 }}>
+                        🔊 Звук
+                      </Text>
+                    </ScalePressable>
+                    <ScalePressable
+                      style={[styles.soundConfigBtn, { borderColor: 'rgba(239,68,68,0.45)', backgroundColor: 'rgba(239,68,68,0.14)' }]}
+                      onPress={async () => {
+                        await removeMyPrefix();
+                        showToast('Префикс снят', undefined, 'info');
+                      }}
+                    >
+                      <Text style={{ color: '#f87171', fontWeight: '800', fontSize: 12 }}>
+                        ✕ Снять
+                      </Text>
+                    </ScalePressable>
+                  </View>
                 </GlassCard>
               ) : null}
 
@@ -398,6 +475,36 @@ export default function PirozhkiStoreScreen({ route, navigation }: any) {
                 <Text style={styles.checkoutText}>🎁 Отправить {giftAmount || 0} пирожков</Text>
               </ScalePressable>
             </GlassCard>
+          )}
+
+          {tab === 'history' && (
+            <View style={{ gap: 8 }}>
+              {historyList.length === 0 ? (
+                <GlassCard radius={RADII.CARD} style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: appTheme.textSub }}>История операций с пирожками пока пуста</Text>
+                </GlassCard>
+              ) : (
+                historyList.map((h) => {
+                  const pos = Number(h.amount) >= 0;
+                  return (
+                    <GlassCard key={h.id} radius={18} style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={{ fontSize: 20 }}>{pos ? '🥟' : '🛍️'}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13.5 }}>
+                          {h.note || h.type || 'Операция'}
+                        </Text>
+                        <Text style={{ color: appTheme.textSub, fontSize: 11 }}>
+                          {h.timestamp ? new Date(h.timestamp).toLocaleString('ru-RU') : ''}
+                        </Text>
+                      </View>
+                      <Text style={{ color: pos ? '#4ade80' : '#f87171', fontWeight: '900', fontSize: 14 }}>
+                        {pos ? `+${h.amount}` : h.amount} 🥟
+                      </Text>
+                    </GlassCard>
+                  );
+                })
+              )}
+            </View>
           )}
         </ScrollView>
       </View>

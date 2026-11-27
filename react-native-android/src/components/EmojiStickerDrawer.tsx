@@ -123,6 +123,7 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
     appTheme,
     favoriteStickers,
     recentStickers,
+    installedPackIds,
     toggleFavoriteSticker,
     pushRecentSticker,
     showToast,
@@ -223,8 +224,12 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
         stickers: recentStickers.map((u) => ({ url: u })),
       });
     }
-    return [...virtual, ...packs];
-  }, [favoriteStickers, recentStickers, packs]);
+    const installedFirst = packs
+      .filter((p) => installedPackIds.includes(p.id))
+      .map((p) => ({ ...p, title: `✓ ${p.title}` }));
+    const rest = packs.filter((p) => !installedPackIds.includes(p.id));
+    return [...virtual, ...installedFirst, ...rest];
+  }, [favoriteStickers, recentStickers, packs, installedPackIds]);
 
   const currentCat = EMOJI_CATEGORIES.find((c) => c.id === catId) || EMOJI_CATEGORIES[0];
   const currentPack = allPacks.find((p) => p.id === selectedPackId) || allPacks[0];

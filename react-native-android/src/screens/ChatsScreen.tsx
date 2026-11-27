@@ -25,6 +25,8 @@ import { ScalePressable } from '../components/ScalePressable';
 import { StoriesBar } from '../components/StoriesBar';
 import { SwipeableChatRow } from '../components/SwipeableChatRow';
 import { GlobalSearchModal } from '../components/GlobalSearchModal';
+import { SpecialBadges } from '../components/SpecialBadges';
+import { CREATOR_UID } from '../constants/catalogs';
 import { RADII } from '../theme/liquidGlass';
 
 function formatTime(ms?: number) {
@@ -101,6 +103,8 @@ export default function ChatsScreen({ navigation }: any) {
     vaultPasscode,
     toggleVaultChat,
     joinChatByInvite,
+    openAiHubChat,
+    creatorAddFriendDirect,
   } = useApp();
 
   const [activeFolder, setActiveFolder] = useState<string>('all');
@@ -126,6 +130,9 @@ export default function ChatsScreen({ navigation }: any) {
   const getChatDisplay = (chat: ChatItem) => {
     if (chat.type === 'saved') {
       return { name: 'Избранное', avatar: '', frame: 'none', online: false, partner: null };
+    }
+    if (chat.type === 'ai_hub' || String(chat.id || '').startsWith('aihub_')) {
+      return { name: '🤖 ИИ Хаб', avatar: '', frame: 'none', online: true, partner: null };
     }
     if (chat.type === 'dm' && me) {
       const otherUid = (chat.members || []).find((id) => id !== me.uid);
@@ -235,7 +242,19 @@ export default function ChatsScreen({ navigation }: any) {
         lastMsg: 'Заметки, фото и облако',
         lastMsgAt: 0,
       };
-      return [savedCard, ...sorted.filter((c) => c.id !== `fav_${me.uid}`)];
+      const aiCard: ChatItem = {
+        id: `aihub_${me.uid}`,
+        type: 'ai_hub',
+        name: '🤖 ИИ Хаб',
+        members: [me.uid],
+        lastMsg: 'Нейросети Gemini, Grok, Claude, GPT',
+        lastMsgAt: 0,
+      };
+      return [
+        savedCard,
+        aiCard,
+        ...sorted.filter((c) => c.id !== `fav_${me.uid}` && c.id !== `aihub_${me.uid}`),
+      ];
     }
     return sorted;
   }, [chats, activeFolder, showArchived, search, me, usersMap, archivedChatIds, pinnedChatIds, customFolders, hiddenVaultChatIds, isVaultQuery]);
@@ -279,6 +298,7 @@ export default function ChatsScreen({ navigation }: any) {
     const info = getChatDisplay(item);
     const partner = info.partner;
     const isSaved = item.type === 'saved';
+    const isAiHubItem = item.type === 'ai_hub' || String(item.id || '').startsWith('aihub_');
     const isPinned = pinnedChatIds.includes(item.id);
     const isMuted = mutedChatIds.includes(item.id);
     const isMarkedUnread = markedUnreadIds.includes(item.id);
@@ -287,7 +307,7 @@ export default function ChatsScreen({ navigation }: any) {
 
     return (
       <SwipeableChatRow
-        disabled={isSaved}
+        disabled={isSaved || isAiHubItem}
         isPinned={isPinned}
         isMuted={isMuted}
         isArchived={archivedChatIds.includes(item.id)}
@@ -298,14 +318,25 @@ export default function ChatsScreen({ navigation }: any) {
         <ScalePressable
           haptic
           style={{ marginHorizontal: 12, marginVertical: 4 }}
-          onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, name: info.name })}
-          onLongPress={() => !isSaved && openChatPeek(item)}
+          onPress={async () => {
+            if (isAiHubItem) {
+              const aiChat = await openAiHubChat();
+              if (aiChat) navigation.navigate('ChatRoom', { chatId: aiChat.id, name: '🤖 ИИ Хаб' });
+              return;
+            }
+            navigation.navigate('ChatRoom', { chatId: item.id, name: info.name });
+          }}
+          onLongPress={() => !isSaved && !isAiHubItem && openChatPeek(item)}
         >
         <GlassCard radius={RADII.ITEM} style={styles.chatCard}>
           <View style={styles.avatarWrap}>
             {isSaved ? (
               <View style={styles.savedAva}>
                 <Text style={{ fontSize: 22 }}>🔖</Text>
+              </View>
+            ) : isAiHubItem ? (
+              <View style={[styles.savedAva, { backgroundColor: 'rgba(14,165,233,0.28)', borderColor: '#38bdf8' }]}>
+                <Text style={{ fontSize: 22 }}>🤖</Text>
               </View>
             ) : (
               <FramedAvatar
@@ -324,6 +355,7 @@ export default function ChatsScreen({ navigation }: any) {
                 <Text style={[styles.chatName, { color: appTheme.text }]} numberOfLines={1}>
                   {info.name}
                 </Text>
+                {partner && <SpecialBadges uid={partner.uid} user={partner} />}
                 {partner?.prefix ? (
                   <PrefixBadge
                     prefix={partner.prefix}
@@ -735,6 +767,28 @@ export default function ChatsScreen({ navigation }: any) {
                 >
                   <Text style={{ color: appTheme.textSub, fontWeight: '700' }}>Отмена</Text>
                 </TouchableOpacity>
+                {me?.uid === CREATOR_UID && createMode === 'friend' && (
+                  <TouchableOpacity
+                    style={[styles.modalBtnPri, { backgroundColor: '#7c3aed' }]}
+                    disabled={creating}
+                    onPress={async () => {
+                      if (!createInput.trim()) return;
+                      setCreating(true);
+                      try {
+                        const c = await creatorAddFriendDirect(createInput);
+                        setShowCreateModal(false);
+                        setCreateInput('');
+                        if (c) navigation.navigate('ChatRoom', { chatId: c.id, name: getChatDisplay(c).name });
+                      } catch (e: any) {
+                        showToast('Ошибка', e?.message, 'error');
+                      } finally {
+                        setCreating(false);
+                      }
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '900' }}>⚡ Без заявки</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={[styles.modalBtnPri, { backgroundColor: appTheme.accent }]}
                   disabled={creating}

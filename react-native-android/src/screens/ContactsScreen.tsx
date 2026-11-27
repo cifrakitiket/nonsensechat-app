@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp, UserProfile } from '../context/AppContext';
 import { FramedAvatar } from '../components/FramedAvatar';
 import { PrefixBadge } from '../components/PrefixBadge';
+import { SpecialBadges } from '../components/SpecialBadges';
 import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
@@ -126,6 +127,7 @@ export default function ContactsScreen({ navigation }: any) {
                 <View style={styles.contactInfo}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <Text style={[styles.contactName, { color: appTheme.text }]}>{item.nick}</Text>
+                    <SpecialBadges uid={item.uid} user={item} />
                     {item.prefix ? (
                       <PrefixBadge
                         prefix={item.prefix}

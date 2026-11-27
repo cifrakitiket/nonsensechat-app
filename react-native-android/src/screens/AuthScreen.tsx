@@ -17,6 +17,7 @@ import { useApp } from '../context/AppContext';
 import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
+import { AppInfoLegalReportModal } from '../components/AppInfoLegalReportModal';
 import { RADII } from '../theme/liquidGlass';
 
 export default function AuthScreen() {
@@ -27,6 +28,8 @@ export default function AuthScreen() {
   const [loginInput, setLoginInput] = useState('');
   const [nick, setNick] = useState('');
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [showLegal, setShowLegal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -134,14 +137,40 @@ export default function AuthScreen() {
             )}
 
             <Text style={[styles.label, { color: appTheme.textSub }]}>ПАРОЛЬ</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: appTheme.glassInput, color: appTheme.text }]}
-              placeholder="Минимум 6 символов"
-              placeholderTextColor={appTheme.textSub}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TextInput
+                style={[styles.input, { flex: 1, backgroundColor: appTheme.glassInput, color: appTheme.text }]}
+                placeholder="Минимум 6 символов"
+                placeholderTextColor={appTheme.textSub}
+                secureTextEntry={!showPass}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPass((v) => !v)}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 18,
+                  backgroundColor: appTheme.glassInput,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>{showPass ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {isReg && (
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+                <Text style={{ color: password.length >= 6 ? '#4ade80' : appTheme.textSub, fontSize: 11.5, fontWeight: '700' }}>
+                  {password.length >= 6 ? '✓' : '○'} 6+ символов
+                </Text>
+                <Text style={{ color: /[a-zA-Z]/.test(password) && /\d/.test(password) ? '#4ade80' : appTheme.textSub, fontSize: 11.5, fontWeight: '700' }}>
+                  {/[a-zA-Z]/.test(password) && /\d/.test(password) ? '✓' : '○'} Буквы + цифры
+                </Text>
+              </View>
+            )}
 
             <ScalePressable
               haptic
@@ -175,9 +204,16 @@ export default function AuthScreen() {
                 {isReg ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity style={{ marginTop: 10, alignItems: 'center' }} onPress={() => setShowLegal(true)}>
+              <Text style={{ color: appTheme.textSub, fontSize: 11.5, textDecorationLine: 'underline' }}>
+                ⚖️ Оферта и политика конфиденциальности (152-ФЗ)
+              </Text>
+            </TouchableOpacity>
           </GlassCard>
         </ScrollView>
       </KeyboardAvoidingView>
+      <AppInfoLegalReportModal visible={showLegal} mode="legal" onClose={() => setShowLegal(false)} />
     </LiquidBackground>
   );
 }

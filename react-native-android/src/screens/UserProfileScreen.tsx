@@ -9,7 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ref, onValue, push, set, remove, update } from 'firebase/database';
+import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
 import { rtdb } from '../services/firebase';
 import { useApp } from '../context/AppContext';
 import { CREATOR_UID, PROFILE_THEMES_CATALOG } from '../constants/catalogs';
@@ -19,6 +19,8 @@ import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
 import { ProfileQrAndNotesModal } from '../components/ProfileQrAndNotesModal';
+import { SpecialBadges } from '../components/SpecialBadges';
+import { AppInfoLegalReportModal } from '../components/AppInfoLegalReportModal';
 import { RADII } from '../theme/liquidGlass';
 
 export default function UserProfileScreen({ route, navigation }: any) {
@@ -37,6 +39,7 @@ export default function UserProfileScreen({ route, navigation }: any) {
     setPersonalNote,
     toggleBlockUser,
     startCall,
+    creatorAddFriendDirect,
   } = useApp();
 
   const resolvedUid = targetUid || me?.uid || '';
@@ -47,11 +50,29 @@ export default function UserProfileScreen({ route, navigation }: any) {
   const [commentText, setCommentText] = useState('');
   const [posting, setPosting] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [sharedPhotos, setSharedPhotos] = useState<string[]>([]);
   const [noteDraft, setNoteDraft] = useState(personalNotes[resolvedUid] || '');
 
   useEffect(() => {
     setNoteDraft(personalNotes[resolvedUid] || '');
   }, [resolvedUid, personalNotes]);
+
+  useEffect(() => {
+    if (isSelf || !resolvedUid) return;
+    const dm = chats.find((c) => c.type === 'dm' && (c.members || []).includes(resolvedUid));
+    if (!dm) return;
+    get(ref(rtdb, `messages/${dm.id}`)).then((snap) => {
+      const val = snap.val() || {};
+      const imgs: string[] = [];
+      Object.values(val).forEach((m: any) => {
+        if (m && !m.destroyed && !m.selfDestructSec && (m.photoUrl || m.imageUrl)) {
+          imgs.push(m.photoUrl || m.imageUrl);
+        }
+      });
+      setSharedPhotos(imgs.reverse().slice(0, 10));
+    }).catch(() => {});
+  }, [isSelf, resolvedUid, chats.length]);
 
   useEffect(() => {
     if (!resolvedUid) return;
@@ -131,9 +152,16 @@ export default function UserProfileScreen({ route, navigation }: any) {
               <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
             <Text style={styles.topTitle}>ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ</Text>
-            <TouchableOpacity style={styles.backCircle} onPress={() => setShowQrModal(true)}>
-              <Text style={{ fontSize: 15 }}>📱</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {!isSelf && (
+                <TouchableOpacity style={styles.backCircle} onPress={() => setShowReportModal(true)}>
+                  <Text style={{ fontSize: 14 }}>⚠️</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.backCircle} onPress={() => setShowQrModal(true)}>
+                <Text style={{ fontSize: 15 }}>📱</Text>
+              </TouchableOpacity>
+            </View>
           </GlassCard>
         </View>
 
@@ -152,6 +180,7 @@ export default function UserProfileScreen({ route, navigation }: any) {
               />
               <View style={styles.nameRow}>
                 <Text style={styles.nick}>{user.nick}</Text>
+                <SpecialBadges uid={resolvedUid} user={user} large />
                 {user.prefix ? (
                   <PrefixBadge
                     prefix={user.prefix}
@@ -160,11 +189,6 @@ export default function UserProfileScreen({ route, navigation }: any) {
                     large
                   />
                 ) : null}
-                {isDev && (
-                  <View style={styles.devBadge}>
-                    <Text style={styles.devBadgeText}>&lt;/&gt;</Text>
-                  </View>
-                )}
               </View>
               <Text style={[styles.statusText, user.online && { color: '#4ade80' }]}>
                 {user.online ? '● В сети' : 'Не в сети'} · @{user.nickLower || user.nick}
@@ -379,6 +403,41 @@ export default function UserProfileScreen({ route, navigation }: any) {
             </GlassCard>
           )}
 
+          {me?.uid === CREATOR_UID && (
+            <GlassCard radius={RADII.CARD} style={[styles.showcase, { borderColor: '#8b5cf6' }]}>
+              <Text style={[styles.showcaseTitle, { color: '#c4b5fd' }]}>⚡ ПАНЕЛЬ СОЗДАТЕЛЯ (UID)</Text>
+              <Text style={{ color: '#e2e8f0', fontSize: 12, marginBottom: 8 }}>UID: {resolvedUid}</Text>
+              {!isSelf && (
+                <TouchableOpacity
+                  style={{ backgroundColor: '#7c3aed', paddingVertical: 10, borderRadius: 999, alignItems: 'center' }}
+                  onPress={async () => {
+                    const c = await creatorAddFriendDirect(resolvedUid);
+                    if (c) navigation.navigate('ChatRoom', { chatId: c.id, name: user.nick });
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '900', fontSize: 13 }}>⚡ Открыть/добавить без заявки</Text>
+                </TouchableOpacity>
+              )}
+            </GlassCard>
+          )}
+
+          {sharedPhotos.length > 0 && (
+            <GlassCard radius={RADII.CARD} style={[styles.showcase, { borderColor: theme.border }]}>
+              <Text style={[styles.showcaseTitle, { color: theme.accent }]}>
+                🖼️ ОБЩИЕ МЕДИА В ДИАЛОГЕ ({sharedPhotos.length})
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {sharedPhotos.map((uri, idx) => (
+                  <Image
+                    key={idx}
+                    source={{ uri }}
+                    style={{ width: 76, height: 76, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}
+                  />
+                ))}
+              </ScrollView>
+            </GlassCard>
+          )}
+
           <GlassCard radius={RADII.CARD} style={[styles.showcase, { borderColor: theme.border }]}>
             <Text style={[styles.showcaseTitle, { color: theme.accent }]}>📊 СТАТИСТИКА ПРОФИЛЯ</Text>
             <View style={styles.statsRow}>
@@ -468,6 +527,13 @@ export default function UserProfileScreen({ route, navigation }: any) {
           uid={resolvedUid}
           nick={user.nick}
           avatar={user.avatar}
+        />
+        <AppInfoLegalReportModal
+          visible={showReportModal}
+          mode="report"
+          onClose={() => setShowReportModal(false)}
+          reportTargetName={user.nick}
+          reportTargetId={resolvedUid}
         />
       </View>
     </LiquidBackground>

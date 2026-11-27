@@ -54,6 +54,11 @@ import { ChatDateJumpModal } from '../components/GlobalSearchModal';
 import { PhotoEditsLayer } from '../components/PhotoEditorModal';
 import { MessageEffectsOverlay } from '../components/MessageEffectsOverlay';
 import { GroupVoiceRoomModal } from '../components/GroupVoiceRoomModal';
+import { SpecialBadges } from '../components/SpecialBadges';
+import { AiHubSettingsModal } from '../components/AiHubSettingsModal';
+import { StickerPackPreviewModal } from '../components/StickerPackPreviewModal';
+import { AppInfoLegalReportModal, InfoModalMode } from '../components/AppInfoLegalReportModal';
+import { evalInlineMath } from '../utils/inlineCalc';
 import { RADII } from '../theme/liquidGlass';
 
 const EMOJI_SHORTCODES: Array<{ code: string; emoji: string }> = [
@@ -176,6 +181,8 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     seekGlobalAudio,
     unlockPaidPostWithPirozhki,
     boostChannelWithPirozhki,
+    aiSettings,
+    callAiHubProvider,
   } = useApp();
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -238,6 +245,13 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   const [channelAuthorSig, setChannelAuthorSig] = useState<boolean>(false);
   const lastSeenEffectIdRef = useRef<string>('');
 
+  // Unified SuperApp v6.0 states
+  const [showAiSettings, setShowAiSettings] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [previewStickerUrl, setPreviewStickerUrl] = useState<string>('');
+  const [infoModalMode, setInfoModalMode] = useState<InfoModalMode | null>(null);
+  const [activeVoiceCount, setActiveVoiceCount] = useState(0);
+
   // Voice recording & playback state
   const [isRecording, setIsRecording] = useState(false);
   const [recSec, setRecSec] = useState(0);
@@ -250,12 +264,17 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
   const chat = chats.find((c) => c.id === chatId);
   const isSaved = chat?.type === 'saved' || String(chatId || '').startsWith('fav_');
+  const isAiHub = chat?.type === 'ai_hub' || String(chatId || '').startsWith('aihub_');
   const partnerUid =
-    !isSaved && chat?.type === 'dm' && me
+    !isSaved && !isAiHub && chat?.type === 'dm' && me
       ? (chat.members || []).find((m) => m !== me.uid)
       : undefined;
   const partner = partnerUid ? usersMap[partnerUid] : undefined;
-  const displayName = isSaved ? 'Избранное' : partner?.nick || chat?.name || paramName || 'Чат';
+  const displayName = isSaved
+    ? 'Избранное'
+    : isAiHub
+    ? '🤖 ИИ Хаб'
+    : partner?.nick || chat?.name || paramName || 'Чат';
 
   useEffect(() => {
     if (!chatId) return;
@@ -302,11 +321,18 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       setScheduledMsgs(arr);
     });
 
+    const vrRef = ref(rtdb, `voice_rooms/${chatId}/participants`);
+    const unsubVr = onValue(vrRef, (snap) => {
+      const val = snap.val() || {};
+      setActiveVoiceCount(Object.keys(val).length);
+    });
+
     return () => {
       setActiveChatId(null);
       unsub();
       unsubTyping();
       unsubSched();
+      unsubVr();
       if (recTimerRef.current) clearInterval(recTimerRef.current);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (me?.uid) {
@@ -625,6 +651,33 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     return quickTemplates.filter((t) => !q || t.cmd.includes(q)).slice(0, 6);
   }, [text, quickTemplates]);
 
+  const calcResult = useMemo(() => evalInlineMath(text), [text]);
+
+  const aiQuickMatch = useMemo(() => {
+    const m = text.trimStart().match(/^(gemini|grok|claude|gpt|deepseek|ai)\s*:\s*(.+)$/is);
+    if (!m) return null;
+    return { provider: m[1].toLowerCase(), prompt: m[2].trim() };
+  }, [text]);
+
+  const executeAiQuickPrompt = async () => {
+    if (!aiQuickMatch || aiGenerating) return;
+    setAiGenerating(true);
+    try {
+      const ans = await callAiHubProvider(aiQuickMatch.prompt, {
+        providerOverride: aiQuickMatch.provider,
+        maxChars: 200,
+        systemOverride: 'Ответь кратко и по делу на русском языке (максимум 200 символов).',
+      });
+      handleTextChange(ans.slice(0, 200));
+      triggerHaptic(14);
+      showToast('✨ Сгенерировано ИИ', 'Нажмите отправить ➤', 'success');
+    } catch (e: any) {
+      showToast('ИИ Команда', e?.message || 'Ошибка генерации', 'error');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   const buildChatAudioQueue = () => {
     return messages
       .filter((m) => (m.type === 'voice' || m.type === 'audio' || m.type === 'music') && (m.audioUrl || m.voiceUrl))
@@ -757,6 +810,34 @@ export default function ChatRoomScreen({ route, navigation }: any) {
         : clean,
       silent
     );
+
+    if (isAiHub) {
+      setAiGenerating(true);
+      try {
+        const reply = await callAiHubProvider(clean, { maxChars: 1500 });
+        const aiPayload = {
+          uid: me.uid,
+          isAi: true,
+          author: `🤖 ${aiSettings.activeProvider.toUpperCase()}`,
+          at: Date.now(),
+          type: 'text',
+          text: reply,
+        };
+        await pushChatMessage(aiPayload, `🤖 ${reply.slice(0, 60)}`);
+      } catch (e: any) {
+        const errPayload = {
+          uid: me.uid,
+          isAi: true,
+          author: '🤖 ИИ Хаб',
+          at: Date.now(),
+          type: 'text',
+          text: `⚠️ ${e?.message || 'Ошибка нейросети. Нажмите ⚙️ в шапке для проверки ключа.'}`,
+        };
+        await pushChatMessage(errPayload, '⚠️ Ошибка ИИ');
+      } finally {
+        setAiGenerating(false);
+      }
+    }
   };
 
   const handleScheduleMessage = async (delayMs: number) => {
@@ -1373,6 +1454,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       return (
         <ScalePressable
           scaleTo={0.96}
+          onPress={() => setPreviewStickerUrl(item.stickerUrl)}
           onLongPress={() => setActionMsg(item)}
           style={[styles.msgRow, isMineS ? styles.msgRowOut : styles.msgRowIn]}
         >
@@ -1580,9 +1662,12 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   <TouchableOpacity
                     onPress={() => item.uid && navigation.navigate('UserProfile', { uid: item.uid })}
                   >
-                    <Text style={[styles.bubbleAuthor, { color: appTheme.accent }]}>{authorName}</Text>
+                    <Text style={[styles.bubbleAuthor, { color: appTheme.accent }]}>
+                      {item.isAi ? item.author : authorName}
+                    </Text>
                   </TouchableOpacity>
                 )}
+                {!item.isAi && <SpecialBadges uid={item.uid} user={sender} />}
                 {prefix ? (
                   <PrefixBadge prefix={prefix} prefixStyle={prefixStyle} prefixSound={prefixSound} />
                 ) : null}
@@ -2228,6 +2313,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                     <Text style={[styles.chatTitle, { color: appTheme.text }]} numberOfLines={1}>
                       {displayName}
                     </Text>
+                    {partnerUid && <SpecialBadges uid={partnerUid} user={partner} />}
                     {partner?.prefix ? (
                       <PrefixBadge
                         prefix={partner.prefix}
@@ -2249,12 +2335,16 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                     ]}
                     numberOfLines={1}
                   >
-                    {partnerTypingMode === 'recording'
+                    {aiGenerating
+                      ? `🤖 ${aiSettings.activeProvider.toUpperCase()} генерирует...`
+                      : partnerTypingMode === 'recording'
                       ? 'записывает голосовое...'
                       : partnerTypingMode === 'typing'
                       ? 'печатает...'
                       : isSaved
                       ? 'Облачное хранилище'
+                      : isAiHub
+                      ? `Нейросеть · ${aiSettings.activeProvider.toUpperCase()}`
                       : partner?.online
                       ? 'в сети'
                       : partner
@@ -2263,6 +2353,12 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   </Text>
                 </View>
               </TouchableOpacity>
+
+              {isAiHub ? (
+                <ScalePressable style={styles.circleBtn} onPress={() => setShowAiSettings(true)}>
+                  <Ionicons name="settings-outline" size={18} color="#38bdf8" />
+                </ScalePressable>
+              ) : null}
 
               {(chat?.type === 'group' || chat?.type === 'channel') ? (
                 <ScalePressable
@@ -2472,6 +2568,24 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
         )}
 
+        {/* Active Live Voice Room Banner */}
+        {(chat?.type === 'group' || chat?.type === 'channel') && activeVoiceCount > 0 && (
+          <View style={{ paddingHorizontal: 14, paddingBottom: 4 }}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => setShowVoiceRoom(true)}
+              style={styles.activeVoiceBar}
+            >
+              <Text style={{ color: '#4ade80', fontWeight: '900', fontSize: 12.5, flex: 1 }}>
+                🎙️ Идёт голосовой чат · Участников: {activeVoiceCount}
+              </Text>
+              <View style={styles.activeVoiceJoinBtn}>
+                <Text style={{ color: '#000', fontWeight: '900', fontSize: 11.5 }}>Вступить</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Messages Feed (Inverted: newest at bottom, loads all messages) */}
         <FlatList
           ref={flatListRef}
@@ -2607,6 +2721,48 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                 onPress={sendVoiceDraft}
               >
                 <Text style={{ color: '#000', fontWeight: '900', fontSize: 15 }}>➤</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        )}
+
+        {/* Live Math Calculator Bubble & Quick AI Command Bubble */}
+        {calcResult !== null && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
+            <GlassCard radius={18} strong style={styles.calcBubbleCard}>
+              <Text style={{ color: appTheme.accent, fontWeight: '900', fontSize: 14, flex: 1 }}>
+                🧮 = {calcResult}
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleTextChange(calcResult)}
+                style={[styles.mentionChip, { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent }]}
+              >
+                <Text style={{ color: appTheme.accent, fontWeight: '800', fontSize: 11.5 }}>Ответ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleTextChange(`${text.trim()} = ${calcResult}`)}
+                style={[styles.mentionChip, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: appTheme.border }]}
+              >
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 11.5 }}>Пример =</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
+        )}
+
+        {aiQuickMatch && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
+            <GlassCard radius={18} strong style={styles.calcBubbleCard}>
+              <Text style={{ color: '#38bdf8', fontWeight: '800', fontSize: 12.5, flex: 1 }} numberOfLines={1}>
+                ✨ {aiQuickMatch.provider.toUpperCase()}: «{aiQuickMatch.prompt}»
+              </Text>
+              <TouchableOpacity
+                disabled={aiGenerating}
+                onPress={executeAiQuickPrompt}
+                style={[styles.mentionChip, { backgroundColor: '#0ea5e9', borderColor: '#38bdf8' }]}
+              >
+                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 11.5 }}>
+                  {aiGenerating ? '⏳...' : '⚡ Сгенерировать'}
+                </Text>
               </TouchableOpacity>
             </GlassCard>
           </View>
@@ -3423,6 +3579,83 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               </View>
 
               <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={async () => {
+                  setShowChatMenu(false);
+                  const recent = messages
+                    .slice(-25)
+                    .map((m) => `${m.author || 'Участник'}: ${decodeMsgText(m.text)}`)
+                    .filter((s) => s.length > 4)
+                    .join('\n');
+                  if (!recent) {
+                    showToast('ИИ-пересказ', 'В чате пока нет текстовых сообщений', 'info');
+                    return;
+                  }
+                  showToast('ИИ читает чат... ✨', undefined, 'info');
+                  try {
+                    const summary = await callAiHubProvider(
+                      `Сделай краткий структурированный пересказ последних сообщений переписки:\n\n${recent}`,
+                      { maxChars: 800 }
+                    );
+                    Alert_placeholder: showToast('✨ Пересказ готов', summary.slice(0, 120), 'success');
+                    await pushChatMessage(
+                      {
+                        uid: me!.uid,
+                        isAi: true,
+                        author: '🤖 ИИ Пересказ',
+                        at: Date.now(),
+                        type: 'text',
+                        text: `✨ **Краткий пересказ чата:**\n${summary}`,
+                      },
+                      '✨ ИИ-пересказ чата'
+                    );
+                  } catch (e: any) {
+                    showToast('Ошибка ИИ', e?.message || 'Не удалось пересказать', 'error');
+                  }
+                }}
+              >
+                <Text style={styles.sheetRowText}>✨ ИИ-пересказ последних сообщений</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={() => {
+                  setShowChatMenu(false);
+                  setInfoModalMode('e2ee');
+                }}
+              >
+                <Text style={styles.sheetRowText}>🔒 Ключ шифрования (E2EE)</Text>
+              </TouchableOpacity>
+
+              {(chat?.type === 'group' || chat?.type === 'channel') && (
+                <TouchableOpacity
+                  style={styles.sheetRow}
+                  onPress={async () => {
+                    setShowChatMenu(false);
+                    if (!me?.uid || !chat) return;
+                    const nextMembers = (chat.members || []).filter((u: string) => u !== me.uid);
+                    await update(ref(rtdb, `chats/${chatId}`), { members: nextMembers });
+                    showToast('Вы вышли', displayName, 'info');
+                    navigation.goBack();
+                  }}
+                >
+                  <Text style={[styles.sheetRowText, { color: '#fb923c' }]}>
+                    🚪 Покинуть {chat?.type === 'channel' ? 'канал' : 'группу'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={() => {
+                  setShowChatMenu(false);
+                  setInfoModalMode('report');
+                }}
+              >
+                <Text style={[styles.sheetRowText, { color: '#f87171' }]}>⚠️ Пожаловаться</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.sheetRow, { borderBottomWidth: 0 }]}
                 onPress={() => {
                   setShowChatMenu(false);
@@ -3545,6 +3778,28 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
         {/* Fullscreen Message Effect Particles */}
         <MessageEffectsOverlay triggerKey={effectBurst.key} emoji={effectBurst.emoji} />
+
+        {/* AI Hub Settings Modal */}
+        <AiHubSettingsModal visible={showAiSettings} onClose={() => setShowAiSettings(false)} />
+
+        {/* Sticker Pack Preview Modal */}
+        <StickerPackPreviewModal
+          visible={!!previewStickerUrl}
+          stickerUrl={previewStickerUrl}
+          onClose={() => setPreviewStickerUrl('')}
+          onSendSticker={handleSendSticker}
+        />
+
+        {/* E2EE Key & Report Modal */}
+        <AppInfoLegalReportModal
+          visible={!!infoModalMode}
+          mode={infoModalMode || 'e2ee'}
+          onClose={() => setInfoModalMode(null)}
+          e2eeChatId={chatId}
+          e2eeMembers={chat?.members || []}
+          reportTargetName={displayName}
+          reportTargetId={chatId}
+        />
       </KeyboardAvoidingView>
     </LiquidBackground>
   );
@@ -4048,5 +4303,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderLeftWidth: 2.5,
     borderLeftColor: '#38bdf8',
+  },
+  activeVoiceBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: 'rgba(34,197,94,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.45)',
+    gap: 8,
+  },
+  activeVoiceJoinBtn: {
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  calcBubbleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    gap: 8,
   },
 });

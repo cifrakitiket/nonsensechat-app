@@ -31,6 +31,9 @@ import { ProfileQrAndNotesModal } from '../components/ProfileQrAndNotesModal';
 import { StorageAndPrivacyModal } from '../components/StorageAndPrivacyModal';
 import { AccountsDevicesHiddenModal } from '../components/AccountsDevicesHiddenModal';
 import { PowerTemplatesModal } from '../components/PowerTemplatesModal';
+import { SpecialBadges } from '../components/SpecialBadges';
+import { AiHubSettingsModal } from '../components/AiHubSettingsModal';
+import { AppInfoLegalReportModal, InfoModalMode } from '../components/AppInfoLegalReportModal';
 import { AppThemeKey, LIQUID_THEMES, RADII } from '../theme/liquidGlass';
 
 export default function ProfileScreen({ navigation }: any) {
@@ -58,6 +61,10 @@ export default function ProfileScreen({ navigation }: any) {
     setChatFontSize,
     pinCode,
     setPinCode,
+    appLang,
+    setAppLang,
+    clearVoiceConfig,
+    setClearVoiceConfig,
   } = useApp();
   const [showAvatarSheet, setShowAvatarSheet] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -66,6 +73,8 @@ export default function ProfileScreen({ navigation }: any) {
   const [showStoragePrivacyModal, setShowStoragePrivacyModal] = useState(false);
   const [showAccountsModal, setShowAccountsModal] = useState(false);
   const [showPowerModal, setShowPowerModal] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [infoModalMode, setInfoModalMode] = useState<InfoModalMode | null>(null);
 
   if (!me) return null;
 
@@ -133,6 +142,7 @@ export default function ProfileScreen({ navigation }: any) {
 
             <View style={styles.nameRow}>
               <Text style={[styles.userName, { color: appTheme.text }]}>{me.nick}</Text>
+              <SpecialBadges uid={me.uid} user={me} large />
               {me.prefix ? (
                 <PrefixBadge
                   prefix={me.prefix}
@@ -141,11 +151,6 @@ export default function ProfileScreen({ navigation }: any) {
                   large
                 />
               ) : null}
-              {isCreator && (
-                <View style={styles.devBadge}>
-                  <Text style={styles.devBadgeTxt}>&lt;/&gt;</Text>
-                </View>
-              )}
             </View>
 
             <Text style={[styles.userUsername, { color: appTheme.textSub }]}>
@@ -354,6 +359,79 @@ export default function ProfileScreen({ navigation }: any) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setShowAiModal(true)}
+            >
+              <Text style={styles.settingIcon}>🤖</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Настройки ИИ Хаба (7 моделей)</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
+              <Text style={styles.settingIcon}>🎙️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingText, { color: appTheme.text }]}>ClearVoice AI™ (Шумодав)</Text>
+                <Text style={{ fontSize: 11.5, color: appTheme.textSub }}>
+                  Кристальный звук при звонках
+                </Text>
+              </View>
+              <Switch
+                value={clearVoiceConfig.enabled}
+                onValueChange={(v) => setClearVoiceConfig({ ...clearVoiceConfig, enabled: v })}
+                trackColor={{ false: 'rgba(255,255,255,0.1)', true: '#22c55e' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.border, flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
+              <Text style={[styles.settingText, { color: appTheme.text, fontWeight: '700' }]}>🌐 Язык интерфейса</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {[
+                  { k: 'ru', l: '🇷🇺 Русский' },
+                  { k: 'en', l: '🇬🇧 English' },
+                  { k: 'uk', l: '🇺🇦 Українська' },
+                  { k: 'ru-pre', l: '📜 Дореформенный Ъ' },
+                ].map((lg) => {
+                  const act = appLang === lg.k;
+                  return (
+                    <TouchableOpacity
+                      key={lg.k}
+                      onPress={() => {
+                        setAppLang(lg.k as any);
+                        showToast('Язык изменён 🌐', lg.l, 'success');
+                      }}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 14,
+                        backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
+                        borderWidth: 1,
+                        borderColor: act ? appTheme.accent : appTheme.border,
+                      }}
+                    >
+                      <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 12, fontWeight: '700' }}>
+                        {lg.l}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => {
+                Share.share({ message: me.uid }).catch(() => {});
+                showToast('UID скопирован 🆔', me.uid, 'info');
+              }}
+            >
+              <Text style={styles.settingIcon}>🆔</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Поделиться моим UID</Text>
+              <Text style={styles.settingVal} numberOfLines={1}>{me.uid.slice(0, 8)}...</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.settingItem, { borderBottomWidth: 0 }]}
               onPress={() =>
                 Share.share({
@@ -502,6 +580,23 @@ export default function ProfileScreen({ navigation }: any) {
           <GlassCard radius={RADII.CARD}>
             <TouchableOpacity
               style={styles.settingItem}
+              onPress={() => setInfoModalMode('info')}
+            >
+              <Text style={styles.settingIcon}>ℹ️</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>О приложении и Changelog</Text>
+              <Text style={styles.settingVal}>v{APP_VERSION}</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setInfoModalMode('legal')}
+            >
+              <Text style={styles.settingIcon}>⚖️</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Правовая информация (152-ФЗ)</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingItem}
               onPress={() => checkForUpdates(false)}
               disabled={checkingUpdate}
             >
@@ -556,6 +651,17 @@ export default function ProfileScreen({ navigation }: any) {
       <PowerTemplatesModal
         visible={showPowerModal}
         onClose={() => setShowPowerModal(false)}
+      />
+
+      <AiHubSettingsModal
+        visible={showAiModal}
+        onClose={() => setShowAiModal(false)}
+      />
+
+      <AppInfoLegalReportModal
+        visible={!!infoModalMode}
+        mode={infoModalMode || 'info'}
+        onClose={() => setInfoModalMode(null)}
       />
 
       {/* PIN Setup Modal */}

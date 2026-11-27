@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -36,7 +37,15 @@ function fmtCallSec(sec: number) {
 
 export const WebRTCCallOverlay: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { me, activeCallPeer, endActiveCallTrigger, appTheme, showToast } = useApp();
+  const {
+    me,
+    activeCallPeer,
+    endActiveCallTrigger,
+    appTheme,
+    showToast,
+    clearVoiceConfig,
+    setClearVoiceConfig,
+  } = useApp();
 
   const [incomingCall, setIncomingCall] = useState<any | null>(null);
   const [callState, setCallState] = useState<'idle' | 'ringing_in' | 'calling_out' | 'connected'>('idle');
@@ -46,6 +55,8 @@ export const WebRTCCallOverlay: React.FC = () => {
   const [micMuted, setMicMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
   const [durationSec, setDurationSec] = useState(0);
+  const [minimized, setMinimized] = useState(false);
+  const [showClearVoice, setShowClearVoice] = useState(false);
 
   const pcRef = useRef<any | null>(null);
   const callIdRef = useRef<string | null>(null);
@@ -263,7 +274,11 @@ export const WebRTCCallOverlay: React.FC = () => {
       isCallerRef.current = true;
 
       const stream = await mediaDevices.getUserMedia({
-        audio: true,
+        audio: {
+          noiseSuppression: clearVoiceConfig.enabled,
+          echoCancellation: clearVoiceConfig.echoCancel,
+          autoGainControl: clearVoiceConfig.autoGain,
+        } as any,
         video: peer.isVideo ? { facingMode: 'user', width: 640, height: 480 } : false,
       });
       setLocalStream(stream);
@@ -317,7 +332,11 @@ export const WebRTCCallOverlay: React.FC = () => {
       isCallerRef.current = false;
 
       const stream = await mediaDevices.getUserMedia({
-        audio: true,
+        audio: {
+          noiseSuppression: clearVoiceConfig.enabled,
+          echoCancellation: clearVoiceConfig.echoCancel,
+          autoGainControl: clearVoiceConfig.autoGain,
+        } as any,
         video: incomingCall.isVideo ? { facingMode: 'user', width: 640, height: 480 } : false,
       });
       setLocalStream(stream);
@@ -372,13 +391,115 @@ export const WebRTCCallOverlay: React.FC = () => {
 
   if (callState === 'idle' || !peerInfo) return null;
 
+  if (minimized && callState !== 'ringing_in') {
+    return (
+      <View
+        style={[
+          styles.miniCallBar,
+          { top: Math.max(insets.top, 8) + 6 },
+        ]}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          onPress={() => setMinimized(false)}
+        >
+          <View style={styles.miniPulseDot} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }} numberOfLines={1}>
+              {peerInfo.nick}
+            </Text>
+            <Text style={{ color: '#bbf7d0', fontSize: 11, fontWeight: '700' }}>
+              {callState === 'calling_out' ? 'Вызов...' : `${fmtCallSec(durationSec)} · Нажмите, чтобы вернуть`}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={toggleMic}
+          style={[styles.miniBtn, micMuted && { backgroundColor: 'rgba(239,68,68,0.45)' }]}
+        >
+          <Ionicons name={micMuted ? 'mic-off' : 'mic'} size={17} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setMinimized(false)} style={styles.miniBtn}>
+          <Ionicons name="expand-outline" size={17} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            setMinimized(false);
+            cleanupCall(true);
+          }}
+          style={[styles.miniBtn, { backgroundColor: '#ef4444' }]}
+        >
+          <Ionicons name="call" size={16} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={() => cleanupCall(true)}>
+    <Modal visible transparent animationType="fade" onRequestClose={() => setMinimized(true)}>
       <LiquidBackground>
         <View style={[styles.root, { paddingTop: insets.top + 20, paddingBottom: Math.max(insets.bottom, 24) }]}>
           {peerInfo.isVideo && remoteStream ? (
             <RTCView streamURL={remoteStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" />
           ) : null}
+
+          {callState !== 'ringing_in' && (
+            <View style={[styles.topActionBar, { top: insets.top + 12 }]}>
+              <TouchableOpacity style={styles.topPillBtn} onPress={() => setMinimized(true)}>
+                <Ionicons name="contract-outline" size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Свернуть</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.topPillBtn, clearVoiceConfig.enabled && { borderColor: '#22c55e', borderWidth: 1 }]}
+                onPress={() => setShowClearVoice((v) => !v)}
+              >
+                <Text style={{ color: clearVoiceConfig.enabled ? '#4ade80' : '#fff', fontSize: 12, fontWeight: '800' }}>
+                  🎙️ ClearVoice AI™
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {showClearVoice && (
+            <View style={[styles.cvPanel, { top: insets.top + 62 }]}>
+              <View style={styles.cvRow}>
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>Шумоподавление (Krisp)</Text>
+                <Switch
+                  value={clearVoiceConfig.enabled}
+                  onValueChange={(v) => setClearVoiceConfig({ ...clearVoiceConfig, enabled: v })}
+                  trackColor={{ false: 'rgba(255,255,255,0.15)', true: '#22c55e' }}
+                  thumbColor="#fff"
+                />
+              </View>
+              <View style={styles.cvRow}>
+                <Text style={{ color: '#cbd5e1', fontSize: 12.5 }}>Эхоподавление (AEC)</Text>
+                <Switch
+                  value={clearVoiceConfig.echoCancel}
+                  onValueChange={(v) => setClearVoiceConfig({ ...clearVoiceConfig, echoCancel: v })}
+                  trackColor={{ false: 'rgba(255,255,255,0.15)', true: '#22c55e' }}
+                  thumbColor="#fff"
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+                {[
+                  { k: 'voice', l: '🗣️ Голос' },
+                  { k: 'studio', l: '🎙️ Студия' },
+                  { k: 'music', l: '🎵 Музыка' },
+                ].map((m) => (
+                  <TouchableOpacity
+                    key={m.k}
+                    onPress={() => setClearVoiceConfig({ ...clearVoiceConfig, mode: m.k as any })}
+                    style={[
+                      styles.cvModeChip,
+                      clearVoiceConfig.mode === m.k && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent },
+                    ]}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 11.5, fontWeight: '700' }}>{m.l}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
           <View style={styles.topInfo}>
             <FramedAvatar uri={peerInfo.avatar} name={peerInfo.nick} size={108} />
@@ -470,4 +591,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bigBtn: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
+  miniCallBar: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    zIndex: 95,
+    backgroundColor: 'rgba(21, 128, 61, 0.96)',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.55)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 8,
+    elevation: 10,
+  },
+  miniPulseDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#4ade80' },
+  miniBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topActionBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  topPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+  },
+  cvPanel: {
+    position: 'absolute',
+    right: 16,
+    left: 16,
+    zIndex: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.4)',
+    gap: 8,
+  },
+  cvRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cvModeChip: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+  },
 });

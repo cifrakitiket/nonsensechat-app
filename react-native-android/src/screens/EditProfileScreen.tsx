@@ -28,6 +28,7 @@ export default function EditProfileScreen({ navigation }: any) {
   const [bday, setBday] = useState(me?.bday || '');
   const [phone, setPhone] = useState(me?.phone || '');
   const [linkedChannelId, setLinkedChannelId] = useState(me?.linkedChannelId || '');
+  const [gender, setGender] = useState<'male' | 'female' | ''>(me?.gender || '');
   const [saving, setSaving] = useState(false);
   const [showAvatarSheet, setShowAvatarSheet] = useState(false);
 
@@ -65,6 +66,7 @@ export default function EditProfileScreen({ navigation }: any) {
         bday: bday.trim(),
         phone: phone.trim(),
         linkedChannelId,
+        gender,
       });
       showToast('Сохранено ✓', 'Данные профиля обновлены', 'success');
       navigation.goBack();
@@ -154,6 +156,32 @@ export default function EditProfileScreen({ navigation }: any) {
               placeholderTextColor={appTheme.textSub}
               keyboardType="phone-pad"
             />
+
+            <Text style={[styles.label, { color: appTheme.textSub }]}>ПОЛ ПРОФИЛЯ (ЗНАЧОК ♀)</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[
+                { k: '', l: 'Не указан' },
+                { k: 'male', l: 'Мужской' },
+                { k: 'female', l: 'Женский ♀' },
+              ].map((g) => {
+                const act = gender === g.k;
+                return (
+                  <TouchableOpacity
+                    key={g.k}
+                    onPress={() => setGender(g.k as any)}
+                    style={[
+                      styles.photoBtn,
+                      { flex: 1, alignItems: 'center' },
+                      act && { backgroundColor: appTheme.accentSoft, borderWidth: 1, borderColor: appTheme.accent },
+                    ]}
+                  >
+                    <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontWeight: '800', fontSize: 12 }}>
+                      {g.l}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             <Text style={[styles.label, { color: appTheme.textSub }]}>📢 ЛИЧНЫЙ КАНАЛ В ПРОФИЛЕ</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
