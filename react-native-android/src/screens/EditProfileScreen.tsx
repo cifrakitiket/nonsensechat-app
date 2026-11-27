@@ -20,15 +20,23 @@ import { RADII } from '../theme/liquidGlass';
 
 export default function EditProfileScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, updateMyProfile, appTheme, showToast } = useApp();
+  const { me, chats, updateMyProfile, appTheme, showToast } = useApp();
 
   const [nick, setNick] = useState(me?.nick || '');
   const [bio, setBio] = useState(me?.bio || '');
   const [avatar, setAvatar] = useState(me?.avatar || '');
   const [bday, setBday] = useState(me?.bday || '');
   const [phone, setPhone] = useState(me?.phone || '');
+  const [linkedChannelId, setLinkedChannelId] = useState(me?.linkedChannelId || '');
   const [saving, setSaving] = useState(false);
   const [showAvatarSheet, setShowAvatarSheet] = useState(false);
+
+  const myChannels = chats.filter(
+    (c) =>
+      c.type === 'channel' &&
+      me?.uid &&
+      (c.owner === me.uid || (Array.isArray(c.admins) && c.admins.includes(me.uid)))
+  );
 
   const pickAvatar = async (fromCam: boolean) => {
     if (!fromCam) {
@@ -56,6 +64,7 @@ export default function EditProfileScreen({ navigation }: any) {
         avatar: avatar.trim(),
         bday: bday.trim(),
         phone: phone.trim(),
+        linkedChannelId,
       });
       showToast('Сохранено ✓', 'Данные профиля обновлены', 'success');
       navigation.goBack();
@@ -145,6 +154,38 @@ export default function EditProfileScreen({ navigation }: any) {
               placeholderTextColor={appTheme.textSub}
               keyboardType="phone-pad"
             />
+
+            <Text style={[styles.label, { color: appTheme.textSub }]}>📢 ЛИЧНЫЙ КАНАЛ В ПРОФИЛЕ</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setLinkedChannelId('')}
+                style={[
+                  styles.photoBtn,
+                  !linkedChannelId && { backgroundColor: appTheme.accentSoft, borderWidth: 1, borderColor: appTheme.accent },
+                ]}
+              >
+                <Text style={{ color: !linkedChannelId ? appTheme.accent : appTheme.textSub, fontWeight: '700', fontSize: 12.5 }}>
+                  🚫 Не закреплять
+                </Text>
+              </TouchableOpacity>
+              {myChannels.map((ch) => {
+                const act = linkedChannelId === ch.id;
+                return (
+                  <TouchableOpacity
+                    key={ch.id}
+                    onPress={() => setLinkedChannelId(ch.id)}
+                    style={[
+                      styles.photoBtn,
+                      act && { backgroundColor: appTheme.accentSoft, borderWidth: 1, borderColor: appTheme.accent },
+                    ]}
+                  >
+                    <Text style={{ color: act ? appTheme.accent : '#fff', fontWeight: '800', fontSize: 12.5 }}>
+                      📢 {ch.name || 'Канал'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
             {!!me?.prefix && (
               <ScalePressable

@@ -97,6 +97,10 @@ export default function ChatsScreen({ navigation }: any) {
     deleteCustomFolder,
     toggleChatInFolder,
     markAllChatsRead,
+    hiddenVaultChatIds,
+    vaultPasscode,
+    toggleVaultChat,
+    joinChatByInvite,
   } = useApp();
 
   const [activeFolder, setActiveFolder] = useState<string>('all');
@@ -104,7 +108,7 @@ export default function ChatsScreen({ navigation }: any) {
   const [search, setSearch] = useState('');
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createMode, setCreateMode] = useState<'friend' | 'group' | 'channel'>('friend');
+  const [createMode, setCreateMode] = useState<'friend' | 'group' | 'channel' | 'invite'>('friend');
   const [createInput, setCreateInput] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -186,11 +190,17 @@ export default function ChatsScreen({ navigation }: any) {
     }
   };
 
+  const isVaultQuery = !!vaultPasscode && search.trim() === vaultPasscode;
+
   const filteredChats = useMemo(() => {
     const q = search.trim().toLowerCase();
     const custom = customFolders.find((f) => f.id === activeFolder);
 
     const base = chats.filter((c) => {
+      const inVault = hiddenVaultChatIds.includes(c.id);
+      if (isVaultQuery) return inVault;
+      if (inVault) return false;
+
       const isArch = archivedChatIds.includes(c.id);
       if (showArchived ? !isArch : isArch) return false;
 
@@ -228,12 +238,24 @@ export default function ChatsScreen({ navigation }: any) {
       return [savedCard, ...sorted.filter((c) => c.id !== `fav_${me.uid}`)];
     }
     return sorted;
-  }, [chats, activeFolder, showArchived, search, me, usersMap, archivedChatIds, pinnedChatIds, customFolders]);
+  }, [chats, activeFolder, showArchived, search, me, usersMap, archivedChatIds, pinnedChatIds, customFolders, hiddenVaultChatIds, isVaultQuery]);
 
   const handleCreateSubmit = async () => {
     if (!createInput.trim()) return;
     setCreating(true);
     try {
+      if (createMode === 'invite') {
+        const res = await joinChatByInvite(createInput);
+        setShowCreateModal(false);
+        setCreateInput('');
+        if (res.pending) {
+          showToast('Заявка отправлена ⏳', 'Ожидайте одобрения администратором', 'info');
+        } else if (res.chat) {
+          showToast('Вы вступили ✓', res.chat.name || 'Сообщество', 'success');
+          navigation.navigate('ChatRoom', { chatId: res.chat.id, name: res.chat.name || 'Чат' });
+        }
+        return;
+      }
       let chat: ChatItem | null = null;
       if (createMode === 'friend') {
         chat = await addFriendByNick(createInput);
@@ -466,9 +488,14 @@ export default function ChatsScreen({ navigation }: any) {
               </Text>
             </TouchableOpacity>
           </GlassCard>
+          {isVaultQuery && (
+            <View style={{ marginTop: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 14, backgroundColor: 'rgba(139,92,246,0.22)', borderWidth: 1, borderColor: '#8b5cf6' }}>
+              <Text style={{ color: '#e9d5ff', fontWeight: '800', fontSize: 12.5 }}>
+                🕵️ Секретный сейф открыт · Скрытых чатов: {hiddenVaultChatIds.length}
+              </Text>
+            </View>
+          )}
         </View>
-
-        {/* Stories Bar */}
         <StoriesBar onReplyToStory={handleReplyToStory} />
 
         {/* Pill Folder Tabs (with Custom Folders) */}
@@ -664,6 +691,7 @@ export default function ChatsScreen({ navigation }: any) {
                   { k: 'friend', l: 'Друг' },
                   { k: 'group', l: 'Группа' },
                   { k: 'channel', l: 'Канал' },
+                  { k: 'invite', l: '🔗 Инвайт' },
                 ].map((m) => (
                   <TouchableOpacity
                     key={m.k}
@@ -691,7 +719,9 @@ export default function ChatsScreen({ navigation }: any) {
                     ? 'Введите @юзернейм или UID'
                     : createMode === 'group'
                     ? 'Название группы'
-                    : 'Название канала'
+                    : createMode === 'channel'
+                    ? 'Название канала'
+                    : 'Код инвайта (напр. nc_ab12cd)'
                 }
                 placeholderTextColor={appTheme.textSub}
                 autoCapitalize="none"
@@ -793,6 +823,25 @@ export default function ChatsScreen({ navigation }: any) {
                   >
                     <Text style={styles.ctxText}>
                       {markedUnreadIds.includes(peekChat.id) ? '✓ Снять непрочитанное' : '🔵 Пометить непрочитанным'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.ctxRow}
+                    onPress={() => {
+                      const id = peekChat.id;
+                      setPeekChat(null);
+                      toggleVaultChat(id);
+                      showToast(
+                        hiddenVaultChatIds.includes(id) ? 'Возвращён из сейфа' : 'Скрыт в Сейф 🕵️',
+                        `Код сейфа: ${vaultPasscode}`,
+                        'info'
+                      );
+                    }}
+                  >
+                    <Text style={styles.ctxText}>
+                      {hiddenVaultChatIds.includes(peekChat.id)
+                        ? '🔓 Вернуть чат из Сейфа'
+                        : '🕵️ Скрыть чат в Секретный сейф'}
                     </Text>
                   </TouchableOpacity>
                   {customFolders.map((cf) => {

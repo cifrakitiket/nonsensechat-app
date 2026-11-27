@@ -22,10 +22,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useApp, UserProfile } from '../context/AppContext';
 import {
+  DeviceAudioItem,
   DeviceFileItem,
   DevicePhotoItem,
   encodeDeviceFile,
   encodeDeviceImage,
+  getRecentDeviceAudio,
   getRecentDeviceFiles,
   getRecentDevicePhotos,
   pickNativePhotoFromGallery,
@@ -33,13 +35,15 @@ import {
   triggerHaptic,
 } from '../services/firebase';
 import { GlassCard } from './GlassCard';
+import { PhotoEditorModal, PhotoEditsData } from './PhotoEditorModal';
 
-type SheetTab = 'gallery' | 'file' | 'poll' | 'checklist' | 'location' | 'pirozhki' | 'contact';
+type SheetTab = 'gallery' | 'file' | 'music' | 'poll' | 'checklist' | 'location' | 'pirozhki' | 'contact';
 
 export interface EncodedPhotoResult {
   dataUrl: string;
   fileName: string;
   fileSize: number;
+  edits?: PhotoEditsData | null;
 }
 
 export interface EncodedFileResult {
@@ -49,12 +53,32 @@ export interface EncodedFileResult {
   mimeType: string;
 }
 
+export interface PhotoSendOptions {
+  spoiler?: boolean;
+  captionAbove?: boolean;
+  asAlbum?: boolean;
+  paidCost?: number;
+  authorSig?: boolean;
+}
+
 interface TelegramAttachSheetProps {
   visible: boolean;
   mode?: 'chat' | 'avatar';
   onClose: () => void;
-  onSendPhotos?: (photos: EncodedPhotoResult[], caption: string, selfDestructSec?: number) => Promise<void> | void;
+  onSendPhotos?: (
+    photos: EncodedPhotoResult[],
+    caption: string,
+    selfDestructSec?: number,
+    options?: PhotoSendOptions
+  ) => Promise<void> | void;
   onSendFile?: (file: EncodedFileResult) => Promise<void> | void;
+  onSendMusic?: (track: {
+    dataUrl: string;
+    title: string;
+    artist: string;
+    durationSec: number;
+    fileSize: number;
+  }) => Promise<void> | void;
   onSendPoll?: (
     question: string,
     options: string[],
@@ -66,6 +90,7 @@ interface TelegramAttachSheetProps {
   onSendContact?: (user: UserProfile) => Promise<void> | void;
   onPickAvatar?: (dataUrl: string) => Promise<void> | void;
   canGiftPirozhki?: boolean;
+  isChannelPost?: boolean;
 }
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -85,6 +110,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   onClose,
   onSendPhotos,
   onSendFile,
+  onSendMusic,
   onSendPoll,
   onSendChecklist,
   onSendLocation,
@@ -92,6 +118,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   onSendContact,
   onPickAvatar,
   canGiftPirozhki = true,
+  isChannelPost = false,
 }) => {
   const { appTheme, me, usersMap, showToast } = useApp();
   const insets = useSafeAreaInsets();
@@ -99,12 +126,23 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   const [activeTab, setActiveTab] = useState<SheetTab>('gallery');
   const [photos, setPhotos] = useState<DevicePhotoItem[]>([]);
   const [files, setFiles] = useState<DeviceFileItem[]>([]);
+  const [audioTracks, setAudioTracks] = useState<DeviceAudioItem[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [loadingAudio, setLoadingAudio] = useState(false);
   const [photoPermDenied, setPhotoPermDenied] = useState(false);
   const [selectedUris, setSelectedUris] = useState<string[]>([]);
   const [caption, setCaption] = useState('');
   const [selfDestructSec, setSelfDestructSec] = useState(0);
+  const [photoSpoiler, setPhotoSpoiler] = useState(false);
+  const [captionAbove, setCaptionAbove] = useState(false);
+  const [sendAsAlbum, setSendAsAlbum] = useState(true);
+  const [paidCost, setPaidCost] = useState(0);
+  const [authorSig, setAuthorSig] = useState(false);
+  const [editorUri, setEditorUri] = useState<string | null>(null);
+  const [photoEditsMap, setPhotoEditsMap] = useState<Record<string, PhotoEditsData>>({});
+  const [musicArtist, setMusicArtist] = useState('');
+  const [musicTitle, setMusicTitle] = useState('');
   const [busy, setBusy] = useState(false);
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -139,6 +177,11 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       setSelectedUris([]);
       setCaption('');
       setSelfDestructSec(0);
+      setPhotoSpoiler(false);
+      setCaptionAbove(false);
+      setPaidCost(0);
+      setPhotoEditsMap({});
+      setEditorUri(null);
       setSearchOpen(false);
       setSearchQuery('');
       setBusy(false);
@@ -172,6 +215,12 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       }, 40);
       return () => clearTimeout(timer);
     }
+    if (activeTab === 'music' && audioTracks.length === 0 && !loadingAudio) {
+      const timer = setTimeout(() => {
+        loadAudio();
+      }, 40);
+      return () => clearTimeout(timer);
+    }
   }, [activeTab, visible]);
 
   const loadPhotos = async () => {
@@ -200,6 +249,45 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       showToast('Ошибка файлов', e?.message || 'Не удалось прочитать файлы', 'error');
     } finally {
       setLoadingFiles(false);
+    }
+  };
+
+  const loadAudio = async () => {
+    setLoadingAudio(true);
+    try {
+      const list = await getRecentDeviceAudio(40);
+      setAudioTracks(list || []);
+    } catch (_) {
+      setAudioTracks([]);
+    } finally {
+      setLoadingAudio(false);
+    }
+  };
+
+  const handlePickAudioTrack = async (item: DeviceAudioItem) => {
+    if (busy) return;
+    if (item.size > 6 * 1024 * 1024) {
+      showToast('Трек слишком большой', 'Максимум 6 МБ для MP3-трека', 'error');
+      return;
+    }
+    try {
+      setBusy(true);
+      const enc = await encodeDeviceFile(item.uri, 6 * 1024 * 1024);
+      const baseName = item.fileName.replace(/\.[^.]+$/, '');
+      await onSendMusic?.({
+        dataUrl: enc.dataUrl,
+        title: musicTitle.trim() || baseName || 'Аудиозапись',
+        artist: musicArtist.trim() || me?.nick || 'Nonsense Music',
+        durationSec: Math.max(1, Math.round((item.duration || 30000) / 1000)),
+        fileSize: enc.fileSize,
+      });
+      setMusicTitle('');
+      setMusicArtist('');
+      onClose();
+    } catch (e: any) {
+      showToast('Музыка', e?.message || 'Не удалось прикрепить трек', 'error');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -295,8 +383,8 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       if (prev.includes(item.uri)) {
         return prev.filter((u) => u !== item.uri);
       }
-      if (prev.length >= 6) {
-        showToast('Лимит', 'Можно выбрать до 6 фото за раз', 'info');
+      if (prev.length >= 10) {
+        showToast('Лимит', 'Можно выбрать до 10 фото в альбом', 'info');
         return prev;
       }
       return [...prev, item.uri];
@@ -314,9 +402,16 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
           dataUrl: enc.dataUrl,
           fileName: enc.fileName,
           fileSize: enc.fileSize,
+          edits: photoEditsMap[uri] || null,
         });
       }
-      await onSendPhotos?.(encodedList, caption.trim(), selfDestructSec);
+      await onSendPhotos?.(encodedList, caption.trim(), selfDestructSec, {
+        spoiler: photoSpoiler,
+        captionAbove,
+        asAlbum: sendAsAlbum && encodedList.length >= 2 && selfDestructSec === 0,
+        paidCost,
+        authorSig,
+      });
       onClose();
     } catch (e: any) {
       showToast('Ошибка отправки', e?.message || 'Не удалось сжать фото', 'error');
@@ -441,6 +536,8 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       ? 'Недавние'
       : activeTab === 'file'
       ? 'Файл'
+      : activeTab === 'music'
+      ? 'Музыка 🎵'
       : activeTab === 'poll'
       ? 'Опрос 2.0'
       : activeTab === 'checklist'
@@ -457,6 +554,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       : [
           { key: 'gallery', label: 'Фото', icon: 'images' },
           { key: 'file', label: 'Файл', icon: 'document' },
+          { key: 'music', label: 'Музыка', icon: 'musical-notes' },
           { key: 'poll', label: 'Опрос', icon: 'stats-chart' },
           { key: 'checklist', label: 'Задачи', icon: 'checkbox' },
           { key: 'location', label: 'Гео', icon: 'location' },
@@ -670,54 +768,157 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                       />
                     )}
 
-                    {/* Floating Telegram-style Caption + Send bar */}
+                    {/* Floating Telegram-style Caption + Photo Editor + Spoiler + Album Send bar */}
                     {mode === 'chat' && selectedUris.length > 0 && (
                       <GlassCard
                         radius={24}
                         strong
-                        style={[styles.sendBar, styles.sendBarInner, { borderColor: appTheme.accent + '66' }]}
+                        style={[styles.sendBar, { padding: 10, gap: 8, borderColor: appTheme.accent + '66' }]}
                       >
-                        <TextInput
-                          value={caption}
-                          onChangeText={setCaption}
-                          placeholder="Добавить подпись..."
-                          placeholderTextColor={appTheme.textSub}
-                          style={[styles.captionInput, { color: appTheme.text }]}
-                        />
-                        <TouchableOpacity
-                          onPress={() => {
-                            triggerHaptic(8);
-                            setSelfDestructSec((cur) => (cur === 0 ? 5 : cur === 5 ? 10 : cur === 10 ? 30 : 0));
-                          }}
-                          style={{
-                            paddingHorizontal: 10,
-                            height: 34,
-                            borderRadius: 17,
-                            backgroundColor: selfDestructSec > 0 ? 'rgba(249,115,22,0.28)' : 'rgba(255,255,255,0.08)',
-                            borderWidth: 1,
-                            borderColor: selfDestructSec > 0 ? '#f97316' : 'rgba(255,255,255,0.14)',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Text style={{ color: selfDestructSec > 0 ? '#fb923c' : appTheme.textSub, fontSize: 12, fontWeight: '800' }}>
-                            {selfDestructSec > 0 ? `🔥 ${selfDestructSec}с` : '🔥'}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={handleSendSelectedPhotos}
-                          disabled={busy}
-                          style={[styles.sendCircleBtn, { backgroundColor: appTheme.accent }]}
-                        >
-                          {busy ? (
-                            <ActivityIndicator size="small" color="#FFF" />
-                          ) : (
-                            <View style={styles.sendBtnRow}>
-                              <Ionicons name="arrow-up" size={18} color="#FFF" />
-                              <Text style={styles.sendCountText}>{selectedUris.length}</Text>
-                            </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                          <TouchableOpacity
+                            onPress={() => setEditorUri(selectedUris[0])}
+                            style={{
+                              paddingHorizontal: 10,
+                              paddingVertical: 5,
+                              borderRadius: 12,
+                              backgroundColor: photoEditsMap[selectedUris[0]] ? appTheme.accentSoft : 'rgba(255,255,255,0.08)',
+                              borderWidth: 1,
+                              borderColor: photoEditsMap[selectedUris[0]] ? appTheme.accent : 'rgba(255,255,255,0.14)',
+                            }}
+                          >
+                            <Text style={{ color: '#fff', fontSize: 11.5, fontWeight: '800' }}>🎨 Редактор</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => setPhotoSpoiler((v) => !v)}
+                            style={{
+                              paddingHorizontal: 10,
+                              paddingVertical: 5,
+                              borderRadius: 12,
+                              backgroundColor: photoSpoiler ? appTheme.accentSoft : 'rgba(255,255,255,0.08)',
+                              borderWidth: 1,
+                              borderColor: photoSpoiler ? appTheme.accent : 'rgba(255,255,255,0.14)',
+                            }}
+                          >
+                            <Text style={{ color: photoSpoiler ? appTheme.accent : '#cbd5e1', fontSize: 11.5, fontWeight: '800' }}>
+                              ✨ Под спойлер
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => setCaptionAbove((v) => !v)}
+                            style={{
+                              paddingHorizontal: 10,
+                              paddingVertical: 5,
+                              borderRadius: 12,
+                              backgroundColor: captionAbove ? appTheme.accentSoft : 'rgba(255,255,255,0.08)',
+                              borderWidth: 1,
+                              borderColor: captionAbove ? appTheme.accent : 'rgba(255,255,255,0.14)',
+                            }}
+                          >
+                            <Text style={{ color: captionAbove ? appTheme.accent : '#cbd5e1', fontSize: 11.5, fontWeight: '800' }}>
+                              {captionAbove ? '⬆️ Текст сверху' : '⬇️ Текст снизу'}
+                            </Text>
+                          </TouchableOpacity>
+
+                          {selectedUris.length >= 2 && (
+                            <TouchableOpacity
+                              onPress={() => setSendAsAlbum((v) => !v)}
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 12,
+                                backgroundColor: sendAsAlbum ? appTheme.accentSoft : 'rgba(255,255,255,0.08)',
+                                borderWidth: 1,
+                                borderColor: sendAsAlbum ? appTheme.accent : 'rgba(255,255,255,0.14)',
+                              }}
+                            >
+                              <Text style={{ color: sendAsAlbum ? appTheme.accent : '#cbd5e1', fontSize: 11.5, fontWeight: '800' }}>
+                                🖼️ {sendAsAlbum ? 'Альбомом' : 'По одной'}
+                              </Text>
+                            </TouchableOpacity>
                           )}
-                        </TouchableOpacity>
+
+                          {isChannelPost && (
+                            <>
+                              <TouchableOpacity
+                                onPress={() => setPaidCost((c) => (c === 0 ? 15 : c === 15 ? 50 : c === 50 ? 100 : 0))}
+                                style={{
+                                  paddingHorizontal: 10,
+                                  paddingVertical: 5,
+                                  borderRadius: 12,
+                                  backgroundColor: paidCost > 0 ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.08)',
+                                  borderWidth: 1,
+                                  borderColor: paidCost > 0 ? '#f59e0b' : 'rgba(255,255,255,0.14)',
+                                }}
+                              >
+                                <Text style={{ color: paidCost > 0 ? '#fbbf24' : '#cbd5e1', fontSize: 11.5, fontWeight: '800' }}>
+                                  🥟 {paidCost > 0 ? `${paidCost} пирожк.` : 'Платный пост'}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => setAuthorSig((v) => !v)}
+                                style={{
+                                  paddingHorizontal: 10,
+                                  paddingVertical: 5,
+                                  borderRadius: 12,
+                                  backgroundColor: authorSig ? appTheme.accentSoft : 'rgba(255,255,255,0.08)',
+                                  borderWidth: 1,
+                                  borderColor: authorSig ? appTheme.accent : 'rgba(255,255,255,0.14)',
+                                }}
+                              >
+                                <Text style={{ color: authorSig ? appTheme.accent : '#cbd5e1', fontSize: 11.5, fontWeight: '800' }}>
+                                  ✍️ Подпись автора
+                                </Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
+                        </ScrollView>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <TextInput
+                            value={caption}
+                            onChangeText={setCaption}
+                            placeholder="Добавить подпись..."
+                            placeholderTextColor={appTheme.textSub}
+                            style={[styles.captionInput, { color: appTheme.text }]}
+                          />
+                          <TouchableOpacity
+                            onPress={() => {
+                              triggerHaptic(8);
+                              setSelfDestructSec((cur) => (cur === 0 ? 5 : cur === 5 ? 10 : cur === 10 ? 30 : 0));
+                            }}
+                            style={{
+                              paddingHorizontal: 10,
+                              height: 34,
+                              borderRadius: 17,
+                              backgroundColor: selfDestructSec > 0 ? 'rgba(249,115,22,0.28)' : 'rgba(255,255,255,0.08)',
+                              borderWidth: 1,
+                              borderColor: selfDestructSec > 0 ? '#f97316' : 'rgba(255,255,255,0.14)',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Text style={{ color: selfDestructSec > 0 ? '#fb923c' : appTheme.textSub, fontSize: 12, fontWeight: '800' }}>
+                              {selfDestructSec > 0 ? `🔥 ${selfDestructSec}с` : '🔥'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={handleSendSelectedPhotos}
+                            disabled={busy}
+                            style={[styles.sendCircleBtn, { backgroundColor: appTheme.accent }]}
+                          >
+                            {busy ? (
+                              <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                              <View style={styles.sendBtnRow}>
+                                <Ionicons name="arrow-up" size={18} color="#FFF" />
+                                <Text style={styles.sendCountText}>{selectedUris.length}</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        </View>
                       </GlassCard>
                     )}
                   </>
@@ -801,6 +1002,75 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                         </TouchableOpacity>
                       );
                     }}
+                  />
+                )}
+
+                {activeTab === 'music' && (
+                  <FlatList
+                    data={audioTracks}
+                    keyExtractor={(a) => a.uri}
+                    contentContainerStyle={{ paddingBottom: 20, gap: 8 }}
+                    ListHeaderComponent={
+                      <View style={{ gap: 8, marginBottom: 8 }}>
+                        <Text style={[styles.sectionLabel, { color: appTheme.textSub }]}>
+                          ОБЛОЖКА И МЕТАДАННЫЕ ТРЕКА (НЕОБЯЗАТЕЛЬНО)
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TextInput
+                            value={musicArtist}
+                            onChangeText={setMusicArtist}
+                            placeholder="Исполнитель..."
+                            placeholderTextColor={appTheme.textSub}
+                            style={[styles.inputBox, { flex: 1, color: appTheme.text, backgroundColor: appTheme.glass, borderColor: appTheme.border }]}
+                          />
+                          <TextInput
+                            value={musicTitle}
+                            onChangeText={setMusicTitle}
+                            placeholder="Название трека..."
+                            placeholderTextColor={appTheme.textSub}
+                            style={[styles.inputBox, { flex: 1, color: appTheme.text, backgroundColor: appTheme.glass, borderColor: appTheme.border }]}
+                          />
+                        </View>
+                        <Text style={[styles.sectionLabel, { color: appTheme.textSub, marginTop: 4 }]}>
+                          АУДИОФАЙЛЫ НА УСТРОЙСТВЕ ({audioTracks.length})
+                        </Text>
+                        {loadingAudio && <ActivityIndicator color={appTheme.accent} />}
+                      </View>
+                    }
+                    ListEmptyComponent={
+                      !loadingAudio ? (
+                        <Text style={[styles.emptySub, { color: appTheme.textSub, marginTop: 18 }]}>
+                          MP3 / аудиофайлы на устройстве не найдены
+                        </Text>
+                      ) : null
+                    }
+                    renderItem={({ item: tr }) => (
+                      <TouchableOpacity
+                        style={[
+                          styles.fileRow,
+                          {
+                            backgroundColor: appTheme.glass,
+                            borderColor: appTheme.border,
+                            borderWidth: 1,
+                            borderRadius: 16,
+                          },
+                        ]}
+                        onPress={() => handlePickAudioTrack(tr)}
+                      >
+                        <View style={[styles.fileBadge, { backgroundColor: 'rgba(236,72,153,0.22)' }]}>
+                          <Text style={{ fontSize: 18 }}>🎵</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.fileName, { color: appTheme.text }]} numberOfLines={1}>
+                            {tr.fileName}
+                          </Text>
+                          <Text style={[styles.fileSize, { color: appTheme.textSub }]}>
+                            {formatBytes(tr.size)} · {Math.max(1, Math.round((tr.duration || 0) / 1000))}с
+                          </Text>
+                        </View>
+                        <Ionicons name="musical-note" size={18} color={appTheme.accent} />
+                      </TouchableOpacity>
+                    )}
                   />
                 )}
 
@@ -1136,6 +1406,18 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                 <View style={styles.busyOverlay}>
                   <ActivityIndicator size="large" color={appTheme.accent} />
                 </View>
+              )}
+
+              {!!editorUri && (
+                <PhotoEditorModal
+                  visible={!!editorUri}
+                  imageUri={editorUri}
+                  initialEdits={photoEditsMap[editorUri] || null}
+                  onClose={() => setEditorUri(null)}
+                  onSaveEdits={(edits) => {
+                    setPhotoEditsMap((prev) => ({ ...prev, [editorUri]: edits }));
+                  }}
+                />
               )}
             </Animated.View>
           </TouchableWithoutFeedback>

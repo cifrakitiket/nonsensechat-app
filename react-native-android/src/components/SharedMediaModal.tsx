@@ -26,7 +26,7 @@ interface SharedMediaModalProps {
   onPlayVoice: (msg: any) => void;
 }
 
-type MediaTab = 'photos' | 'files' | 'voice' | 'links';
+type MediaTab = 'photos' | 'music' | 'files' | 'voice' | 'links';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const TILE_SIZE = Math.floor((SCREEN_W - 36) / 3);
@@ -47,20 +47,33 @@ export const SharedMediaModal: React.FC<SharedMediaModalProps> = ({
   onPlayVoice,
 }) => {
   const insets = useSafeAreaInsets();
-  const { appTheme, showToast } = useApp();
+  const { appTheme, showToast, playGlobalAudio } = useApp();
   const [tab, setTab] = useState<MediaTab>('photos');
 
-  const photos = useMemo(
-    () =>
-      messages
-        .filter((m) => !m.destroyed && !m.selfDestructSec && (m.photoUrl || m.imageUrl || m.url))
-        .map((m) => ({
+  const photos = useMemo(() => {
+    const out: Array<{ id: string; uri: string; author: string; at: number }> = [];
+    messages.forEach((m) => {
+      if (m.destroyed || m.selfDestructSec || m.paidCost) return;
+      if (Array.isArray(m.albumPhotos)) {
+        m.albumPhotos.forEach((ap: any, idx: number) => {
+          if (ap?.url) {
+            out.push({ id: `${m.id}_a_${idx}`, uri: ap.url, author: m.author || '', at: m._atMs || 0 });
+          }
+        });
+      } else if (m.photoUrl || m.imageUrl || m.url) {
+        out.push({
           id: m.id,
           uri: m.photoUrl || m.imageUrl || m.url,
           author: m.author || '',
           at: m._atMs || 0,
-        }))
-        .reverse(),
+        });
+      }
+    });
+    return out.reverse();
+  }, [messages]);
+
+  const musicTracks = useMemo(
+    () => messages.filter((m) => m.type === 'music' && m.audioUrl).reverse(),
     [messages]
   );
 
@@ -97,8 +110,9 @@ export const SharedMediaModal: React.FC<SharedMediaModalProps> = ({
 
   const tabs: Array<{ key: MediaTab; label: string; count: number }> = [
     { key: 'photos', label: 'Фото', count: photos.length },
+    { key: 'music', label: 'Музыка', count: musicTracks.length },
     { key: 'files', label: 'Файлы', count: files.length },
-    { key: 'voice', label: 'Голосовые', count: voices.length },
+    { key: 'voice', label: 'ГС', count: voices.length },
     { key: 'links', label: 'Ссылки', count: links.length },
   ];
 
@@ -165,6 +179,60 @@ export const SharedMediaModal: React.FC<SharedMediaModalProps> = ({
                   <Image source={{ uri: item.uri }} style={styles.photoTile} />
                 </TouchableOpacity>
               )}
+            />
+          )}
+
+          {tab === 'music' && (
+            <FlatList
+              key="music_list"
+              data={musicTracks}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ padding: 12, gap: 8 }}
+              ListEmptyComponent={<Text style={[styles.empty, { color: appTheme.textSub }]}>Музыкальных треков пока нет</Text>}
+              renderItem={({ item }) => {
+                const queue = musicTracks.map((tr) => ({
+                  id: tr.id,
+                  chatId: '',
+                  chatName,
+                  title: `${tr.musicArtist || 'Артист'} — ${tr.musicTitle || 'Трек'}`,
+                  audioUrl: tr.audioUrl,
+                  isMusic: true,
+                  durationSec: tr.duration || 30,
+                }));
+                return (
+                  <TouchableOpacity
+                    onPress={() => {
+                      playGlobalAudio(
+                        {
+                          id: item.id,
+                          chatId: '',
+                          chatName,
+                          title: `${item.musicArtist || 'Артист'} — ${item.musicTitle || 'Трек'}`,
+                          audioUrl: item.audioUrl,
+                          isMusic: true,
+                          durationSec: item.duration || 30,
+                        },
+                        queue
+                      );
+                    }}
+                  >
+                    <GlassCard radius={18} style={styles.rowCard}>
+                      <View style={[styles.iconBox, { backgroundColor: 'rgba(236,72,153,0.22)' }]}>
+                        <Text style={{ fontSize: 20 }}>🎵</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.rowTitle, { color: appTheme.text }]} numberOfLines={1}>
+                          {item.musicTitle || 'Аудиозапись'}
+                        </Text>
+                        <Text style={[styles.rowSub, { color: appTheme.textSub }]} numberOfLines={1}>
+                          {item.musicArtist || item.author || 'Исполнитель'}
+                        </Text>
+                      </View>
+                      <Ionicons name="play-circle" size={26} color={appTheme.accent} />
+                    </GlassCard>
+                  </TouchableOpacity>
+                );
+              }}
             />
           )}
 

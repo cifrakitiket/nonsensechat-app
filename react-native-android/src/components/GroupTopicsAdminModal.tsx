@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Modal,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -28,11 +29,14 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
   chat,
 }) => {
   const { me, usersMap, appTheme, showToast } = useApp();
-  const [tab, setTab] = useState<'topics' | 'admins' | 'slow'>('topics');
+  const [tab, setTab] = useState<'topics' | 'admins' | 'slow' | 'invites' | 'logs'>('topics');
   const [topicName, setTopicName] = useState('');
   const [topicIcon, setTopicIcon] = useState('💬');
   const [titleUid, setTitleUid] = useState<string | null>(null);
   const [titleInput, setTitleInput] = useState('');
+  const [invMaxUses, setInvMaxUses] = useState<number>(0);
+  const [invExpireHours, setInvExpireHours] = useState<number>(0);
+  const [invApproval, setInvApproval] = useState<boolean>(false);
 
   const isAdmin =
     !!me &&
@@ -53,6 +57,60 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
     : [];
   const adminTitles = chat.adminTitles && typeof chat.adminTitles === 'object' ? chat.adminTitles : {};
   const slowSec = Number(chat.slowModeSec) || 0;
+  const invitesList = chat.invites && typeof chat.invites === 'object'
+    ? Object.keys(chat.invites).map((k) => ({ code: k, ...chat.invites[k] }))
+    : [];
+  const joinRequestsList = chat.joinRequests && typeof chat.joinRequests === 'object'
+    ? Object.keys(chat.joinRequests).map((k) => ({ uid: k, ...chat.joinRequests[k] }))
+    : [];
+  const adminLogsList = chat.adminLogs && typeof chat.adminLogs === 'object'
+    ? Object.keys(chat.adminLogs)
+        .map((k) => ({ id: k, ...chat.adminLogs[k] }))
+        .sort((a, b) => (b.at || 0) - (a.at || 0))
+    : [];
+
+  const logAction = async (text: string) => {
+    const lRef = push(ref(rtdb, `chats/${chat.id}/adminLogs`));
+    await set(lRef, {
+      actor: me?.nick || 'Админ',
+      text,
+      at: Date.now(),
+    }).catch(() => {});
+  };
+
+  const handleCreateInvite = async () => {
+    if (!isAdmin) return;
+    const code = `nc_${Math.random().toString(36).slice(2, 8)}`;
+    const payload = {
+      code,
+      chatId: chat.id,
+      chatName: chat.name || 'Сообщество',
+      maxUses: invMaxUses,
+      usedCount: 0,
+      expiresAt: invExpireHours > 0 ? Date.now() + invExpireHours * 3600 * 1000 : 0,
+      requireApproval: invApproval,
+      createdBy: me?.nick || 'Админ',
+      createdAt: Date.now(),
+    };
+    await set(ref(rtdb, `chat_invites/${code}`), payload);
+    await set(ref(rtdb, `chats/${chat.id}/invites/${code}`), payload);
+    await logAction(`Создал инвайт-ссылку ${code}${invApproval ? ' (по заявкам)' : ''}`);
+    triggerHaptic(14);
+    showToast('Инвайт создан 🔗', `Код: ${code}`, 'success');
+  };
+
+  const handleApproveJoin = async (reqUid: string, approve: boolean) => {
+    if (!isAdmin) return;
+    if (approve) {
+      const nextMembers = Array.from(new Set([...(chat.members || []), reqUid]));
+      await update(ref(rtdb, `chats/${chat.id}`), { members: nextMembers });
+      await logAction(`Одобрил заявку @${usersMap[reqUid]?.nick || reqUid.slice(0, 6)}`);
+    } else {
+      await logAction(`Отклонил заявку @${usersMap[reqUid]?.nick || reqUid.slice(0, 6)}`);
+    }
+    await remove(ref(rtdb, `chats/${chat.id}/joinRequests/${reqUid}`));
+    triggerHaptic(12);
+  };
 
   const handleAddTopic = async () => {
     const clean = topicName.trim();
@@ -60,6 +118,7 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
     const tRef = push(ref(rtdb, `chats/${chat.id}/topics`));
     await set(tRef, { name: clean, icon: topicIcon, createdAt: Date.now() });
     await update(ref(rtdb, `chats/${chat.id}`), { topicsEnabled: true });
+    await logAction(`Создал тему «${topicIcon} ${clean}»`);
     setTopicName('');
     triggerHaptic(12);
   };
@@ -70,6 +129,7 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
       ? adminsList.filter((u) => u !== uid)
       : [...adminsList, uid];
     await update(ref(rtdb, `chats/${chat.id}`), { admins: next });
+    await logAction(`${adminsList.includes(uid) ? 'Снял админку с' : 'Назначил админом'} @${usersMap[uid]?.nick || uid.slice(0, 6)}`);
     triggerHaptic(10);
   };
 
@@ -78,6 +138,7 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
     await update(ref(rtdb, `chats/${chat.id}/adminTitles`), {
       [uid]: titleInput.trim() || null,
     });
+    await logAction(`Изменил титул @${usersMap[uid]?.nick || uid.slice(0, 6)} → «${titleInput.trim() || 'без титула'}»`);
     setTitleUid(null);
     setTitleInput('');
     showToast('Титул сохранён 👑', undefined, 'success');
@@ -94,6 +155,7 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
       bannedUids: nextBanned,
       members: nextMembers,
     });
+    await logAction(`${isBanned ? 'Разбанил' : 'Забанил'} @${usersMap[uid]?.nick || uid.slice(0, 6)}`);
     triggerHaptic(14);
     showToast(isBanned ? 'Разбанен' : 'Заблокирован в группе 🚫', undefined, 'info');
   };
@@ -109,11 +171,13 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.tabRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
             {[
               { k: 'topics', l: '# Темы' },
-              { k: 'admins', l: '👑 Админы и ЧС' },
+              { k: 'admins', l: '👑 Админы' },
+              { k: 'invites', l: `🔗 Инвайты${joinRequestsList.length ? ` (${joinRequestsList.length})` : ''}` },
               { k: 'slow', l: '🐢 Слоумод' },
+              { k: 'logs', l: '📋 Журнал' },
             ].map((t) => {
               const act = tab === t.k;
               return (
@@ -123,6 +187,7 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
                   style={[
                     styles.tabBtn,
                     {
+                      paddingHorizontal: 12,
                       backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.05)',
                       borderColor: act ? appTheme.accent : appTheme.border,
                     },
@@ -134,7 +199,7 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
 
           <ScrollView style={{ maxHeight: 370 }} contentContainerStyle={{ gap: 10, paddingBottom: 12 }}>
             {tab === 'topics' && (
@@ -312,6 +377,7 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
                         disabled={!isAdmin}
                         onPress={() => {
                           update(ref(rtdb, `chats/${chat.id}`), { slowModeSec: opt.sec });
+                          logAction(`Установил медленный режим: ${opt.label}`);
                           triggerHaptic(10);
                         }}
                         style={[
@@ -327,6 +393,150 @@ export const GroupTopicsAdminModal: React.FC<GroupTopicsAdminModalProps> = ({
                     );
                   })}
                 </View>
+              </View>
+            )}
+
+            {tab === 'invites' && (
+              <View style={{ gap: 10 }}>
+                {isAdmin && (
+                  <View style={[styles.memberRow, { borderColor: appTheme.border, flexDirection: 'column', alignItems: 'stretch', gap: 8 }]}>
+                    <Text style={{ color: appTheme.text, fontWeight: '800', fontSize: 13.5 }}>
+                      🔗 Создать пригласительную ссылку
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {[
+                        { v: 0, l: 'Без лимита' },
+                        { v: 5, l: 'До 5 чел.' },
+                        { v: 25, l: 'До 25 чел.' },
+                      ].map((m) => (
+                        <TouchableOpacity
+                          key={m.v}
+                          onPress={() => setInvMaxUses(m.v)}
+                          style={[
+                            styles.miniBtn,
+                            { backgroundColor: invMaxUses === m.v ? appTheme.accentSoft : 'rgba(255,255,255,0.06)' },
+                          ]}
+                        >
+                          <Text style={{ color: invMaxUses === m.v ? appTheme.accent : appTheme.textSub, fontSize: 11.5, fontWeight: '800' }}>
+                            {m.l}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                      {[
+                        { v: 0, l: 'Бессрочно' },
+                        { v: 24, l: '24 часа' },
+                        { v: 168, l: '7 дней' },
+                      ].map((e) => (
+                        <TouchableOpacity
+                          key={e.v}
+                          onPress={() => setInvExpireHours(e.v)}
+                          style={[
+                            styles.miniBtn,
+                            { backgroundColor: invExpireHours === e.v ? appTheme.accentSoft : 'rgba(255,255,255,0.06)' },
+                          ]}
+                        >
+                          <Text style={{ color: invExpireHours === e.v ? appTheme.accent : appTheme.textSub, fontSize: 11.5, fontWeight: '800' }}>
+                            {e.l}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <View style={styles.switchRow}>
+                      <Text style={{ color: appTheme.textSub, fontSize: 12.5, flex: 1 }}>
+                        Вход только после одобрения заявки админом
+                      </Text>
+                      <Switch
+                        value={invApproval}
+                        onValueChange={setInvApproval}
+                        trackColor={{ false: 'rgba(255,255,255,0.1)', true: appTheme.accent }}
+                        thumbColor="#fff"
+                      />
+                    </View>
+                    <TouchableOpacity
+                      onPress={handleCreateInvite}
+                      style={[styles.addBtn, { backgroundColor: appTheme.accent }]}
+                    >
+                      <Text style={{ color: '#000', fontWeight: '900' }}>＋ Сгенерировать ссылку</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {joinRequestsList.length > 0 && (
+                  <>
+                    <Text style={{ color: '#fbbf24', fontWeight: '800', fontSize: 12 }}>
+                      ЗАЯВКИ НА ВСТУПЛЕНИЕ ({joinRequestsList.length})
+                    </Text>
+                    {joinRequestsList.map((jr: any) => (
+                      <View key={jr.uid} style={[styles.memberRow, { borderColor: appTheme.border }]}>
+                        <FramedAvatar uri={jr.avatar} name={jr.nick || '?'} size={34} />
+                        <Text style={{ color: '#fff', fontWeight: '700', flex: 1 }}>@{jr.nick || jr.uid.slice(0, 6)}</Text>
+                        {isAdmin && (
+                          <View style={{ flexDirection: 'row', gap: 6 }}>
+                            <TouchableOpacity
+                              onPress={() => handleApproveJoin(jr.uid, true)}
+                              style={[styles.miniBtn, { backgroundColor: '#22c55e' }]}
+                            >
+                              <Text style={{ color: '#000', fontWeight: '900', fontSize: 11.5 }}>Принять</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleApproveJoin(jr.uid, false)}
+                              style={[styles.miniBtn, { backgroundColor: 'rgba(239,68,68,0.2)' }]}
+                            >
+                              <Text style={{ color: '#f87171', fontWeight: '800', fontSize: 11.5 }}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                  </>
+                )}
+
+                {invitesList.map((inv: any) => (
+                  <TouchableOpacity
+                    key={inv.code}
+                    onPress={() =>
+                      Share.share({
+                        message: `Присоединяйся в «${chat.name || 'Сообщество'}» в NonsenseChat! Код инвайта: ${inv.code} (nonsensechat://join/${inv.code})`,
+                      }).catch(() => {})
+                    }
+                    style={[styles.memberRow, { borderColor: appTheme.border }]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: appTheme.accent, fontWeight: '900', fontSize: 13.5 }}>
+                        🔗 {inv.code}
+                      </Text>
+                      <Text style={{ color: appTheme.textSub, fontSize: 11.5 }}>
+                        Вступлений: {inv.usedCount || 0}
+                        {inv.maxUses ? `/${inv.maxUses}` : ''} · {inv.requireApproval ? 'По заявкам' : 'Свободный вход'}
+                      </Text>
+                    </View>
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Поделиться ↗</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {tab === 'logs' && (
+              <View style={{ gap: 8 }}>
+                {adminLogsList.length === 0 ? (
+                  <Text style={{ color: appTheme.textSub, textAlign: 'center', marginTop: 18 }}>
+                    Журнал недавних действий пока пуст
+                  </Text>
+                ) : (
+                  adminLogsList.map((lg: any) => (
+                    <View key={lg.id} style={[styles.memberRow, { borderColor: appTheme.border }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: appTheme.accent, fontWeight: '800', fontSize: 12 }}>
+                          👑 {lg.actor}
+                        </Text>
+                        <Text style={{ color: '#e2e8f0', fontSize: 13, marginTop: 2 }}>{lg.text}</Text>
+                      </View>
+                      <Text style={{ color: appTheme.textSub, fontSize: 11 }}>
+                        {lg.at ? new Date(lg.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </Text>
+                    </View>
+                  ))
+                )}
               </View>
             )}
           </ScrollView>

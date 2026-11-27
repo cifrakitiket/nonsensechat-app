@@ -9,7 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ref, onValue, push, set, remove } from 'firebase/database';
+import { ref, onValue, push, set, remove, update } from 'firebase/database';
 import { rtdb } from '../services/firebase';
 import { useApp } from '../context/AppContext';
 import { CREATOR_UID, PROFILE_THEMES_CATALOG } from '../constants/catalogs';
@@ -170,6 +170,62 @@ export default function UserProfileScreen({ route, navigation }: any) {
                 {user.online ? '● В сети' : 'Не в сети'} · @{user.nickLower || user.nick}
               </Text>
             </View>
+
+            {!!user.linkedChannelId && chats.find((c) => c.id === user.linkedChannelId) ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[styles.bioBox, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: theme.border }]}
+                onPress={() => {
+                  const ch = chats.find((c) => c.id === user.linkedChannelId);
+                  if (ch) navigation.navigate('ChatRoom', { chatId: ch.id, name: ch.name || 'Канал' });
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.bioLabel, { color: theme.accent }]}>📢 ЛИЧНЫЙ КАНАЛ</Text>
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14.5 }}>
+                    {chats.find((c) => c.id === user.linkedChannelId)?.name || 'Канал автора'}
+                  </Text>
+                </View>
+                <Text style={{ color: theme.accent, fontWeight: '800', fontSize: 13 }}>Открыть ›</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {!!user.bday && (
+              <View style={[styles.bioBox, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(245,158,11,0.14)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)' }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.bioLabel, { color: '#fbbf24' }]}>🎂 ДЕНЬ РОЖДЕНИЯ</Text>
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{user.bday}</Text>
+                </View>
+                {!isSelf && (
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#f59e0b', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999 }}
+                    onPress={async () => {
+                      const chat = await openOrCreateDm(resolvedUid);
+                      if (chat && me) {
+                        const mRef = push(ref(rtdb, `messages/${chat.id}`));
+                        const txt = `🎂🎉 С Днём Рождения, @${user.nick}! Желаю всего самого кайфового!`;
+                        await set(mRef, {
+                          uid: me.uid,
+                          author: me.nick,
+                          at: Date.now(),
+                          type: 'text',
+                          text: txt,
+                          effect: '🎉',
+                        });
+                        await update(ref(rtdb, `chats/${chat.id}`), {
+                          lastMsg: txt,
+                          lastMsgAt: Date.now(),
+                          lastMsgUid: me.uid,
+                        });
+                        navigation.navigate('ChatRoom', { chatId: chat.id, name: user.nick });
+                      }
+                    }}
+                  >
+                    <Text style={{ color: '#000', fontWeight: '900', fontSize: 12 }}>🎉 Поздравить</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             {!!user.bio && (
               <View style={styles.bioBox}>

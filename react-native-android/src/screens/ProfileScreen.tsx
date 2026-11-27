@@ -29,6 +29,8 @@ import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
 import { ProfileQrAndNotesModal } from '../components/ProfileQrAndNotesModal';
 import { StorageAndPrivacyModal } from '../components/StorageAndPrivacyModal';
+import { AccountsDevicesHiddenModal } from '../components/AccountsDevicesHiddenModal';
+import { PowerTemplatesModal } from '../components/PowerTemplatesModal';
 import { AppThemeKey, LIQUID_THEMES, RADII } from '../theme/liquidGlass';
 
 export default function ProfileScreen({ navigation }: any) {
@@ -62,6 +64,8 @@ export default function ProfileScreen({ navigation }: any) {
   const [pinInput, setPinInput] = useState('');
   const [showQrModal, setShowQrModal] = useState(false);
   const [showStoragePrivacyModal, setShowStoragePrivacyModal] = useState(false);
+  const [showAccountsModal, setShowAccountsModal] = useState(false);
+  const [showPowerModal, setShowPowerModal] = useState(false);
 
   if (!me) return null;
 
@@ -332,6 +336,24 @@ export default function ProfileScreen({ navigation }: any) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setShowAccountsModal(true)}
+            >
+              <Text style={styles.settingIcon}>🔄</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Мультиаккаунт, Сеансы и Сейф 🕵️</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setShowPowerModal(true)}
+            >
+              <Text style={styles.settingIcon}>🔋</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Энергосбережение и /шаблоны</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.settingItem, { borderBottomWidth: 0 }]}
               onPress={() =>
                 Share.share({
@@ -524,6 +546,16 @@ export default function ProfileScreen({ navigation }: any) {
       <StorageAndPrivacyModal
         visible={showStoragePrivacyModal}
         onClose={() => setShowStoragePrivacyModal(false)}
+      />
+
+      <AccountsDevicesHiddenModal
+        visible={showAccountsModal}
+        onClose={() => setShowAccountsModal(false)}
+      />
+
+      <PowerTemplatesModal
+        visible={showPowerModal}
+        onClose={() => setShowPowerModal(false)}
       />
 
       {/* PIN Setup Modal */}

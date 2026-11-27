@@ -9,7 +9,18 @@ import {
   signOut,
 } from 'firebase/auth';
 import { ref, onValue, get, set, update, push, remove } from 'firebase/database';
-import { AppUpdateInfo, auth, checkVkCloudUpdate, rtdb, triggerHaptic } from '../services/firebase';
+import {
+  AppUpdateInfo,
+  auth,
+  checkVkCloudUpdate,
+  getVoicePlaybackStatus,
+  playVoiceMessage,
+  rtdb,
+  seekVoicePlayback,
+  setVoicePlaybackSpeed,
+  stopVoiceMessage,
+  triggerHaptic,
+} from '../services/firebase';
 import { CREATOR_UID } from '../constants/catalogs';
 import { AppThemeKey, LIQUID_THEMES, LiquidTheme } from '../theme/liquidGlass';
 
@@ -38,6 +49,7 @@ export interface UserProfile {
   privacyLastSeen?: 'everybody' | 'contacts' | 'nobody';
   avatarHistory?: string[];
   blockedUids?: string[];
+  linkedChannelId?: string;
 }
 
 export interface FriendRequestItem {
@@ -123,7 +135,33 @@ export function normalizeUser(uid: string, raw: any): UserProfile {
     privacyLastSeen: data.privacyLastSeen || 'everybody',
     avatarHistory: toArray<string>(data.avatarHistory),
     blockedUids: toArray<string>(data.blockedUids),
+    linkedChannelId: data.linkedChannelId || '',
   };
+}
+
+export interface GlobalAudioTrack {
+  id: string;
+  chatId: string;
+  chatName: string;
+  title: string;
+  subtitle?: string;
+  audioUrl: string;
+  isMusic?: boolean;
+  durationSec?: number;
+}
+
+export interface QuickTemplateItem {
+  id: string;
+  cmd: string;
+  text: string;
+}
+
+export interface SavedAccountEntry {
+  uid: string;
+  email: string;
+  nick: string;
+  avatar?: string;
+  savedPass?: string;
 }
 
 export interface DialogButton {
@@ -246,6 +284,34 @@ interface AppContextValue {
   activeCallPeer: { uid: string; nick: string; avatar?: string; isVideo: boolean; chatId?: string } | null;
   startCall: (peer: { uid: string; nick: string; avatar?: string; isVideo: boolean; chatId?: string }) => void;
   endActiveCallTrigger: () => void;
+  // Wave 3 Telegram Deep Features
+  powerSaveMode: boolean;
+  setPowerSaveMode: (val: boolean) => void;
+  quickTemplates: QuickTemplateItem[];
+  saveQuickTemplate: (cmd: string, text: string) => void;
+  deleteQuickTemplate: (id: string) => void;
+  chatSoundTones: Record<string, string>;
+  setChatSoundTone: (chatId: string, tone: string) => void;
+  hiddenVaultChatIds: string[];
+  vaultPasscode: string;
+  toggleVaultChat: (chatId: string) => void;
+  setVaultPasscode: (code: string) => void;
+  savedAccounts: SavedAccountEntry[];
+  switchSavedAccount: (acc: SavedAccountEntry) => Promise<void>;
+  removeSavedAccount: (uid: string) => void;
+  deviceSessionId: string;
+  globalAudioTrack: GlobalAudioTrack | null;
+  globalAudioPlaying: boolean;
+  globalAudioSpeed: 1 | 1.5 | 2;
+  globalAudioProgress: number;
+  playGlobalAudio: (track: GlobalAudioTrack, queue?: GlobalAudioTrack[]) => void;
+  toggleGlobalAudioPause: () => void;
+  closeGlobalAudio: () => void;
+  cycleGlobalAudioSpeed: () => void;
+  seekGlobalAudio: (ratio: number) => void;
+  joinChatByInvite: (inviteCode: string) => Promise<{ joined: boolean; pending?: boolean; chat?: ChatItem }>;
+  unlockPaidPostWithPirozhki: (chatId: string, msgId: string, authorUid: string, cost: number) => Promise<void>;
+  boostChannelWithPirozhki: (chatId: string, cost?: number) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -288,6 +354,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isVideo: boolean;
     chatId?: string;
   } | null>(null);
+
+  // Wave 3 states
+  const [powerSaveMode, setPowerSaveModeState] = useState<boolean>(false);
+  const [quickTemplates, setQuickTemplates] = useState<QuickTemplateItem[]>([
+    { id: 'tpl_1', cmd: 'привет', text: 'Привет! Как дела? 👋' },
+    { id: 'tpl_2', cmd: 'спс', text: 'Спасибо большое! 🤝' },
+    { id: 'tpl_3', cmd: 'скоро', text: 'Сейчас занят, отвечу через пару минут ⏳' },
+  ]);
+  const [chatSoundTones, setChatSoundTones] = useState<Record<string, string>>({});
+  const [hiddenVaultChatIds, setHiddenVaultChatIds] = useState<string[]>([]);
+  const [vaultPasscode, setVaultPasscodeState] = useState<string>('7777');
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccountEntry[]>([]);
+  const [deviceSessionId, setDeviceSessionId] = useState<string>('dev_android_main');
+  const lastAuthPassRef = useRef<string>('');
+
+  // Global Floating Audio Player state
+  const [globalAudioTrack, setGlobalAudioTrack] = useState<GlobalAudioTrack | null>(null);
+  const [globalAudioPlaying, setGlobalAudioPlaying] = useState<boolean>(false);
+  const [globalAudioSpeed, setGlobalAudioSpeed] = useState<1 | 1.5 | 2>(1);
+  const [globalAudioProgress, setGlobalAudioProgress] = useState<number>(0);
+  const audioQueueRef = useRef<GlobalAudioTrack[]>([]);
+  const audioStartedAtRef = useRef<number>(0);
+
   const mutedChatIdsRef = useRef<string[]>([]);
 
   useEffect(() => {
@@ -314,6 +403,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (p.personalNotes && typeof p.personalNotes === 'object') setPersonalNotes(p.personalNotes);
           if (Array.isArray(p.favoriteStickers)) setFavoriteStickers(p.favoriteStickers);
           if (Array.isArray(p.recentStickers)) setRecentStickers(p.recentStickers);
+          if (typeof p.powerSaveMode === 'boolean') setPowerSaveModeState(p.powerSaveMode);
+          if (Array.isArray(p.quickTemplates) && p.quickTemplates.length > 0) setQuickTemplates(p.quickTemplates);
+          if (p.chatSoundTones && typeof p.chatSoundTones === 'object') setChatSoundTones(p.chatSoundTones);
+          if (Array.isArray(p.hiddenVaultChatIds)) setHiddenVaultChatIds(p.hiddenVaultChatIds);
+          if (typeof p.vaultPasscode === 'string' && p.vaultPasscode) setVaultPasscodeState(p.vaultPasscode);
+          if (Array.isArray(p.savedAccounts)) setSavedAccounts(p.savedAccounts);
+          if (typeof p.deviceSessionId === 'string' && p.deviceSessionId) {
+            setDeviceSessionId(p.deviceSessionId);
+          } else {
+            setDeviceSessionId(`dev_${Math.random().toString(36).slice(2, 9)}`);
+          }
+        } else {
+          setDeviceSessionId(`dev_${Math.random().toString(36).slice(2, 9)}`);
         }
       } catch (_) {}
       tgPrefsLoadedRef.current = true;
@@ -336,6 +438,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         personalNotes,
         favoriteStickers,
         recentStickers,
+        powerSaveMode,
+        quickTemplates,
+        chatSoundTones,
+        hiddenVaultChatIds,
+        vaultPasscode,
+        savedAccounts,
+        deviceSessionId,
       });
       NativeModules.NativeStorageModule?.setItem?.('nc_tg_prefs_v1', payload);
     } catch (_) {}
@@ -352,6 +461,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     personalNotes,
     favoriteStickers,
     recentStickers,
+    powerSaveMode,
+    quickTemplates,
+    chatSoundTones,
+    hiddenVaultChatIds,
+    vaultPasscode,
+    savedAccounts,
+    deviceSessionId,
   ]);
 
   const toggleIdInList = (setter: React.Dispatch<React.SetStateAction<string[]>>, id: string) => {
@@ -499,6 +615,229 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const endActiveCallTrigger = () => {
     setActiveCallPeer(null);
+  };
+
+  // Sync current account into savedAccounts (up to 3) & register active device session
+  useEffect(() => {
+    if (!me?.uid) return;
+    const email = me.email || authUser?.email || '';
+    if (email) {
+      setSavedAccounts((prev) => {
+        const existing = prev.find((a) => a.uid === me.uid);
+        const entry: SavedAccountEntry = {
+          uid: me.uid,
+          email,
+          nick: me.nick,
+          avatar: me.avatar || '',
+          savedPass: lastAuthPassRef.current || existing?.savedPass || '',
+        };
+        return [entry, ...prev.filter((a) => a.uid !== me.uid)].slice(0, 3);
+      });
+    }
+    if (deviceSessionId) {
+      set(ref(rtdb, `users/${me.uid}/sessions/${deviceSessionId}`), {
+        id: deviceSessionId,
+        device: Platform.OS === 'android' ? 'Android · NonsenseChat v5.3' : 'NonsenseChat Client',
+        lastActive: Date.now(),
+      }).catch(() => {});
+    }
+  }, [me?.uid, me?.nick, me?.avatar, deviceSessionId]);
+
+  // Global Floating Audio / Voice Player status poller & auto-next queue
+  useEffect(() => {
+    if (!globalAudioTrack || !globalAudioPlaying) return;
+    const iv = setInterval(async () => {
+      const st = await getVoicePlaybackStatus();
+      if (st.isPlaying && st.durationMs > 0) {
+        setGlobalAudioProgress(Math.min(1, st.positionMs / st.durationMs));
+      } else if (!st.isPlaying && st.positionMs === 0 && Date.now() - audioStartedAtRef.current > 750) {
+        const queue = audioQueueRef.current;
+        const curIdx = queue.findIndex((q) => q.id === globalAudioTrack.id);
+        if (curIdx >= 0 && curIdx + 1 < queue.length) {
+          const nextTrack = queue[curIdx + 1];
+          audioStartedAtRef.current = Date.now();
+          setGlobalAudioTrack(nextTrack);
+          setGlobalAudioProgress(0);
+          playVoiceMessage(nextTrack.audioUrl, globalAudioSpeed, 0);
+        } else {
+          setGlobalAudioPlaying(false);
+          setGlobalAudioProgress(0);
+        }
+      }
+    }, 220);
+    return () => clearInterval(iv);
+  }, [globalAudioTrack, globalAudioPlaying, globalAudioSpeed]);
+
+  const playGlobalAudio = (track: GlobalAudioTrack, queue?: GlobalAudioTrack[]) => {
+    if (!track?.audioUrl) return;
+    audioQueueRef.current = queue && queue.length > 0 ? queue : [track];
+    audioStartedAtRef.current = Date.now();
+    setGlobalAudioTrack(track);
+    setGlobalAudioPlaying(true);
+    setGlobalAudioProgress(0);
+    playVoiceMessage(track.audioUrl, globalAudioSpeed, 0);
+  };
+
+  const toggleGlobalAudioPause = () => {
+    if (!globalAudioTrack) return;
+    if (globalAudioPlaying) {
+      stopVoiceMessage();
+      setGlobalAudioPlaying(false);
+    } else {
+      audioStartedAtRef.current = Date.now();
+      setGlobalAudioPlaying(true);
+      playVoiceMessage(globalAudioTrack.audioUrl, globalAudioSpeed, globalAudioProgress);
+    }
+  };
+
+  const closeGlobalAudio = () => {
+    stopVoiceMessage();
+    setGlobalAudioPlaying(false);
+    setGlobalAudioTrack(null);
+    setGlobalAudioProgress(0);
+  };
+
+  const cycleGlobalAudioSpeed = () => {
+    const next: 1 | 1.5 | 2 = globalAudioSpeed === 1 ? 1.5 : globalAudioSpeed === 1.5 ? 2 : 1;
+    setGlobalAudioSpeed(next);
+    if (globalAudioPlaying) setVoicePlaybackSpeed(next);
+    triggerHaptic(8);
+  };
+
+  const seekGlobalAudio = (ratio: number) => {
+    const clamped = Math.max(0, Math.min(1, ratio));
+    setGlobalAudioProgress(clamped);
+    if (globalAudioPlaying) {
+      seekVoicePlayback(clamped);
+    } else if (globalAudioTrack) {
+      audioStartedAtRef.current = Date.now();
+      setGlobalAudioPlaying(true);
+      playVoiceMessage(globalAudioTrack.audioUrl, globalAudioSpeed, clamped);
+    }
+  };
+
+  const setPowerSaveMode = (val: boolean) => {
+    triggerHaptic(10);
+    setPowerSaveModeState(val);
+  };
+
+  const saveQuickTemplate = (cmd: string, text: string) => {
+    const cleanCmd = cmd.trim().replace(/^\/+/, '').toLowerCase();
+    const cleanTxt = text.trim();
+    if (!cleanCmd || !cleanTxt) return;
+    setQuickTemplates((prev) => [
+      { id: `tpl_${Date.now()}`, cmd: cleanCmd, text: cleanTxt },
+      ...prev.filter((t) => t.cmd !== cleanCmd),
+    ]);
+    triggerHaptic(10);
+  };
+
+  const deleteQuickTemplate = (id: string) => {
+    setQuickTemplates((prev) => prev.filter((t) => t.id !== id));
+    triggerHaptic(8);
+  };
+
+  const setChatSoundTone = (chatId: string, tone: string) => {
+    setChatSoundTones((prev) => ({ ...prev, [chatId]: tone }));
+    triggerHaptic(10);
+  };
+
+  const toggleVaultChat = (chatId: string) => {
+    toggleIdInList(setHiddenVaultChatIds, chatId);
+  };
+
+  const setVaultPasscode = (code: string) => {
+    if (code.trim()) setVaultPasscodeState(code.trim());
+  };
+
+  const switchSavedAccount = async (acc: SavedAccountEntry) => {
+    if (!acc.email || !acc.savedPass) {
+      throw new Error('Для этого аккаунта требуется повторный ввод пароля');
+    }
+    lastAuthPassRef.current = acc.savedPass;
+    await signInWithEmailAndPassword(auth, acc.email, acc.savedPass);
+    triggerHaptic(18);
+  };
+
+  const removeSavedAccount = (uid: string) => {
+    setSavedAccounts((prev) => prev.filter((a) => a.uid !== uid));
+  };
+
+  const joinChatByInvite = async (
+    inviteRaw: string
+  ): Promise<{ joined: boolean; pending?: boolean; chat?: ChatItem }> => {
+    if (!me) throw new Error('Войдите в аккаунт');
+    const code = inviteRaw
+      .trim()
+      .replace(/^https?:\/\/[^/]+\/join\//i, '')
+      .replace(/^nonsensechat:\/\/join\//i, '')
+      .trim();
+    if (!code) throw new Error('Введите код приглашения');
+    const invSnap = await get(ref(rtdb, `chat_invites/${code}`));
+    const inv = invSnap.val();
+    if (!inv || !inv.chatId) throw new Error('Приглашение не найдено или устарело');
+    if (inv.expiresAt && Date.now() > inv.expiresAt) {
+      throw new Error('Срок действия ссылки истёк');
+    }
+    const used = Number(inv.usedCount) || 0;
+    if (inv.maxUses && inv.maxUses > 0 && used >= inv.maxUses) {
+      throw new Error('Лимит вступлений по этой ссылке исчерпан');
+    }
+    const chatSnap = await get(ref(rtdb, `chats/${inv.chatId}`));
+    const chatVal = chatSnap.val();
+    if (!chatVal) throw new Error('Чат не найден');
+    const curMembers = toArray<string>(chatVal.members);
+    if (curMembers.includes(me.uid)) {
+      return { joined: true, chat: { ...chatVal, id: inv.chatId, members: curMembers } };
+    }
+    if (inv.requireApproval) {
+      await set(ref(rtdb, `chats/${inv.chatId}/joinRequests/${me.uid}`), {
+        uid: me.uid,
+        nick: me.nick,
+        avatar: me.avatar || '',
+        at: Date.now(),
+        inviteCode: code,
+      });
+      return { joined: false, pending: true };
+    }
+    const nextMembers = [...curMembers, me.uid];
+    await update(ref(rtdb, `chats/${inv.chatId}`), { members: nextMembers });
+    await update(ref(rtdb, `chat_invites/${code}`), { usedCount: used + 1 });
+    return { joined: true, chat: { ...chatVal, id: inv.chatId, members: nextMembers } };
+  };
+
+  const unlockPaidPostWithPirozhki = async (
+    chatId: string,
+    msgId: string,
+    authorUid: string,
+    cost: number
+  ) => {
+    if (!me) throw new Error('Войдите в аккаунт');
+    const amt = Math.max(1, Math.floor(cost));
+    const myBal = me.pirozhki || 0;
+    if (myBal < amt) throw new Error(`Нужно ${amt} 🥟 (у вас ${myBal} 🥟)`);
+    await update(ref(rtdb, `users/${me.uid}`), { pirozhki: myBal - amt });
+    if (authorUid && authorUid !== me.uid) {
+      const aSnap = await get(ref(rtdb, `users/${authorUid}/pirozhki`));
+      const aBal = parseInt(String(aSnap.val() ?? 0), 10) || 0;
+      await update(ref(rtdb, `users/${authorUid}`), { pirozhki: aBal + amt });
+    }
+    await update(ref(rtdb, `messages/${chatId}/${msgId}/unlockedBy`), { [me.uid]: true });
+    triggerHaptic(22);
+  };
+
+  const boostChannelWithPirozhki = async (chatId: string, cost = 25) => {
+    if (!me) throw new Error('Войдите в аккаунт');
+    const myBal = me.pirozhki || 0;
+    if (myBal < cost) throw new Error(`Для буста нужно ${cost} 🥟 (у вас ${myBal} 🥟)`);
+    await update(ref(rtdb, `users/${me.uid}`), { pirozhki: myBal - cost });
+    const cSnap = await get(ref(rtdb, `chats/${chatId}/boostCount`));
+    const prevBoosts = parseInt(String(cSnap.val() ?? 0), 10) || 0;
+    await update(ref(rtdb, `chats/${chatId}`), {
+      boostCount: prevBoosts + 1,
+      [`boosters/${me.uid}`]: (Number(chats.find((c) => c.id === chatId)?.boosters?.[me.uid]) || 0) + 1,
+    });
+    triggerHaptic(25);
   };
 
   const checkNotificationPermission = async (): Promise<boolean> => {
@@ -920,6 +1259,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
+    lastAuthPassRef.current = password;
     await signInWithEmailAndPassword(auth, targetEmail, password);
   };
 
@@ -970,6 +1310,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw new Error(`Юзернейм @${cleanNick} уже занят`);
     }
 
+    lastAuthPassRef.current = password;
     const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     const uid = cred.user.uid;
     const now = Date.now();
@@ -1348,6 +1689,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeCallPeer,
         startCall,
         endActiveCallTrigger,
+        powerSaveMode,
+        setPowerSaveMode,
+        quickTemplates,
+        saveQuickTemplate,
+        deleteQuickTemplate,
+        chatSoundTones,
+        setChatSoundTone,
+        hiddenVaultChatIds,
+        vaultPasscode,
+        toggleVaultChat,
+        setVaultPasscode,
+        savedAccounts,
+        switchSavedAccount,
+        removeSavedAccount,
+        deviceSessionId,
+        globalAudioTrack,
+        globalAudioPlaying,
+        globalAudioSpeed,
+        globalAudioProgress,
+        playGlobalAudio,
+        toggleGlobalAudioPause,
+        closeGlobalAudio,
+        cycleGlobalAudioSpeed,
+        seekGlobalAudio,
+        joinChatByInvite,
+        unlockPaidPostWithPirozhki,
+        boostChannelWithPirozhki,
       }}
     >
       {children}

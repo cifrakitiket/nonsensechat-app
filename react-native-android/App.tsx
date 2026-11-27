@@ -24,6 +24,7 @@ import { GlassDialogHost } from './src/components/GlassDialogHost';
 import { UpdateModalHost } from './src/components/UpdateModalHost';
 import { PinLockOverlay } from './src/components/PinLockOverlay';
 import { WebRTCCallOverlay } from './src/components/WebRTCCallOverlay';
+import { FloatingAudioPlayerBar } from './src/components/FloatingAudioPlayerBar';
 import TelegramBottomNav from './src/navigation/TelegramBottomNav';
 import AuthScreen from './src/screens/AuthScreen';
 import ChatRoomScreen from './src/screens/ChatRoomScreen';
@@ -155,6 +156,13 @@ export default function App() {
         <UpdateModalHost />
         <PinLockOverlay />
         <WebRTCCallOverlay />
+        <FloatingAudioPlayerBar
+          onNavigateChat={(cid, cname) => {
+            if (cid && navigationRef.isReady()) {
+              navigationRef.navigate('ChatRoom', { chatId: cid, name: cname });
+            }
+          }}
+        />
       </AppProvider>
     </SafeAreaProvider>
   );

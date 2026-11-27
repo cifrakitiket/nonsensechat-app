@@ -8,50 +8,53 @@ interface LiquidBackgroundProps {
 }
 
 export const LiquidBackground: React.FC<LiquidBackgroundProps> = ({ children, style }) => {
-  const { appTheme } = useApp();
+  const { appTheme, powerSaveMode } = useApp();
 
   return (
     <View style={[styles.root, { backgroundColor: appTheme.canvas }, style]}>
-      {/* Ambient Liquid Glow Orbs */}
-      <View
-        pointerEvents="none"
-        style={[
-          styles.orb,
-          {
-            width: 310,
-            height: 310,
-            top: -80,
-            left: -70,
-            backgroundColor: appTheme.orb1,
-          },
-        ]}
-      />
-      <View
-        pointerEvents="none"
-        style={[
-          styles.orb,
-          {
-            width: 280,
-            height: 280,
-            top: '36%',
-            right: -95,
-            backgroundColor: appTheme.orb2,
-          },
-        ]}
-      />
-      <View
-        pointerEvents="none"
-        style={[
-          styles.orb,
-          {
-            width: 320,
-            height: 320,
-            bottom: -100,
-            left: -40,
-            backgroundColor: appTheme.orb3,
-          },
-        ]}
-      />
+      {!powerSaveMode && (
+        <>
+          <View
+            pointerEvents="none"
+            style={[
+              styles.orb,
+              {
+                width: 310,
+                height: 310,
+                top: -80,
+                left: -70,
+                backgroundColor: appTheme.orb1,
+              },
+            ]}
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              styles.orb,
+              {
+                width: 280,
+                height: 280,
+                top: '36%',
+                right: -95,
+                backgroundColor: appTheme.orb2,
+              },
+            ]}
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              styles.orb,
+              {
+                width: 320,
+                height: 320,
+                bottom: -100,
+                left: -40,
+                backgroundColor: appTheme.orb3,
+              },
+            ]}
+          />
+        </>
+      )}
       {children}
     </View>
   );

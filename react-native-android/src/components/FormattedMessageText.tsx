@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { triggerHaptic } from '../services/firebase';
 import { UserProfile } from '../context/AppContext';
 
@@ -12,6 +12,8 @@ interface FormattedMessageTextProps {
   usersMap?: Record<string, UserProfile>;
   onMentionPress?: (uid: string) => void;
   onHashtagPress?: (tag: string) => void;
+  onCopyCode?: (code: string) => void;
+  onTimecodePress?: (seconds: number) => void;
 }
 
 function renderHighlighted(
@@ -55,6 +57,8 @@ function InlineFormattedLine({
   usersMap,
   onMentionPress,
   onHashtagPress,
+  onCopyCode,
+  onTimecodePress,
 }: {
   line: string;
   color: string;
@@ -64,12 +68,14 @@ function InlineFormattedLine({
   usersMap?: Record<string, UserProfile>;
   onMentionPress?: (uid: string) => void;
   onHashtagPress?: (tag: string) => void;
+  onCopyCode?: (code: string) => void;
+  onTimecodePress?: (seconds: number) => void;
 }) {
   const [revealedMap, setRevealedMap] = useState<Record<number, boolean>>({});
 
-  // Tokenize: ||spoiler||, `code`, **bold**, ~~strike~~, *italic*, https://url, @mention, #hashtag
+  // Tokenize: ||spoiler||, `code`, **bold**, ~~strike~~, *italic*, https://url, @mention, #hashtag, mm:ss timecode
   const tokenRegex =
-    /(\|\|[^|\n]+\|\||`[^`\n]+`|\*\*[^*\n]+\*\*|~~[^~\n]+~~|\*[^*\n]+\*|https?:\/\/[^\s<>"']+|@[a-zA-Zа-яА-ЯёЁ0-9_]+|#[a-zA-Zа-яА-ЯёЁ0-9_]+)/g;
+    /(\|\|[^|\n]+\|\||`[^`\n]+`|\*\*[^*\n]+\*\*|~~[^~\n]+~~|\*[^*\n]+\*|https?:\/\/[^\s<>"']+|@[a-zA-Zа-яА-ЯёЁ0-9_]+|#[a-zA-Zа-яА-ЯёЁ0-9_]+|\b\d{1,2}:\d{2}\b)/g;
   const parts = line.split(tokenRegex);
 
   const baseStyle = {
@@ -101,10 +107,35 @@ function InlineFormattedLine({
         }
 
         if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+          const codeVal = part.slice(1, -1);
           return (
-            <Text key={idx} style={[styles.codeInline, { fontSize: Math.max(12, fontSize - 1) }]}>
+            <Text
+              key={idx}
+              onPress={() => {
+                triggerHaptic(10);
+                if (onCopyCode) onCopyCode(codeVal);
+                else Share.share({ message: codeVal }).catch(() => {});
+              }}
+              style={[styles.codeInline, { fontSize: Math.max(12, fontSize - 1) }]}
+            >
               {' '}
-              {part.slice(1, -1)}{' '}
+              {codeVal} 📋{' '}
+            </Text>
+          );
+        }
+
+        if (/^\d{1,2}:\d{2}$/.test(part) && onTimecodePress) {
+          const [mm, ss] = part.split(':').map((n) => parseInt(n, 10) || 0);
+          return (
+            <Text
+              key={idx}
+              onPress={() => {
+                triggerHaptic(8);
+                onTimecodePress(mm * 60 + ss);
+              }}
+              style={[baseStyle, { color: accent, fontWeight: '700', textDecorationLine: 'underline' }]}
+            >
+              {part}
             </Text>
           );
         }
@@ -212,6 +243,8 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
   usersMap,
   onMentionPress,
   onHashtagPress,
+  onCopyCode,
+  onTimecodePress,
 }) => {
   const firstUrl = useMemo(() => {
     if (!text) return null;
@@ -243,6 +276,8 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
                 usersMap={usersMap}
                 onMentionPress={onMentionPress}
                 onHashtagPress={onHashtagPress}
+                onCopyCode={onCopyCode}
+                onTimecodePress={onTimecodePress}
               />
             </View>
           );
@@ -258,6 +293,8 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
             usersMap={usersMap}
             onMentionPress={onMentionPress}
             onHashtagPress={onHashtagPress}
+            onCopyCode={onCopyCode}
+            onTimecodePress={onTimecodePress}
           />
         );
       })}

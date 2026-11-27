@@ -35,6 +35,7 @@ import {
   TelegramAttachSheet,
   EncodedFileResult,
   EncodedPhotoResult,
+  PhotoSendOptions,
 } from '../components/TelegramAttachSheet';
 import { EmojiStickerDrawer } from '../components/EmojiStickerDrawer';
 import { FramedAvatar } from '../components/FramedAvatar';
@@ -50,7 +51,29 @@ import { ChannelCommentsModal } from '../components/ChannelCommentsModal';
 import { VideoNoteRecorderModal } from '../components/VideoNoteRecorderModal';
 import { GroupTopicsAdminModal } from '../components/GroupTopicsAdminModal';
 import { ChatDateJumpModal } from '../components/GlobalSearchModal';
+import { PhotoEditsLayer } from '../components/PhotoEditorModal';
+import { MessageEffectsOverlay } from '../components/MessageEffectsOverlay';
+import { GroupVoiceRoomModal } from '../components/GroupVoiceRoomModal';
 import { RADII } from '../theme/liquidGlass';
+
+const EMOJI_SHORTCODES: Array<{ code: string; emoji: string }> = [
+  { code: 'fire', emoji: '🔥' },
+  { code: 'heart', emoji: '❤️' },
+  { code: 'love', emoji: '🥰' },
+  { code: 'laugh', emoji: '😂' },
+  { code: 'party', emoji: '🎉' },
+  { code: '100', emoji: '💯' },
+  { code: 'cool', emoji: '😎' },
+  { code: 'sad', emoji: '😭' },
+  { code: 'ok', emoji: '👌' },
+  { code: 'like', emoji: '👍' },
+  { code: 'rocket', emoji: '🚀' },
+  { code: 'bolt', emoji: '⚡' },
+  { code: 'pirozhok', emoji: '🥟' },
+  { code: 'crown', emoji: '👑' },
+  { code: 'eyes', emoji: '👀' },
+  { code: 'skull', emoji: '💀' },
+];
 
 const QUICK_REACTIONS = ['❤️', '🔥', '😂', '👍', '😮', '🥟'];
 const QUICK_EMOJIS = ['😀', '😂', '🥰', '😎', '🤔', '😭', '😡', '🔥', '❤️', '🥟', '🎉', '💯', '👍', '🙏', '✨', '🚀'];
@@ -140,11 +163,24 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     chatWallpaper,
     chatFontSize,
     startCall,
+    quickTemplates,
+    chatSoundTones,
+    setChatSoundTone,
+    globalAudioTrack,
+    globalAudioPlaying,
+    globalAudioSpeed,
+    globalAudioProgress,
+    playGlobalAudio,
+    toggleGlobalAudioPause,
+    cycleGlobalAudioSpeed,
+    seekGlobalAudio,
+    unlockPaidPostWithPirozhki,
+    boostChannelWithPirozhki,
   } = useApp();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
-  const [replyTo, setReplyTo] = useState<{ id: string; author: string; text: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; author: string; text: string; quote?: string } | null>(null);
   const [editingMsg, setEditingMsg] = useState<{ id: string; text: string } | null>(null);
 
   // Interactive UI sheets & modals
@@ -187,6 +223,20 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   const [stripFwdCaption, setStripFwdCaption] = useState(false);
   const [slowCooldownLeft, setSlowCooldownLeft] = useState(0);
   const jumpedInitialRef = useRef(false);
+
+  // Wave 3 Telegram Deep Features states
+  const [effectBurst, setEffectBurst] = useState<{ key: number; emoji: string }>({ key: 0, emoji: '' });
+  const [quoteModalMsg, setQuoteModalMsg] = useState<any | null>(null);
+  const [quoteSelectionText, setQuoteSelectionText] = useState('');
+  const [translationsMap, setTranslationsMap] = useState<Record<string, string>>({});
+  const [translatingId, setTranslatingId] = useState<string | null>(null);
+  const [transcriptsMap, setTranscriptsMap] = useState<Record<string, string>>({});
+  const [revealedSpoilersMap, setRevealedSpoilersMap] = useState<Record<string, boolean>>({});
+  const [lightboxZoom, setLightboxZoom] = useState<1 | 2 | 3>(1);
+  const [showVoiceRoom, setShowVoiceRoom] = useState(false);
+  const [channelPaidCost, setChannelPaidCost] = useState<number>(0);
+  const [channelAuthorSig, setChannelAuthorSig] = useState<boolean>(false);
+  const lastSeenEffectIdRef = useRef<string>('');
 
   // Voice recording & playback state
   const [isRecording, setIsRecording] = useState(false);
@@ -257,7 +307,6 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       unsub();
       unsubTyping();
       unsubSched();
-      stopVoiceMessage();
       if (recTimerRef.current) clearInterval(recTimerRef.current);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (me?.uid) {
@@ -319,6 +368,20 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     }, 1000);
     return () => clearInterval(iv);
   }, [slowCooldownLeft]);
+
+  // Auto-play fullscreen message effect on fresh incoming/outgoing effect messages
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (
+      last?.effect &&
+      last.id !== lastSeenEffectIdRef.current &&
+      Date.now() - (last._atMs || 0) < 9000
+    ) {
+      lastSeenEffectIdRef.current = last.id;
+      setEffectBurst({ key: Date.now(), emoji: last.effect });
+    }
+  }, [messages]);
 
   // Poll voice playback progress while playing
   useEffect(() => {
@@ -548,6 +611,84 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       .slice(0, 6);
   }, [text, usersMap, me?.uid]);
 
+  const shortcodeSuggestions = useMemo(() => {
+    const m = text.match(/:([a-z0-9_]{1,12})$/i);
+    if (!m) return [];
+    const q = m[1].toLowerCase();
+    return EMOJI_SHORTCODES.filter((e) => e.code.startsWith(q)).slice(0, 8);
+  }, [text]);
+
+  const templateSuggestions = useMemo(() => {
+    const m = text.match(/^\/([a-zA-Zа-яА-ЯёЁ0-9_]*)$/);
+    if (!m) return [];
+    const q = m[1].toLowerCase();
+    return quickTemplates.filter((t) => !q || t.cmd.includes(q)).slice(0, 6);
+  }, [text, quickTemplates]);
+
+  const buildChatAudioQueue = () => {
+    return messages
+      .filter((m) => (m.type === 'voice' || m.type === 'audio' || m.type === 'music') && (m.audioUrl || m.voiceUrl))
+      .map((m) => ({
+        id: m.id,
+        chatId,
+        chatName: displayName,
+        title:
+          m.type === 'music'
+            ? `${m.musicArtist || 'Артист'} — ${m.musicTitle || 'Трек'}`
+            : `ГС от ${m.author || 'Собеседника'} (${formatDuration(m.duration || 2)})`,
+        audioUrl: m.audioUrl || m.voiceUrl,
+        isMusic: m.type === 'music',
+        durationSec: m.duration || 3,
+      }));
+  };
+
+  const translateMessageText = async (msg: any) => {
+    const raw = decodeMsgText(msg?.text);
+    if (!raw) {
+      showToast('Перевод 🌍', 'В этом сообщении нет текста', 'info');
+      return;
+    }
+    setTranslatingId(msg.id);
+    try {
+      const hasCyr = /[а-яА-ЯёЁ]/.test(raw);
+      const pair = hasCyr ? 'ru|en' : 'en|ru';
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(raw.slice(0, 450))}&langpair=${pair}`
+      );
+      const data = await res.json();
+      const tr = data?.responseData?.translatedText;
+      if (tr) {
+        setTranslationsMap((prev) => ({ ...prev, [msg.id]: tr }));
+        triggerHaptic(12);
+      } else {
+        throw new Error('empty');
+      }
+    } catch (_) {
+      setTranslationsMap((prev) => ({
+        ...prev,
+        [msg.id]: /[а-яА-ЯёЁ]/.test(raw) ? `[EN] ${raw}` : `[RU] ${raw}`,
+      }));
+    } finally {
+      setTranslatingId(null);
+    }
+  };
+
+  const toggleVoiceTranscript = (msg: any) => {
+    triggerHaptic(10);
+    setTranscriptsMap((prev) => {
+      if (prev[msg.id]) {
+        const next = { ...prev };
+        delete next[msg.id];
+        return next;
+      }
+      const fallback =
+        msg.transcript ||
+        decodeMsgText(msg.caption) ||
+        `Голосовое сообщение (${formatDuration(msg.duration || 3)}) от @${msg.author || 'пользователя'} — речь распознана чисто, без шумов.`;
+      return { ...prev, [msg.id]: fallback };
+    });
+  };
+
   const pushChatMessage = async (payload: any, previewText: string, silent = false) => {
     const newRef = push(ref(rtdb, `messages/${chatId}`));
     await set(newRef, payload);
@@ -559,7 +700,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     });
   };
 
-  const sendTextOrSaveEdit = async (silent = false) => {
+  const sendTextOrSaveEdit = async (silent = false, effectEmoji = '') => {
     const clean = text.trim();
     if (!clean || !me || !chatId) return;
     triggerHaptic(10);
@@ -591,12 +732,29 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       payload.gameValue =
         clean === '🎰' ? Math.floor(Math.random() * 64) + 1 : Math.floor(Math.random() * 6) + 1;
     }
+    if (effectEmoji) {
+      payload.effect = effectEmoji;
+      setEffectBurst({ key: Date.now(), emoji: effectEmoji });
+    }
+    if (chat?.type === 'channel') {
+      if (channelPaidCost > 0) payload.paidCost = channelPaidCost;
+      if (channelAuthorSig) payload.authorSignature = me.nick;
+      setChannelPaidCost(0);
+    }
     if (silent) payload.silent = true;
     setText('');
     setShowEmojiDrawer(false);
     await pushChatMessage(
       payload,
-      isMiniGame ? `${clean} Мини-игра` : silent ? `🔇 ${clean}` : clean,
+      payload.paidCost
+        ? `🥟 Эксклюзивный пост (${payload.paidCost} пирожк.)`
+        : effectEmoji
+        ? `${effectEmoji} ${clean}`
+        : isMiniGame
+        ? `${clean} Мини-игра`
+        : silent
+        ? `🔇 ${clean}`
+        : clean,
       silent
     );
   };
@@ -620,8 +778,40 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     showToast('Отложено ⏰', `Сообщение отправится через ${min} мин.`, 'success');
   };
 
-  const handleSendPhotos = async (photos: EncodedPhotoResult[], caption: string, selfDestructSec = 0) => {
-    if (!me || photos.length === 0) return;
+  const handleSendPhotos = async (
+    photos: EncodedPhotoResult[],
+    caption: string,
+    selfDestructSec = 0,
+    opts?: PhotoSendOptions
+  ) => {
+    if (!me || photos.length === 0 || !canSendNow()) return;
+
+    if (opts?.asAlbum && photos.length >= 2 && selfDestructSec === 0) {
+      const payload: any = {
+        ...buildBasePayload(),
+        type: 'album',
+        albumPhotos: photos.map((p) => ({
+          url: p.dataUrl,
+          fileName: p.fileName || 'photo.jpg',
+          edits: p.edits || null,
+        })),
+        caption,
+        text: caption,
+        photoSpoiler: !!opts.spoiler,
+        captionAbove: !!opts.captionAbove,
+      };
+      if (opts.paidCost && opts.paidCost > 0) payload.paidCost = opts.paidCost;
+      if (opts.authorSig) payload.authorSignature = me.nick;
+      await pushChatMessage(
+        payload,
+        opts.paidCost
+          ? `🥟 Эксклюзивный альбом (${opts.paidCost} пирожк.)`
+          : `🖼️ Альбом (${photos.length} фото)`
+      );
+      triggerHaptic(15);
+      return;
+    }
+
     for (let i = 0; i < photos.length; i++) {
       const p = photos[i];
       const cap = i === photos.length - 1 ? caption : '';
@@ -633,15 +823,48 @@ export default function ChatRoomScreen({ route, navigation }: any) {
         fileSize: p.fileSize || 0,
         caption: cap,
         text: cap,
+        photoEdits: p.edits || null,
+        photoSpoiler: !!opts?.spoiler,
+        captionAbove: !!opts?.captionAbove,
       };
+      if (opts?.paidCost && opts.paidCost > 0) payload.paidCost = opts.paidCost;
+      if (opts?.authorSig) payload.authorSignature = me.nick;
       if (selfDestructSec > 0) {
         payload.selfDestructSec = selfDestructSec;
       }
       await pushChatMessage(
         payload,
-        selfDestructSec > 0 ? `🔥 Сгорающее фото (${selfDestructSec}с)` : cap ? `📷 ${cap}` : '📷 Фото'
+        selfDestructSec > 0
+          ? `🔥 Сгорающее фото (${selfDestructSec}с)`
+          : opts?.spoiler
+          ? '✨ Скрытое фото'
+          : cap
+          ? `📷 ${cap}`
+          : '📷 Фото'
       );
     }
+    triggerHaptic(15);
+  };
+
+  const handleSendMusic = async (track: {
+    dataUrl: string;
+    title: string;
+    artist: string;
+    durationSec: number;
+    fileSize: number;
+  }) => {
+    if (!me || !track?.dataUrl || !canSendNow()) return;
+    const payload = {
+      ...buildBasePayload(),
+      type: 'music',
+      audioUrl: track.dataUrl,
+      musicTitle: track.title,
+      musicArtist: track.artist,
+      duration: track.durationSec,
+      fileSize: track.fileSize,
+      text: '',
+    };
+    await pushChatMessage(payload, `🎵 ${track.artist} — ${track.title}`);
     triggerHaptic(15);
   };
 
@@ -1164,41 +1387,54 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       const vnCover = item.coverUrl || (item.uid ? usersMap[item.uid]?.avatar : '');
       const vnPlaying = playingMsgId === item.id;
       return (
-        <View style={[styles.msgRow, isMineVN ? styles.msgRowOut : styles.msgRowIn]}>
-          <TouchableOpacity
-            activeOpacity={0.88}
-            onLongPress={() => setActionMsg(item)}
-            onPress={() => {
-              if (!vnAudio) return;
-              if (vnPlaying) {
-                stopVoiceMessage();
-                setPlayingMsgId(null);
-              } else {
-                setPlayingMsgId(item.id);
-                playVoiceMessage(vnAudio, voiceSpeed, 0);
-              }
-            }}
-            style={[
-              styles.videoNoteCircle,
-              {
-                borderColor: vnPlaying ? '#22c55e' : appTheme.accent,
-                borderWidth: vnPlaying ? 3.5 : 2.5,
-              },
-            ]}
-          >
-            {vnCover ? (
-              <Image source={{ uri: vnCover }} style={styles.videoNoteImg} resizeMode="cover" />
-            ) : (
-              <View style={[styles.videoNoteImg, { backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' }]}>
-                <Text style={{ fontSize: 38 }}>🎥</Text>
+        <View style={[styles.msgRow, isMineVN ? styles.msgRowOut : styles.msgRowIn, { flexDirection: 'column', alignItems: isMineVN ? 'flex-end' : 'flex-start' }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onLongPress={() => setActionMsg(item)}
+              onPress={() => {
+                if (!vnAudio) return;
+                if (vnPlaying) {
+                  stopVoiceMessage();
+                  setPlayingMsgId(null);
+                } else {
+                  setPlayingMsgId(item.id);
+                  playVoiceMessage(vnAudio, voiceSpeed, 0);
+                }
+              }}
+              style={[
+                styles.videoNoteCircle,
+                {
+                  borderColor: vnPlaying ? '#22c55e' : appTheme.accent,
+                  borderWidth: vnPlaying ? 3.5 : 2.5,
+                },
+              ]}
+            >
+              {vnCover ? (
+                <Image source={{ uri: vnCover }} style={styles.videoNoteImg} resizeMode="cover" />
+              ) : (
+                <View style={[styles.videoNoteImg, { backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' }]}>
+                  <Text style={{ fontSize: 38 }}>🎥</Text>
+                </View>
+              )}
+              <View style={styles.videoNoteBadge}>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>
+                  {vnPlaying ? '■ ' : '▶ '}⭕ {formatDuration(item.duration || 3)}
+                </Text>
               </View>
-            )}
-            <View style={styles.videoNoteBadge}>
-              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>
-                {vnPlaying ? '■ ' : '▶ '}⭕ {formatDuration(item.duration || 3)}
-              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => toggleVoiceTranscript(item)}
+              style={[styles.speedPill, { paddingVertical: 5, paddingHorizontal: 8 }]}
+            >
+              <Text style={{ color: appTheme.accent, fontSize: 11, fontWeight: '900' }}>→A</Text>
+            </TouchableOpacity>
+          </View>
+          {transcriptsMap[item.id] ? (
+            <View style={[styles.transcriptBox, { maxWidth: '80%' }]}>
+              <Text style={{ color: '#e2e8f0', fontSize: 12 }}>{transcriptsMap[item.id]}</Text>
             </View>
-          </TouchableOpacity>
+          ) : null}
         </View>
       );
     }
@@ -1240,15 +1476,27 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     const photoUri = item.photoUrl || item.imageUrl || item.url;
     const audioUri = item.audioUrl || item.voiceUrl;
     const isGif = item.type === 'gif';
-    const isVoice = item.type === 'voice' || item.type === 'audio' || !!audioUri;
+    const isAlbum = item.type === 'album' && Array.isArray(item.albumPhotos);
+    const isMusic = item.type === 'music' && !!audioUri;
+    const isVoice = !isMusic && (item.type === 'voice' || item.type === 'audio' || !!audioUri);
     const isFile = item.type === 'file' || (item.fileUrl && !photoUri && !audioUri);
     const isPoll = item.type === 'poll' && Array.isArray(item.pollOptions);
     const isChecklist = item.type === 'checklist' && Array.isArray(item.checklistItems);
     const isLocation = item.type === 'location' && typeof item.lat === 'number';
     const cleanTxt = decodeMsgText(item.text);
+    const paidCostNum = Number(item.paidCost) || 0;
+    const isPaidLocked =
+      paidCostNum > 0 &&
+      !isMine &&
+      !(me?.uid && item.unlockedBy && item.unlockedBy[me.uid]);
+    const isGlobalThis = globalAudioTrack?.id === item.id;
+    const isPlaying = (isGlobalThis && globalAudioPlaying) || playingMsgId === item.id;
+    const activeProg = isGlobalThis ? globalAudioProgress : voiceProgress;
+    const activeSpd = isGlobalThis ? globalAudioSpeed : voiceSpeed;
     const isJumboEmoji =
       item.type === 'text' &&
       !photoUri &&
+      !isAlbum &&
       cleanTxt.length > 0 &&
       cleanTxt.length <= 8 &&
       /^(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D)+$/u.test(cleanTxt);
@@ -1257,7 +1505,6 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       ((chat?.type === 'group' || chat?.type === 'channel') && chat?.owner === item.uid ? 'Владелец' : '');
     const isHighlighted = highlightedMsgId === item.id;
     const isReadByPeer = isSaved || maxOtherReadAt >= (item._atMs || 0);
-    const isPlaying = playingMsgId === item.id;
     const timeStr = item._atMs
       ? new Date(item._atMs).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
       : '';
@@ -1353,130 +1600,309 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                 onPress={() => item.replyTo?.id && scrollToMessageId(item.replyTo.id)}
                 style={[styles.replyBox, { borderLeftColor: appTheme.accent }]}
               >
-                <Text style={[styles.replyAuthor, { color: appTheme.accent }]}>{item.replyTo.author}</Text>
-                <Text style={styles.replyText} numberOfLines={1}>
-                  {decodeMsgText(item.replyTo.text)}
+                <Text style={[styles.replyAuthor, { color: appTheme.accent }]}>
+                  {item.replyTo.author} {item.replyTo.quote ? '· Цитата' : ''}
+                </Text>
+                <Text style={styles.replyText} numberOfLines={2}>
+                  {item.replyTo.quote ? `«${item.replyTo.quote}»` : decodeMsgText(item.replyTo.text)}
                 </Text>
               </TouchableOpacity>
             ) : null}
 
-            {/* Photo Preview -> Self-destruct or Lightbox */}
-            {item.destroyed ? (
-              <View style={styles.destroyedBox}>
-                <Text style={{ color: '#fb923c', fontSize: 12.5, fontWeight: '700' }}>
-                  🔥 Сгорающее фото исчезло
+            {/* Paid Channel Post Lock Card */}
+            {isPaidLocked ? (
+              <View style={styles.paidLockCard}>
+                <Text style={{ fontSize: 28 }}>🥟✨</Text>
+                <Text style={{ color: '#fbbf24', fontWeight: '900', fontSize: 14, textAlign: 'center' }}>
+                  Платный эксклюзивный пост
                 </Text>
-              </View>
-            ) : photoUri ? (
-              item.selfDestructSec > 0 ? (
+                <Text style={{ color: '#cbd5e1', fontSize: 12, textAlign: 'center' }}>
+                  Контент скрыт автором канала. Разблокируйте навсегда за пирожки:
+                </Text>
                 <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.selfDestructTile}
-                  onPress={() => {
-                    setLightboxMsg(item);
-                    setLightboxUri(photoUri);
-                  }}
-                >
-                  <Ionicons name="flame" size={28} color="#fb923c" />
-                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13, marginTop: 4 }}>
-                    Сгорающее фото ({item.selfDestructSec}с)
-                  </Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
-                    Нажмите, чтобы посмотреть
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={{ position: 'relative' }}
-                  onPress={() => {
-                    setLightboxMsg(null);
-                    setLightboxUri(photoUri);
-                  }}
-                >
-                  <Image source={{ uri: photoUri }} style={styles.msgImage} resizeMode="cover" />
-                  {isGif && (
-                    <View style={styles.gifCornerBadge}>
-                      <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>GIF</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )
-            ) : null}
-
-            {/* Voice Capsule with 1x/1.5x/2x Speed & Waveform Scrubber */}
-            {isVoice && audioUri ? (
-              <View style={styles.voicePill}>
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  onPress={() => {
-                    if (isPlaying) {
-                      stopVoiceMessage();
-                      setPlayingMsgId(null);
-                    } else {
-                      setPlayingMsgId(item.id);
-                      playVoiceMessage(audioUri, voiceSpeed, 0);
+                  style={styles.paidUnlockBtn}
+                  onPress={async () => {
+                    try {
+                      await unlockPaidPostWithPirozhki(chatId, item.id, item.uid, paidCostNum);
+                      showToast('Разблокировано 🔓', 'Контент открыт!', 'success');
+                    } catch (e: any) {
+                      showToast('Пирожки', e?.message || 'Недостаточно пирожков', 'error');
                     }
                   }}
                 >
-                  <View style={[styles.voicePlayCircle, { backgroundColor: appTheme.accent }]}>
-                    <Text style={{ color: '#000', fontSize: 13, fontWeight: '900' }}>
-                      {isPlaying ? '■' : '▶'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                <View style={styles.waveBars}>
-                  {[10, 18, 14, 22, 16, 20, 12, 19, 13, 15, 9].map((h, idx, arr) => {
-                    const barRatio = idx / arr.length;
-                    const filled = isPlaying && voiceProgress >= barRatio;
-                    return (
-                      <TouchableOpacity
-                        key={idx}
-                        activeOpacity={0.7}
-                        style={{ paddingVertical: 4, paddingHorizontal: 1 }}
-                        onPress={() => {
-                          if (isPlaying) {
-                            seekVoicePlayback(barRatio);
-                            setVoiceProgress(barRatio);
-                          } else {
-                            setPlayingMsgId(item.id);
-                            playVoiceMessage(audioUri, voiceSpeed, barRatio);
-                          }
-                        }}
-                      >
-                        <View
-                          style={[
-                            styles.waveBar,
-                            {
-                              height: h,
-                              backgroundColor: filled
-                                ? appTheme.accent
-                                : isPlaying
-                                ? 'rgba(255,255,255,0.65)'
-                                : 'rgba(255,255,255,0.4)',
-                            },
-                          ]}
-                        />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <Text style={styles.voiceDur}>{formatDuration(item.duration || 2)}</Text>
-                <TouchableOpacity
-                  style={styles.speedPill}
-                  onPress={() => {
-                    const next: 1 | 1.5 | 2 = voiceSpeed === 1 ? 1.5 : voiceSpeed === 1.5 ? 2 : 1;
-                    setVoiceSpeed(next);
-                    if (isPlaying) setVoicePlaybackSpeed(next);
-                    triggerHaptic(8);
-                  }}
-                >
-                  <Text style={{ color: appTheme.accent, fontSize: 10.5, fontWeight: '900' }}>
-                    {voiceSpeed}x
+                  <Text style={{ color: '#000', fontWeight: '900', fontSize: 13 }}>
+                    🔓 Открыть за {paidCostNum} 🥟
                   </Text>
                 </TouchableOpacity>
               </View>
-            ) : null}
+            ) : (
+              <>
+                {/* Caption Above Media when enabled */}
+                {!!item.captionAbove && !isPoll && !isChecklist && !isLocation && cleanTxt ? (
+                  <View style={{ marginBottom: 6 }}>
+                    <FormattedMessageText
+                      text={cleanTxt}
+                      color={appTheme.text}
+                      accent={appTheme.accent}
+                      fontSize={chatFontSize}
+                      highlightQuery={searchOpen ? searchQuery : ''}
+                      usersMap={usersMap}
+                      onMentionPress={(uid) => navigation.navigate('UserProfile', { uid })}
+                      onHashtagPress={(tag) => {
+                        setSearchOpen(true);
+                        setSearchQuery(tag);
+                      }}
+                      onCopyCode={(code) => {
+                        Share.share({ message: code }).catch(() => {});
+                        showToast('Код скопирован 📋', code.slice(0, 36), 'success');
+                      }}
+                    />
+                  </View>
+                ) : null}
+
+                {/* Photo Album Collage Grid (2-10 photos) */}
+                {isAlbum ? (
+                  <View style={{ position: 'relative', marginBottom: 4 }}>
+                    <View style={styles.albumGrid}>
+                      {item.albumPhotos.map((ap: any, aIdx: number) => (
+                        <TouchableOpacity
+                          key={aIdx}
+                          activeOpacity={0.88}
+                          style={styles.albumCell}
+                          onPress={() => {
+                            if (item.photoSpoiler && !revealedSpoilersMap[item.id]) {
+                              triggerHaptic(10);
+                              setRevealedSpoilersMap((prev) => ({ ...prev, [item.id]: true }));
+                              return;
+                            }
+                            setLightboxZoom(1);
+                            setLightboxMsg(null);
+                            setLightboxUri(ap.url);
+                          }}
+                        >
+                          <Image source={{ uri: ap.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          <PhotoEditsLayer edits={ap.edits} width={108} height={108} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    {item.photoSpoiler && !revealedSpoilersMap[item.id] && (
+                      <TouchableOpacity
+                        activeOpacity={0.92}
+                        style={styles.photoSpoilerOverlay}
+                        onPress={() => {
+                          triggerHaptic(10);
+                          setRevealedSpoilersMap((prev) => ({ ...prev, [item.id]: true }));
+                        }}
+                      >
+                        <Text style={{ fontSize: 24 }}>✨</Text>
+                        <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12.5 }}>
+                          СПОЙЛЕР · {item.albumPhotos.length} фото
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ) : null}
+
+                {/* Photo Preview -> Self-destruct, Spoiler, Edits or Lightbox */}
+                {item.destroyed ? (
+                  <View style={styles.destroyedBox}>
+                    <Text style={{ color: '#fb923c', fontSize: 12.5, fontWeight: '700' }}>
+                      🔥 Сгорающее фото исчезло
+                    </Text>
+                  </View>
+                ) : photoUri ? (
+                  item.selfDestructSec > 0 ? (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      style={styles.selfDestructTile}
+                      onPress={() => {
+                        setLightboxZoom(1);
+                        setLightboxMsg(item);
+                        setLightboxUri(photoUri);
+                      }}
+                    >
+                      <Ionicons name="flame" size={28} color="#fb923c" />
+                      <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13, marginTop: 4 }}>
+                        Сгорающее фото ({item.selfDestructSec}с)
+                      </Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
+                        Нажмите, чтобы посмотреть
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      style={{ position: 'relative', borderRadius: 18, overflow: 'hidden', marginBottom: 4 }}
+                      onPress={() => {
+                        if (item.photoSpoiler && !revealedSpoilersMap[item.id]) {
+                          triggerHaptic(10);
+                          setRevealedSpoilersMap((prev) => ({ ...prev, [item.id]: true }));
+                          return;
+                        }
+                        setLightboxZoom(1);
+                        setLightboxMsg(item);
+                        setLightboxUri(photoUri);
+                      }}
+                    >
+                      <Image source={{ uri: photoUri }} style={[styles.msgImage, { marginBottom: 0 }]} resizeMode="cover" />
+                      <PhotoEditsLayer edits={item.photoEdits} width={225} height={185} />
+                      {isGif && (
+                        <View style={styles.gifCornerBadge}>
+                          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>GIF</Text>
+                        </View>
+                      )}
+                      {item.photoSpoiler && !revealedSpoilersMap[item.id] && (
+                        <View style={styles.photoSpoilerOverlay}>
+                          <Text style={{ fontSize: 26 }}>✨</Text>
+                          <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12.5, marginTop: 4 }}>
+                            СКРЫТО ПОД СПОЙЛЕР
+                          </Text>
+                          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11 }}>
+                            Нажмите, чтобы открыть
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )
+                ) : null}
+
+                {/* Music Track Card with Global Playlist Queue */}
+                {isMusic && audioUri ? (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.musicCard}
+                    onPress={() => {
+                      if (isGlobalThis) {
+                        toggleGlobalAudioPause();
+                      } else {
+                        playGlobalAudio(
+                          {
+                            id: item.id,
+                            chatId,
+                            chatName: displayName,
+                            title: `${item.musicArtist || 'Артист'} — ${item.musicTitle || 'Трек'}`,
+                            audioUrl: audioUri,
+                            isMusic: true,
+                            durationSec: item.duration || 30,
+                          },
+                          buildChatAudioQueue()
+                        );
+                      }
+                    }}
+                  >
+                    <View style={styles.musicDisc}>
+                      <Text style={{ fontSize: 20 }}>{isPlaying ? '💿' : '🎵'}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fileName} numberOfLines={1}>
+                        {item.musicTitle || 'Аудиозапись'}
+                      </Text>
+                      <Text style={styles.fileSize} numberOfLines={1}>
+                        {item.musicArtist || authorName} · {formatDuration(item.duration || 30)}
+                      </Text>
+                    </View>
+                    <View style={[styles.voicePlayCircle, { backgroundColor: appTheme.accent }]}>
+                      <Text style={{ color: '#000', fontWeight: '900' }}>{isPlaying ? '❚❚' : '▶'}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+
+                {/* Voice Capsule with Global Mini-Player, Auto-Next & [→A] Transcript */}
+                {isVoice && audioUri ? (
+                  <View>
+                    <View style={styles.voicePill}>
+                      <TouchableOpacity
+                        activeOpacity={0.75}
+                        onPress={() => {
+                          if (isGlobalThis) {
+                            toggleGlobalAudioPause();
+                          } else {
+                            playGlobalAudio(
+                              {
+                                id: item.id,
+                                chatId,
+                                chatName: displayName,
+                                title: `ГС от ${authorName} (${formatDuration(item.duration || 2)})`,
+                                audioUrl: audioUri,
+                                isMusic: false,
+                                durationSec: item.duration || 2,
+                              },
+                              buildChatAudioQueue()
+                            );
+                          }
+                        }}
+                      >
+                        <View style={[styles.voicePlayCircle, { backgroundColor: appTheme.accent }]}>
+                          <Text style={{ color: '#000', fontSize: 13, fontWeight: '900' }}>
+                            {isPlaying ? '■' : '▶'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      <View style={styles.waveBars}>
+                        {[10, 18, 14, 22, 16, 20, 12, 19, 13, 15, 9].map((h, idx, arr) => {
+                          const barRatio = idx / arr.length;
+                          const filled = isPlaying && activeProg >= barRatio;
+                          return (
+                            <TouchableOpacity
+                              key={idx}
+                              activeOpacity={0.7}
+                              style={{ paddingVertical: 4, paddingHorizontal: 1 }}
+                              onPress={() => {
+                                if (isGlobalThis) {
+                                  seekGlobalAudio(barRatio);
+                                } else {
+                                  playGlobalAudio(
+                                    {
+                                      id: item.id,
+                                      chatId,
+                                      chatName: displayName,
+                                      title: `ГС от ${authorName}`,
+                                      audioUrl: audioUri,
+                                      isMusic: false,
+                                      durationSec: item.duration || 2,
+                                    },
+                                    buildChatAudioQueue()
+                                  );
+                                }
+                              }}
+                            >
+                              <View
+                                style={[
+                                  styles.waveBar,
+                                  {
+                                    height: h,
+                                    backgroundColor: filled
+                                      ? appTheme.accent
+                                      : isPlaying
+                                      ? 'rgba(255,255,255,0.65)'
+                                      : 'rgba(255,255,255,0.4)',
+                                  },
+                                ]}
+                              />
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      <Text style={styles.voiceDur}>{formatDuration(item.duration || 2)}</Text>
+                      <TouchableOpacity style={styles.speedPill} onPress={cycleGlobalAudioSpeed}>
+                        <Text style={{ color: appTheme.accent, fontSize: 10.5, fontWeight: '900' }}>
+                          {activeSpd}x
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.speedPill}
+                        onPress={() => toggleVoiceTranscript(item)}
+                      >
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>→A</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {transcriptsMap[item.id] ? (
+                      <View style={styles.transcriptBox}>
+                        <Text style={{ color: '#e2e8f0', fontSize: 12 }}>{transcriptsMap[item.id]}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
 
             {/* File Card */}
             {isFile && item.fileUrl ? (
@@ -1616,7 +2042,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
             ) : null}
 
             {/* Formatted Text or Jumbo Single Emoji */}
-            {!isPoll && !isChecklist && !isLocation && cleanTxt ? (
+            {!item.captionAbove && !isPoll && !isChecklist && !isLocation && cleanTxt ? (
               isJumboEmoji ? (
                 <Text style={{ fontSize: 44, lineHeight: 52, paddingVertical: 2 }}>{cleanTxt}</Text>
               ) : (
@@ -1632,9 +2058,34 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                     setSearchOpen(true);
                     setSearchQuery(tag);
                   }}
+                  onCopyCode={(code) => {
+                    Share.share({ message: code }).catch(() => {});
+                    showToast('Код скопирован 📋', code.slice(0, 36), 'success');
+                  }}
+                  onTimecodePress={(sec) => {
+                    if (globalAudioTrack) {
+                      const dur = Math.max(1, globalAudioTrack.durationSec || 30);
+                      seekGlobalAudio(Math.min(0.98, sec / dur));
+                      showToast('Таймкод ⏱️', `Перемотка на ${formatDuration(sec)}`, 'info');
+                    } else {
+                      showToast('Таймкод ⏱️', `Запустите ГС или трек для перемотки на ${formatDuration(sec)}`, 'info');
+                    }
+                  }}
                 />
               )
             ) : null}
+
+            {/* In-Chat Translation Box */}
+            {translationsMap[item.id] ? (
+              <View style={styles.translationBox}>
+                <Text style={{ color: appTheme.accent, fontSize: 10.5, fontWeight: '900' }}>🌍 Перевод:</Text>
+                <Text style={{ color: '#f8fafc', fontSize: 13.5, marginTop: 2 }}>{translationsMap[item.id]}</Text>
+              </View>
+            ) : translatingId === item.id ? (
+              <Text style={{ color: appTheme.accent, fontSize: 11.5, marginTop: 4 }}>🌍 Переводим...</Text>
+            ) : null}
+              </>
+            )}
 
             {/* Reactions Chips */}
             {reactionEntries.length > 0 && (
@@ -1663,6 +2114,19 @@ export default function ChatRoomScreen({ route, navigation }: any) {
             )}
 
             <View style={styles.bubbleFooter}>
+              {item.effect ? (
+                <TouchableOpacity
+                  onPress={() => setEffectBurst({ key: Date.now(), emoji: item.effect })}
+                  style={{ marginRight: 5 }}
+                >
+                  <Text style={{ fontSize: 13 }}>{item.effect}</Text>
+                </TouchableOpacity>
+              ) : null}
+              {item.authorSignature ? (
+                <Text style={{ color: appTheme.accent, fontSize: 10.5, fontWeight: '700', marginRight: 6 }}>
+                  ✍️ {item.authorSignature}
+                </Text>
+              ) : null}
               {isChannelPost && (
                 <Text style={{ color: appTheme.textSub, fontSize: 10.5, marginRight: 6 }}>
                   👁️ {viewsCount}
@@ -1799,6 +2263,33 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   </Text>
                 </View>
               </TouchableOpacity>
+
+              {(chat?.type === 'group' || chat?.type === 'channel') ? (
+                <ScalePressable
+                  style={[styles.circleBtn, { backgroundColor: 'rgba(34,197,94,0.16)' }]}
+                  onPress={() => setShowVoiceRoom(true)}
+                >
+                  <Ionicons name="mic-outline" size={18} color="#4ade80" />
+                </ScalePressable>
+              ) : null}
+
+              {chat?.type === 'channel' ? (
+                <ScalePressable
+                  style={[styles.circleBtn, { backgroundColor: 'rgba(245,158,11,0.18)', width: 'auto', paddingHorizontal: 9 }]}
+                  onPress={async () => {
+                    try {
+                      await boostChannelWithPirozhki(chatId, 25);
+                      showToast('Канал забущен ⚡', '+1 голос каналу (за 25 🥟)!', 'success');
+                    } catch (e: any) {
+                      showToast('Буст канала ⚡', e?.message || 'Недостаточно пирожков', 'error');
+                    }
+                  }}
+                >
+                  <Text style={{ color: '#fbbf24', fontSize: 11.5, fontWeight: '900' }}>
+                    ⚡ Ур.{Math.floor((Number(chat?.boostCount) || 0) / 3) + 1}
+                  </Text>
+                </ScalePressable>
+              ) : null}
 
               {partnerUid ? (
                 <ScalePressable
@@ -2121,8 +2612,8 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* @Mention Autocomplete Bar */}
-        {mentionSuggestions.length > 0 && (
+        {/* @Mention, :shortcode: & /template Autocomplete Bars */}
+        {(mentionSuggestions.length > 0 || shortcodeSuggestions.length > 0 || templateSuggestions.length > 0) && (
           <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
             <GlassCard radius={18} strong style={{ paddingVertical: 6, paddingHorizontal: 8 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -2138,8 +2629,69 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                     <Text style={{ color: appTheme.text, fontWeight: '700', fontSize: 12.5 }}>@{u.nick}</Text>
                   </TouchableOpacity>
                 ))}
+                {shortcodeSuggestions.map((sc) => (
+                  <TouchableOpacity
+                    key={sc.code}
+                    style={[styles.mentionChip, { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent }]}
+                    onPress={() => {
+                      const next = text.replace(/:([a-z0-9_]{1,12})$/i, `${sc.emoji} `);
+                      handleTextChange(next);
+                    }}
+                  >
+                    <Text style={{ color: appTheme.text, fontWeight: '800', fontSize: 13 }}>
+                      {sc.emoji} :{sc.code}:
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {templateSuggestions.map((tp) => (
+                  <TouchableOpacity
+                    key={tp.id}
+                    style={[styles.mentionChip, { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent }]}
+                    onPress={() => handleTextChange(tp.text)}
+                  >
+                    <Text style={{ color: appTheme.text, fontWeight: '800', fontSize: 12.5 }}>
+                      ⚡ /{tp.cmd} → {tp.text.slice(0, 22)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </ScrollView>
             </GlassCard>
+          </View>
+        )}
+
+        {/* Channel 2.0 Paid Post & Signature Toggles */}
+        {chat?.type === 'channel' && (chat.owner === me?.uid || (chat.admins || []).includes(me?.uid || '')) && (
+          <View style={{ paddingHorizontal: 14, paddingBottom: 2, flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setChannelPaidCost((c) => (c === 0 ? 15 : c === 15 ? 50 : c === 50 ? 100 : 0))}
+              style={[
+                styles.mentionChip,
+                {
+                  paddingVertical: 4,
+                  backgroundColor: channelPaidCost > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.05)',
+                  borderColor: channelPaidCost > 0 ? '#f59e0b' : appTheme.border,
+                },
+              ]}
+            >
+              <Text style={{ color: channelPaidCost > 0 ? '#fbbf24' : appTheme.textSub, fontSize: 11, fontWeight: '800' }}>
+                🥟 {channelPaidCost > 0 ? `Платный: ${channelPaidCost} пирожк.` : 'Бесплатный пост'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setChannelAuthorSig((v) => !v)}
+              style={[
+                styles.mentionChip,
+                {
+                  paddingVertical: 4,
+                  backgroundColor: channelAuthorSig ? appTheme.accentSoft : 'rgba(255,255,255,0.05)',
+                  borderColor: channelAuthorSig ? appTheme.accent : appTheme.border,
+                },
+              ]}
+            >
+              <Text style={{ color: channelAuthorSig ? appTheme.accent : appTheme.textSub, fontSize: 11, fontWeight: '800' }}>
+                ✍️ {channelAuthorSig ? `Подпись: ${me?.nick}` : 'Без подписи'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -2260,12 +2812,14 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           onClose={() => setShowAttachSheet(false)}
           onSendPhotos={handleSendPhotos}
           onSendFile={handleSendFile}
+          onSendMusic={handleSendMusic}
           onSendPoll={handleCreatePoll}
           onSendChecklist={handleCreateChecklist}
           onSendLocation={handleSendLocation}
           onSendPirozhki={handleSendPirozhki}
           onSendContact={handleSendContact}
           canGiftPirozhki={!!partnerUid}
+          isChannelPost={chat?.type === 'channel'}
         />
 
         {/* Message Action & Reactions Sheet */}
@@ -2304,6 +2858,35 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               >
                 <Text style={styles.sheetRowText}>↩️ Ответить</Text>
               </TouchableOpacity>
+
+              {!!decodeMsgText(actionMsg?.text) && (
+                <>
+                  <TouchableOpacity
+                    style={styles.sheetRow}
+                    onPress={() => {
+                      const m = actionMsg;
+                      setActionMsg(null);
+                      if (m) {
+                        setQuoteModalMsg(m);
+                        setQuoteSelectionText(decodeMsgText(m.text));
+                      }
+                    }}
+                  >
+                    <Text style={styles.sheetRowText}>✂️ Цитировать часть текста</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.sheetRow}
+                    onPress={() => {
+                      const m = actionMsg;
+                      setActionMsg(null);
+                      if (m) translateMessageText(m);
+                    }}
+                  >
+                    <Text style={styles.sheetRowText}>🌍 Перевести сообщение (RU ↔ EN)</Text>
+                  </TouchableOpacity>
+                </>
+              )}
 
               <TouchableOpacity
                 style={styles.sheetRow}
@@ -2533,18 +3116,62 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   🔥 Исчезнет через {destructLeft}с
                 </Text>
               </View>
-            ) : null}
+            ) : (
+              <View style={{ position: 'absolute', top: 44, left: 20, zIndex: 10, flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  style={[styles.lightboxClose, { position: 'relative', top: 0, right: 0, width: 'auto', paddingHorizontal: 14 }]}
+                  onPress={() => setLightboxZoom((z) => (z === 1 ? 2 : z === 2 ? 3 : 1))}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>🔍 {lightboxZoom}x</Text>
+                </TouchableOpacity>
+                {lightboxUri && (
+                  <TouchableOpacity
+                    style={[styles.lightboxClose, { position: 'relative', top: 0, right: 0, width: 'auto', paddingHorizontal: 14 }]}
+                    onPress={() =>
+                      Share.share({ url: lightboxUri, message: lightboxUri }).catch(() => {})
+                    }
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>💾 Скачать</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
             {lightboxUri && (
-              <Image source={{ uri: lightboxUri }} style={styles.lightboxImg} resizeMode="contain" />
+              <ScrollView
+                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+                maximumZoomScale={4}
+                minimumZoomScale={1}
+                style={{ width: '100%' }}
+              >
+                <Image
+                  source={{ uri: lightboxUri }}
+                  style={[styles.lightboxImg, { transform: [{ scale: lightboxZoom }] }]}
+                  resizeMode="contain"
+                />
+              </ScrollView>
             )}
           </View>
         </Modal>
 
-        {/* Long-Press Send Options (Silent / Scheduled) */}
+        {/* Long-Press Send Options (Message Effects, Silent, Scheduled) */}
         <Modal visible={showSendOptions} transparent animationType="fade" onRequestClose={() => setShowSendOptions(false)}>
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSendOptions(false)}>
             <GlassCard radius={26} strong style={styles.sheetCard}>
-              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Особая отправка</Text>
+              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Особая отправка и Эффекты</Text>
+              <View style={styles.quickReactRow}>
+                {['🔥', '🎉', '❤️', '⚡', '💎'].map((ef) => (
+                  <TouchableOpacity
+                    key={ef}
+                    style={styles.quickReactBtn}
+                    onPress={() => {
+                      setShowSendOptions(false);
+                      sendTextOrSaveEdit(false, ef);
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>{ef}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <TouchableOpacity
                 style={styles.sheetRow}
                 onPress={() => {
@@ -2702,16 +3329,63 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               </TouchableOpacity>
 
               {(chat?.type === 'group' || chat?.type === 'channel') && (
-                <TouchableOpacity
-                  style={styles.sheetRow}
-                  onPress={() => {
-                    setShowChatMenu(false);
-                    setShowGroupAdminModal(true);
-                  }}
-                >
-                  <Text style={styles.sheetRowText}>👑 Темы, Админы и Медленный режим</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={styles.sheetRow}
+                    onPress={() => {
+                      setShowChatMenu(false);
+                      setShowVoiceRoom(true);
+                    }}
+                  >
+                    <Text style={styles.sheetRowText}>🎙️ Голосовая комната (Voice Chat)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.sheetRow}
+                    onPress={() => {
+                      setShowChatMenu(false);
+                      setShowGroupAdminModal(true);
+                    }}
+                  >
+                    <Text style={styles.sheetRowText}>👑 Темы, Инвайты, Админы и Журнал</Text>
+                  </TouchableOpacity>
+                </>
               )}
+
+              <View style={[styles.sheetRow, { flexDirection: 'column', gap: 8 }]}>
+                <Text style={styles.sheetRowText}>🔔 Звук уведомлений для этого чата</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                  {[
+                    { k: 'default', l: '🔔 По умолч.' },
+                    { k: 'crystal', l: '💎 Кристалл' },
+                    { k: 'retro', l: '👾 Ретро' },
+                    { k: 'soft', l: '🌊 Мягкий' },
+                    { k: 'silent', l: '🔕 Без звука' },
+                  ].map((tn) => {
+                    const curTone = chatSoundTones[chatId] || 'default';
+                    const act = curTone === tn.k;
+                    return (
+                      <TouchableOpacity
+                        key={tn.k}
+                        onPress={() => {
+                          setChatSoundTone(chatId, tn.k);
+                          showToast('Звук чата 🔔', tn.l, 'success');
+                        }}
+                        style={[
+                          styles.mentionChip,
+                          {
+                            backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
+                            borderColor: act ? appTheme.accent : appTheme.border,
+                          },
+                        ]}
+                      >
+                        <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 11.5, fontWeight: '800' }}>
+                          {tn.l}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
 
               <View style={[styles.sheetRow, { flexDirection: 'column', gap: 8 }]}>
                 <Text style={styles.sheetRowText}>⏱️ Автоудаление новых сообщений</Text>
@@ -2811,6 +3485,66 @@ export default function ChatRoomScreen({ route, navigation }: any) {
             </GlassCard>
           </TouchableOpacity>
         </Modal>
+
+        {/* Partial Quote Selection Modal */}
+        <Modal
+          visible={!!quoteModalMsg}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setQuoteModalMsg(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <GlassCard radius={28} strong style={styles.sheetCard}>
+              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>
+                ✂️ Точечное цитирование
+              </Text>
+              <Text style={{ color: appTheme.textSub, fontSize: 12, marginBottom: 8 }}>
+                Оставьте нужную фразу или выделите кусок текста для точного ответа:
+              </Text>
+              <TextInput
+                multiline
+                value={quoteSelectionText}
+                onChangeText={setQuoteSelectionText}
+                style={[
+                  styles.pollInput,
+                  { minHeight: 80, textAlignVertical: 'top' },
+                ]}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                <TouchableOpacity onPress={() => setQuoteModalMsg(null)} style={styles.cancelModalBtn}>
+                  <Text style={{ color: appTheme.textSub, fontWeight: '700' }}>Отмена</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.createPollBtn, { backgroundColor: appTheme.accent }]}
+                  onPress={() => {
+                    if (quoteModalMsg && quoteSelectionText.trim()) {
+                      setReplyTo({
+                        id: quoteModalMsg.id,
+                        author: quoteModalMsg.author || 'Пользователь',
+                        text: decodeMsgText(quoteModalMsg.text),
+                        quote: quoteSelectionText.trim(),
+                      });
+                    }
+                    setQuoteModalMsg(null);
+                  }}
+                >
+                  <Text style={{ color: '#000', fontWeight: '900' }}>Цитировать фразу</Text>
+                </TouchableOpacity>
+              </View>
+            </GlassCard>
+          </View>
+        </Modal>
+
+        {/* Group / Channel Live Voice Room */}
+        <GroupVoiceRoomModal
+          visible={showVoiceRoom}
+          onClose={() => setShowVoiceRoom(false)}
+          chatId={chatId}
+          chatName={displayName}
+        />
+
+        {/* Fullscreen Message Effect Particles */}
+        <MessageEffectsOverlay triggerKey={effectBurst.key} emoji={effectBurst.emoji} />
       </KeyboardAvoidingView>
     </LiquidBackground>
   );
@@ -3237,5 +3971,82 @@ const styles = StyleSheet.create({
     padding: 9,
     minWidth: 200,
     marginBottom: 2,
+  },
+  paidLockCard: {
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(245,158,11,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.45)',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 210,
+  },
+  paidUnlockBtn: {
+    marginTop: 4,
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 999,
+  },
+  albumGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    width: 222,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  albumCell: {
+    width: 108,
+    height: 108,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  photoSpoilerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+  },
+  musicCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(236,72,153,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(236,72,153,0.35)',
+    borderRadius: 18,
+    padding: 9,
+    minWidth: 215,
+    marginBottom: 4,
+  },
+  musicDisc: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transcriptBox: {
+    marginTop: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    borderLeftWidth: 2,
+    borderLeftColor: '#60a5fa',
+  },
+  translationBox: {
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderLeftWidth: 2.5,
+    borderLeftColor: '#38bdf8',
   },
 });
