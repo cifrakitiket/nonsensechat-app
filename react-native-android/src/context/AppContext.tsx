@@ -35,6 +35,9 @@ export interface UserProfile {
   steamFrame?: string;
   unlockedThemes?: string[];
   unlockedFrames?: string[];
+  privacyLastSeen?: 'everybody' | 'contacts' | 'nobody';
+  avatarHistory?: string[];
+  blockedUids?: string[];
 }
 
 export interface FriendRequestItem {
@@ -106,7 +109,7 @@ export function normalizeUser(uid: string, raw: any): UserProfile {
     bday: data.bday || '',
     phone: data.phone || '',
     online: !!data.online,
-    lastSeen: toMs(data.lastSeen),
+    lastSeen: data.privacyLastSeen === 'nobody' ? 0 : toMs(data.lastSeen),
     createdAt: toMs(data.createdAt),
     pirozhki: Math.max(0, parseInt(String(data.pirozhki ?? 0), 10) || 0),
     prefix: data.prefix || '',
@@ -117,6 +120,9 @@ export function normalizeUser(uid: string, raw: any): UserProfile {
     steamFrame,
     unlockedThemes,
     unlockedFrames,
+    privacyLastSeen: data.privacyLastSeen || 'everybody',
+    avatarHistory: toArray<string>(data.avatarHistory),
+    blockedUids: toArray<string>(data.blockedUids),
   };
 }
 
@@ -227,6 +233,19 @@ interface AppContextValue {
   setPinCode: (pin: string) => void;
   publishStory: (imageDataUrl: string, caption: string) => Promise<void>;
   markStoryViewed: (storyId: string) => Promise<void>;
+  // Wave 2 Telegram Complete features
+  personalNotes: Record<string, string>;
+  setPersonalNote: (targetUid: string, note: string) => void;
+  favoriteStickers: string[];
+  recentStickers: string[];
+  toggleFavoriteSticker: (url: string) => void;
+  pushRecentSticker: (url: string) => void;
+  markAllChatsRead: () => void;
+  toggleBlockUser: (targetUid: string) => Promise<void>;
+  setPrivacyLastSeen: (mode: 'everybody' | 'contacts' | 'nobody') => Promise<void>;
+  activeCallPeer: { uid: string; nick: string; avatar?: string; isVideo: boolean; chatId?: string } | null;
+  startCall: (peer: { uid: string; nick: string; avatar?: string; isVideo: boolean; chatId?: string }) => void;
+  endActiveCallTrigger: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -259,6 +278,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [chatFontSize, setChatFontSizeState] = useState<number>(15);
   const [pinCode, setPinCodeState] = useState<string>('');
   const [stories, setStories] = useState<StoryItem[]>([]);
+  const [personalNotes, setPersonalNotes] = useState<Record<string, string>>({});
+  const [favoriteStickers, setFavoriteStickers] = useState<string[]>([]);
+  const [recentStickers, setRecentStickers] = useState<string[]>([]);
+  const [activeCallPeer, setActiveCallPeer] = useState<{
+    uid: string;
+    nick: string;
+    avatar?: string;
+    isVideo: boolean;
+    chatId?: string;
+  } | null>(null);
   const mutedChatIdsRef = useRef<string[]>([]);
 
   useEffect(() => {
@@ -282,6 +311,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (p.chatWallpaper) setChatWallpaperState(p.chatWallpaper);
           if (typeof p.chatFontSize === 'number') setChatFontSizeState(p.chatFontSize);
           if (typeof p.pinCode === 'string') setPinCodeState(p.pinCode);
+          if (p.personalNotes && typeof p.personalNotes === 'object') setPersonalNotes(p.personalNotes);
+          if (Array.isArray(p.favoriteStickers)) setFavoriteStickers(p.favoriteStickers);
+          if (Array.isArray(p.recentStickers)) setRecentStickers(p.recentStickers);
         }
       } catch (_) {}
       tgPrefsLoadedRef.current = true;
@@ -301,10 +333,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         chatWallpaper,
         chatFontSize,
         pinCode,
+        personalNotes,
+        favoriteStickers,
+        recentStickers,
       });
       NativeModules.NativeStorageModule?.setItem?.('nc_tg_prefs_v1', payload);
     } catch (_) {}
-  }, [pinnedChatIds, mutedChatIds, archivedChatIds, markedUnreadIds, drafts, customFolders, chatWallpaper, chatFontSize, pinCode]);
+  }, [
+    pinnedChatIds,
+    mutedChatIds,
+    archivedChatIds,
+    markedUnreadIds,
+    drafts,
+    customFolders,
+    chatWallpaper,
+    chatFontSize,
+    pinCode,
+    personalNotes,
+    favoriteStickers,
+    recentStickers,
+  ]);
 
   const toggleIdInList = (setter: React.Dispatch<React.SetStateAction<string[]>>, id: string) => {
     triggerHaptic(10);
@@ -394,6 +442,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await update(ref(rtdb, `stories/${storyId}/views`), { [me.uid]: true });
     } catch (_) {}
+  };
+
+  const setPersonalNote = (targetUid: string, note: string) => {
+    setPersonalNotes((prev) => {
+      if (!note.trim()) {
+        const next = { ...prev };
+        delete next[targetUid];
+        return next;
+      }
+      return { ...prev, [targetUid]: note };
+    });
+  };
+
+  const toggleFavoriteSticker = (url: string) => {
+    if (!url) return;
+    triggerHaptic(10);
+    setFavoriteStickers((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : [url, ...prev]));
+  };
+
+  const pushRecentSticker = (url: string) => {
+    if (!url) return;
+    setRecentStickers((prev) => [url, ...prev.filter((u) => u !== url)].slice(0, 24));
+  };
+
+  const markAllChatsRead = () => {
+    triggerHaptic(14);
+    setUnreadMap({});
+    setMarkedUnreadIds([]);
+    setChats((prev) => prev.map((c) => (c.unread ? { ...c, unread: 0 } : c)));
+    if (Platform.OS === 'android') {
+      try {
+        NativeModules.NotificationModule?.clearAllNotifications?.();
+      } catch (_) {}
+    }
+  };
+
+  const toggleBlockUser = async (targetUid: string) => {
+    if (!me || !targetUid) return;
+    const cur = me.blockedUids || [];
+    const next = cur.includes(targetUid) ? cur.filter((u) => u !== targetUid) : [...cur, targetUid];
+    await update(ref(rtdb, `users/${me.uid}`), { blockedUids: next });
+    triggerHaptic(12);
+  };
+
+  const setPrivacyLastSeen = async (mode: 'everybody' | 'contacts' | 'nobody') => {
+    if (!me) return;
+    await update(ref(rtdb, `users/${me.uid}`), { privacyLastSeen: mode });
+    triggerHaptic(8);
+  };
+
+  const startCall = (peer: { uid: string; nick: string; avatar?: string; isVideo: boolean; chatId?: string }) => {
+    triggerHaptic(18);
+    setActiveCallPeer(peer);
+  };
+
+  const endActiveCallTrigger = () => {
+    setActiveCallPeer(null);
   };
 
   const checkNotificationPermission = async (): Promise<boolean> => {
@@ -1031,6 +1136,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       nextPatch.nick = cleanNick;
       nextPatch.nickLower = nextLower;
     }
+    if (patch.avatar && patch.avatar !== me.avatar) {
+      const prevHist = me.avatarHistory || (me.avatar ? [me.avatar] : []);
+      nextPatch.avatarHistory = [patch.avatar, ...prevHist.filter((u) => u !== patch.avatar)].slice(0, 10);
+    }
     await update(ref(rtdb, `users/${me.uid}`), nextPatch);
   };
 
@@ -1227,6 +1336,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPinCode,
         publishStory,
         markStoryViewed,
+        personalNotes,
+        setPersonalNote,
+        favoriteStickers,
+        recentStickers,
+        toggleFavoriteSticker,
+        pushRecentSticker,
+        markAllChatsRead,
+        toggleBlockUser,
+        setPrivacyLastSeen,
+        activeCallPeer,
+        startCall,
+        endActiveCallTrigger,
       }}
     >
       {children}

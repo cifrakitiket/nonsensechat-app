@@ -34,7 +34,7 @@ import {
 } from '../services/firebase';
 import { GlassCard } from './GlassCard';
 
-type SheetTab = 'gallery' | 'file' | 'poll' | 'pirozhki' | 'contact';
+type SheetTab = 'gallery' | 'file' | 'poll' | 'checklist' | 'location' | 'pirozhki' | 'contact';
 
 export interface EncodedPhotoResult {
   dataUrl: string;
@@ -55,7 +55,13 @@ interface TelegramAttachSheetProps {
   onClose: () => void;
   onSendPhotos?: (photos: EncodedPhotoResult[], caption: string, selfDestructSec?: number) => Promise<void> | void;
   onSendFile?: (file: EncodedFileResult) => Promise<void> | void;
-  onSendPoll?: (question: string, options: string[]) => Promise<void> | void;
+  onSendPoll?: (
+    question: string,
+    options: string[],
+    settings?: { anonymous?: boolean; multiple?: boolean; isQuiz?: boolean; correctIdx?: number }
+  ) => Promise<void> | void;
+  onSendChecklist?: (title: string, items: string[]) => Promise<void> | void;
+  onSendLocation?: (title: string, lat: number, lng: number) => Promise<void> | void;
   onSendPirozhki?: (amount: number, note: string) => Promise<void> | void;
   onSendContact?: (user: UserProfile) => Promise<void> | void;
   onPickAvatar?: (dataUrl: string) => Promise<void> | void;
@@ -80,6 +86,8 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   onSendPhotos,
   onSendFile,
   onSendPoll,
+  onSendChecklist,
+  onSendLocation,
   onSendPirozhki,
   onSendContact,
   onPickAvatar,
@@ -102,9 +110,20 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Poll state
+  // Poll 2.0 state
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+  const [pollAnonymous, setPollAnonymous] = useState(false);
+  const [pollMultiple, setPollMultiple] = useState(false);
+  const [pollQuiz, setPollQuiz] = useState(false);
+  const [pollCorrectIdx, setPollCorrectIdx] = useState(0);
+
+  // Checklist state
+  const [checkTitle, setCheckTitle] = useState('');
+  const [checkItems, setCheckItems] = useState<string[]>(['', '']);
+
+  // Location state
+  const [locLabel, setLocLabel] = useState('');
 
   // Pirozhki state
   const [giftAmount, setGiftAmount] = useState('25');
@@ -337,9 +356,46 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
     }
     setBusy(true);
     try {
-      await onSendPoll?.(q, opts);
+      await onSendPoll?.(q, opts, {
+        anonymous: pollAnonymous,
+        multiple: pollMultiple,
+        isQuiz: pollQuiz,
+        correctIdx: pollQuiz ? Math.min(pollCorrectIdx, opts.length - 1) : undefined,
+      });
       setPollQuestion('');
       setPollOptions(['', '']);
+      setPollAnonymous(false);
+      setPollMultiple(false);
+      setPollQuiz(false);
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCreateChecklist = async () => {
+    const t = checkTitle.trim() || 'Список задач';
+    const items = checkItems.map((x) => x.trim()).filter(Boolean);
+    if (items.length < 1) {
+      showToast('Задачи', 'Добавьте хотя бы 1 пункт', 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      await onSendChecklist?.(t, items);
+      setCheckTitle('');
+      setCheckItems(['', '']);
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSendGeo = async (title: string, lat: number, lng: number) => {
+    setBusy(true);
+    try {
+      await onSendLocation?.(title, lat, lng);
+      setLocLabel('');
       onClose();
     } finally {
       setBusy(false);
@@ -386,7 +442,11 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
       : activeTab === 'file'
       ? 'Файл'
       : activeTab === 'poll'
-      ? 'Опрос'
+      ? 'Опрос 2.0'
+      : activeTab === 'checklist'
+      ? 'Чек-лист задач'
+      : activeTab === 'location'
+      ? 'Геолокация'
       : activeTab === 'pirozhki'
       ? 'Подарить пирожки'
       : 'Контакт';
@@ -395,9 +455,11 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
     mode === 'avatar'
       ? [{ key: 'gallery', label: 'Галерея', icon: 'images' }]
       : [
-          { key: 'gallery', label: 'Галерея', icon: 'images' },
+          { key: 'gallery', label: 'Фото', icon: 'images' },
           { key: 'file', label: 'Файл', icon: 'document' },
           { key: 'poll', label: 'Опрос', icon: 'stats-chart' },
+          { key: 'checklist', label: 'Задачи', icon: 'checkbox' },
+          { key: 'location', label: 'Гео', icon: 'location' },
           ...(canGiftPirozhki ? [{ key: 'pirozhki' as SheetTab, label: 'Пирожки', icon: 'gift' }] : []),
           { key: 'contact', label: 'Контакт', icon: 'person-circle' },
         ];
@@ -756,21 +818,66 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                       ]}
                     />
 
-                    <Text style={[styles.sectionLabel, { color: appTheme.textSub, marginTop: 6 }]}>ВАРИАНТЫ</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {[
+                        { active: pollAnonymous, label: '🕵️ Анонимно', toggle: () => setPollAnonymous((v) => !v) },
+                        { active: pollMultiple, label: '☑️ Несколько', toggle: () => { setPollMultiple((v) => !v); if (!pollMultiple) setPollQuiz(false); } },
+                        { active: pollQuiz, label: '🏆 Викторина', toggle: () => { setPollQuiz((v) => !v); if (!pollQuiz) setPollMultiple(false); } },
+                      ].map((chip, i) => (
+                        <TouchableOpacity
+                          key={i}
+                          onPress={chip.toggle}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 7,
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            backgroundColor: chip.active ? appTheme.accentSoft : 'rgba(255,255,255,0.05)',
+                            borderColor: chip.active ? appTheme.accent : appTheme.border,
+                          }}
+                        >
+                          <Text style={{ color: chip.active ? appTheme.accent : appTheme.textSub, fontSize: 12, fontWeight: '800' }}>
+                            {chip.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <Text style={[styles.sectionLabel, { color: appTheme.textSub, marginTop: 4 }]}>
+                      {pollQuiz ? 'ВАРИАНТЫ (отметьте правильный ✓)' : 'ВАРИАНТЫ'}
+                    </Text>
                     {pollOptions.map((opt, idx) => (
-                      <TextInput
-                        key={idx}
-                        value={opt}
-                        onChangeText={(txt) =>
-                          setPollOptions((prev) => prev.map((v, i) => (i === idx ? txt : v)))
-                        }
-                        placeholder={`Вариант ${idx + 1}`}
-                        placeholderTextColor={appTheme.textSub}
-                        style={[
-                          styles.inputBox,
-                          { color: appTheme.text, backgroundColor: appTheme.glass, borderColor: appTheme.border },
-                        ]}
-                      />
+                      <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {pollQuiz && (
+                          <TouchableOpacity
+                            onPress={() => setPollCorrectIdx(idx)}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 14,
+                              borderWidth: 2,
+                              borderColor: pollCorrectIdx === idx ? '#22c55e' : appTheme.border,
+                              backgroundColor: pollCorrectIdx === idx ? 'rgba(34,197,94,0.2)' : 'transparent',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {pollCorrectIdx === idx && <Text style={{ color: '#22c55e', fontWeight: '900' }}>✓</Text>}
+                          </TouchableOpacity>
+                        )}
+                        <TextInput
+                          value={opt}
+                          onChangeText={(txt) =>
+                            setPollOptions((prev) => prev.map((v, i) => (i === idx ? txt : v)))
+                          }
+                          placeholder={`Вариант ${idx + 1}`}
+                          placeholderTextColor={appTheme.textSub}
+                          style={[
+                            styles.inputBox,
+                            { flex: 1, color: appTheme.text, backgroundColor: appTheme.glass, borderColor: appTheme.border },
+                          ]}
+                        />
+                      </View>
                     ))}
 
                     {pollOptions.length < 6 && (
@@ -789,6 +896,100 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                       style={[styles.primaryPill, { backgroundColor: appTheme.accent, marginTop: 8 }]}
                     >
                       <Text style={styles.primaryPillText}>Отправить опрос</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                )}
+
+                {activeTab === 'checklist' && (
+                  <ScrollView contentContainerStyle={{ paddingBottom: 20, gap: 10 }}>
+                    <Text style={[styles.sectionLabel, { color: appTheme.textSub }]}>ЗАГОЛОВОК СПИСКА ЗАДАЧ</Text>
+                    <TextInput
+                      value={checkTitle}
+                      onChangeText={setCheckTitle}
+                      placeholder="Например: Покупки / План на день..."
+                      placeholderTextColor={appTheme.textSub}
+                      style={[
+                        styles.inputBox,
+                        { color: appTheme.text, backgroundColor: appTheme.glass, borderColor: appTheme.border },
+                      ]}
+                    />
+                    <Text style={[styles.sectionLabel, { color: appTheme.textSub }]}>ПУНКТЫ</Text>
+                    {checkItems.map((it, idx) => (
+                      <TextInput
+                        key={idx}
+                        value={it}
+                        onChangeText={(txt) => setCheckItems((prev) => prev.map((v, i) => (i === idx ? txt : v)))}
+                        placeholder={`Задача ${idx + 1}`}
+                        placeholderTextColor={appTheme.textSub}
+                        style={[
+                          styles.inputBox,
+                          { color: appTheme.text, backgroundColor: appTheme.glass, borderColor: appTheme.border },
+                        ]}
+                      />
+                    ))}
+                    {checkItems.length < 10 && (
+                      <TouchableOpacity
+                        onPress={() => setCheckItems((prev) => [...prev, ''])}
+                        style={[styles.addOptBtn, { borderColor: appTheme.border }]}
+                      >
+                        <Ionicons name="add-circle-outline" size={18} color={appTheme.accent} />
+                        <Text style={{ color: appTheme.accent, fontWeight: '700' }}>Добавить пункт</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      onPress={handleCreateChecklist}
+                      disabled={busy}
+                      style={[styles.primaryPill, { backgroundColor: appTheme.accent, marginTop: 6 }]}
+                    >
+                      <Text style={styles.primaryPillText}>Отправить чек-лист ✅</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                )}
+
+                {activeTab === 'location' && (
+                  <ScrollView contentContainerStyle={{ paddingBottom: 20, gap: 10 }}>
+                    <Text style={[styles.sectionLabel, { color: appTheme.textSub }]}>БЫСТРАЯ ГЕОЛОКАЦИЯ</Text>
+                    {[
+                      { title: '📍 Москва, Центр', lat: 55.7558, lng: 37.6173 },
+                      { title: '📍 Санкт-Петербург, Невский', lat: 59.9343, lng: 30.3351 },
+                      { title: '📍 Екатеринбург, Плотинка', lat: 56.8389, lng: 60.6057 },
+                      { title: '📍 Новосибирск, Центр', lat: 55.0084, lng: 82.9357 },
+                    ].map((loc, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => handleSendGeo(loc.title, loc.lat, loc.lng)}
+                        style={[
+                          styles.fileRow,
+                          { backgroundColor: appTheme.glass, borderColor: appTheme.border, borderWidth: 1, borderRadius: 16 },
+                        ]}
+                      >
+                        <Text style={{ color: appTheme.text, fontWeight: '700', flex: 1 }}>{loc.title}</Text>
+                        <Ionicons name="navigate" size={18} color={appTheme.accent} />
+                      </TouchableOpacity>
+                    ))}
+                    <Text style={[styles.sectionLabel, { color: appTheme.textSub, marginTop: 6 }]}>СВОЁ МЕСТО / АДРЕС</Text>
+                    <TextInput
+                      value={locLabel}
+                      onChangeText={setLocLabel}
+                      placeholder="Введите адрес или название места..."
+                      placeholderTextColor={appTheme.textSub}
+                      style={[
+                        styles.inputBox,
+                        { color: appTheme.text, backgroundColor: appTheme.glass, borderColor: appTheme.border },
+                      ]}
+                    />
+                    <TouchableOpacity
+                      onPress={() => {
+                        const clean = locLabel.trim();
+                        if (!clean) {
+                          showToast('Геолокация', 'Укажите название места или выберите из списка', 'error');
+                          return;
+                        }
+                        handleSendGeo(`📍 ${clean}`, 55.7558, 37.6173);
+                      }}
+                      style={[styles.primaryPill, { backgroundColor: appTheme.accent }]}
+                    >
+                      <Text style={styles.primaryPillText}>Отправить точку 📍</Text>
                     </TouchableOpacity>
                   </ScrollView>
                 )}

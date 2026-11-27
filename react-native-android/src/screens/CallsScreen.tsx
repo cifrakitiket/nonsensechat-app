@@ -12,7 +12,7 @@ import { RADII } from '../theme/liquidGlass';
 
 export default function CallsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { me, usersMap, appTheme, openOrCreateDm, showToast } = useApp();
+  const { me, usersMap, appTheme, openOrCreateDm, showToast, startCall } = useApp();
   const [calls, setCalls] = useState<any[]>([]);
 
   useEffect(() => {
@@ -99,15 +99,47 @@ export default function CallsScreen({ navigation }: any) {
                     </Text>
                   </View>
 
-                  <ScalePressable
-                    style={[styles.callbackBtn, { backgroundColor: appTheme.accentSoft }]}
-                    onPress={() => {
-                      if (item.peerUid) handleCallContact(item.peerUid, peerName);
-                      else showToast('Звонок', `Контакт: ${peerName}`, 'info');
-                    }}
-                  >
-                    <Text style={{ fontSize: 16 }}>💬</Text>
-                  </ScalePressable>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {item.peerUid ? (
+                      <>
+                        <ScalePressable
+                          style={[styles.callbackBtn, { backgroundColor: 'rgba(34, 197, 94, 0.18)' }]}
+                          onPress={() =>
+                            startCall({
+                              uid: item.peerUid,
+                              nick: peerName,
+                              avatar: peer?.avatar || item.peerAva,
+                              isVideo: false,
+                            })
+                          }
+                        >
+                          <Text style={{ fontSize: 15 }}>📞</Text>
+                        </ScalePressable>
+                        <ScalePressable
+                          style={[styles.callbackBtn, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}
+                          onPress={() =>
+                            startCall({
+                              uid: item.peerUid,
+                              nick: peerName,
+                              avatar: peer?.avatar || item.peerAva,
+                              isVideo: true,
+                            })
+                          }
+                        >
+                          <Text style={{ fontSize: 15 }}>📹</Text>
+                        </ScalePressable>
+                      </>
+                    ) : null}
+                    <ScalePressable
+                      style={[styles.callbackBtn, { backgroundColor: appTheme.accentSoft }]}
+                      onPress={() => {
+                        if (item.peerUid) handleCallContact(item.peerUid, peerName);
+                        else showToast('Звонок', `Контакт: ${peerName}`, 'info');
+                      }}
+                    >
+                      <Text style={{ fontSize: 15 }}>💬</Text>
+                    </ScalePressable>
+                  </View>
                 </GlassCard>
               </View>
             );

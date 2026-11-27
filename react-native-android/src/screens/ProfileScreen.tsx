@@ -27,6 +27,8 @@ import { PrefixBadge } from '../components/PrefixBadge';
 import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
+import { ProfileQrAndNotesModal } from '../components/ProfileQrAndNotesModal';
+import { StorageAndPrivacyModal } from '../components/StorageAndPrivacyModal';
 import { AppThemeKey, LIQUID_THEMES, RADII } from '../theme/liquidGlass';
 
 export default function ProfileScreen({ navigation }: any) {
@@ -58,6 +60,8 @@ export default function ProfileScreen({ navigation }: any) {
   const [showAvatarSheet, setShowAvatarSheet] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [showStoragePrivacyModal, setShowStoragePrivacyModal] = useState(false);
 
   if (!me) return null;
 
@@ -309,6 +313,25 @@ export default function ProfileScreen({ navigation }: any) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setShowQrModal(true)}
+            >
+              <Text style={styles.settingIcon}>📱</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Мой QR-код визитка</Text>
+              <Text style={styles.settingVal}>@{me.nick}</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setShowStoragePrivacyModal(true)}
+            >
+              <Text style={styles.settingIcon}>🛡️</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Приватность, ЧС и Память 📊</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.settingItem, { borderBottomWidth: 0 }]}
               onPress={() =>
                 Share.share({
@@ -488,6 +511,19 @@ export default function ProfileScreen({ navigation }: any) {
           await updateMyProfile({ avatar: dataUrl });
           showToast('Аватар обновлён ✓', undefined, 'success');
         }}
+      />
+
+      <ProfileQrAndNotesModal
+        visible={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        uid={me.uid}
+        nick={me.nick}
+        avatar={me.avatar}
+      />
+
+      <StorageAndPrivacyModal
+        visible={showStoragePrivacyModal}
+        onClose={() => setShowStoragePrivacyModal(false)}
       />
 
       {/* PIN Setup Modal */}

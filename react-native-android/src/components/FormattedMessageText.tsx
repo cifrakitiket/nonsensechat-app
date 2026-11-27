@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Text, View, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { triggerHaptic } from '../services/firebase';
 import { UserProfile } from '../context/AppContext';
 
@@ -11,6 +11,7 @@ interface FormattedMessageTextProps {
   highlightQuery?: string;
   usersMap?: Record<string, UserProfile>;
   onMentionPress?: (uid: string) => void;
+  onHashtagPress?: (tag: string) => void;
 }
 
 function renderHighlighted(
@@ -53,6 +54,7 @@ function InlineFormattedLine({
   highlightQuery,
   usersMap,
   onMentionPress,
+  onHashtagPress,
 }: {
   line: string;
   color: string;
@@ -61,12 +63,13 @@ function InlineFormattedLine({
   highlightQuery?: string;
   usersMap?: Record<string, UserProfile>;
   onMentionPress?: (uid: string) => void;
+  onHashtagPress?: (tag: string) => void;
 }) {
   const [revealedMap, setRevealedMap] = useState<Record<number, boolean>>({});
 
-  // Tokenize: ||spoiler||, `code`, **bold**, *italic*, @mention
+  // Tokenize: ||spoiler||, `code`, **bold**, ~~strike~~, *italic*, https://url, @mention, #hashtag
   const tokenRegex =
-    /(\|\|[^|\n]+\|\||`[^`\n]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*|@[a-zA-Zа-яА-ЯёЁ0-9_]+)/g;
+    /(\|\|[^|\n]+\|\||`[^`\n]+`|\*\*[^*\n]+\*\*|~~[^~\n]+~~|\*[^*\n]+\*|https?:\/\/[^\s<>"']+|@[a-zA-Zа-яА-ЯёЁ0-9_]+|#[a-zA-Zа-яА-ЯёЁ0-9_]+)/g;
   const parts = line.split(tokenRegex);
 
   const baseStyle = {
@@ -90,10 +93,7 @@ function InlineFormattedLine({
                 triggerHaptic(8);
                 setRevealedMap((prev) => ({ ...prev, [idx]: !prev[idx] }));
               }}
-              style={[
-                baseStyle,
-                revealed ? styles.spoilerRevealed : styles.spoilerHidden,
-              ]}
+              style={[baseStyle, revealed ? styles.spoilerRevealed : styles.spoilerHidden]}
             >
               {revealed ? inner : '▒'.repeat(Math.min(18, Math.max(4, inner.length)))}
             </Text>
@@ -118,12 +118,50 @@ function InlineFormattedLine({
           );
         }
 
+        if (part.startsWith('~~') && part.endsWith('~~') && part.length > 4) {
+          return renderHighlighted(
+            part.slice(2, -2),
+            highlightQuery || '',
+            [baseStyle, { textDecorationLine: 'line-through', opacity: 0.78 }],
+            `s_${idx}`
+          );
+        }
+
         if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
           return renderHighlighted(
             part.slice(1, -1),
             highlightQuery || '',
             [baseStyle, { fontStyle: 'italic' }],
             `i_${idx}`
+          );
+        }
+
+        if (/^https?:\/\//i.test(part)) {
+          return (
+            <Text
+              key={idx}
+              onPress={() => Linking.openURL(part).catch(() => {})}
+              style={[baseStyle, { color: accent, textDecorationLine: 'underline' }]}
+            >
+              {part}
+            </Text>
+          );
+        }
+
+        if (part.startsWith('#') && part.length > 1) {
+          return (
+            <Text
+              key={idx}
+              onPress={() => {
+                if (onHashtagPress) {
+                  triggerHaptic(8);
+                  onHashtagPress(part);
+                }
+              }}
+              style={[baseStyle, { color: accent, fontWeight: '700' }]}
+            >
+              {part}
+            </Text>
           );
         }
 
@@ -173,12 +211,25 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
   highlightQuery,
   usersMap,
   onMentionPress,
+  onHashtagPress,
 }) => {
+  const firstUrl = useMemo(() => {
+    if (!text) return null;
+    const m = String(text).match(/https?:\/\/[^\s<>"']+/i);
+    if (!m) return null;
+    try {
+      const u = new URL(m[0]);
+      return { raw: m[0], host: u.hostname.replace(/^www\./, ''), path: u.pathname !== '/' ? u.pathname : '' };
+    } catch (_) {
+      return { raw: m[0], host: m[0].replace(/^https?:\/\//i, '').split('/')[0], path: '' };
+    }
+  }, [text]);
+
   if (!text) return null;
   const lines = String(text).split('\n');
 
   return (
-    <View style={{ gap: 3 }}>
+    <View style={{ gap: 4 }}>
       {lines.map((line, i) => {
         if (line.startsWith('> ')) {
           return (
@@ -191,6 +242,7 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
                 highlightQuery={highlightQuery}
                 usersMap={usersMap}
                 onMentionPress={onMentionPress}
+                onHashtagPress={onHashtagPress}
               />
             </View>
           );
@@ -205,9 +257,28 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
             highlightQuery={highlightQuery}
             usersMap={usersMap}
             onMentionPress={onMentionPress}
+            onHashtagPress={onHashtagPress}
           />
         );
       })}
+
+      {firstUrl && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => Linking.openURL(firstUrl.raw).catch(() => {})}
+          style={[styles.linkPreviewCard, { borderLeftColor: accent }]}
+        >
+          <Text style={[styles.linkHost, { color: accent }]} numberOfLines={1}>
+            🌐 {firstUrl.host}
+          </Text>
+          <Text style={styles.linkSub} numberOfLines={1}>
+            {firstUrl.path || firstUrl.raw}
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10.5, marginTop: 2 }}>
+            Открыть ссылку ↗
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -241,4 +312,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '800',
   },
+  linkPreviewCard: {
+    marginTop: 4,
+    borderLeftWidth: 3,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  linkHost: { fontSize: 12.5, fontWeight: '800' },
+  linkSub: { color: '#e2e8f0', fontSize: 12, marginTop: 1 },
 });

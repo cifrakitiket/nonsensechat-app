@@ -1,9 +1,9 @@
 {
-  "version": "5.0.1",
-  "versionCode": 501,
+  "version": "5.2.0",
+  "versionCode": 520,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 23646367,
-  "publishedAt": "2026-11-26T12:05:14.826Z",
-  "releaseNotes": "• 🛠️ Срочный фикс вылета при запуске (v5.0.1)\n• 🚀 Все 18 фишек Telegram Ultra Edition работают стабильно"
+  "fileSize": 23950713,
+  "publishedAt": "2026-11-27T10:42:17.358Z",
+  "releaseNotes": "NonsenseChat v5.2.0 — Telegram Complete Wave 2: аудио/видео звонки 1-на-1, видеосообщения Кружочки, мини-игры ТГ, GIF и свои стикерпаки, опросы-викторины и чек-листы, темы и админка групп, глобальный поиск, свайпы, QR-визитка, галочки прочтения, ЧС и умное Избранное!"
 }

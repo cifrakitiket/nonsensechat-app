@@ -23,6 +23,7 @@ import { AppProvider, useApp } from './src/context/AppContext';
 import { GlassDialogHost } from './src/components/GlassDialogHost';
 import { UpdateModalHost } from './src/components/UpdateModalHost';
 import { PinLockOverlay } from './src/components/PinLockOverlay';
+import { WebRTCCallOverlay } from './src/components/WebRTCCallOverlay';
 import TelegramBottomNav from './src/navigation/TelegramBottomNav';
 import AuthScreen from './src/screens/AuthScreen';
 import ChatRoomScreen from './src/screens/ChatRoomScreen';
@@ -153,6 +154,7 @@ export default function App() {
         <GlassDialogHost />
         <UpdateModalHost />
         <PinLockOverlay />
+        <WebRTCCallOverlay />
       </AppProvider>
     </SafeAreaProvider>
   );

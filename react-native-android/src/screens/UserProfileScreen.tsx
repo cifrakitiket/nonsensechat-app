@@ -18,12 +18,26 @@ import { PrefixBadge } from '../components/PrefixBadge';
 import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
+import { ProfileQrAndNotesModal } from '../components/ProfileQrAndNotesModal';
 import { RADII } from '../theme/liquidGlass';
 
 export default function UserProfileScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { uid: targetUid } = route.params || {};
-  const { me, usersMap, chats, openOrCreateDm, outgoingRequests, sendFriendRequest, appTheme, showToast } = useApp();
+  const {
+    me,
+    usersMap,
+    chats,
+    openOrCreateDm,
+    outgoingRequests,
+    sendFriendRequest,
+    appTheme,
+    showToast,
+    personalNotes,
+    setPersonalNote,
+    toggleBlockUser,
+    startCall,
+  } = useApp();
 
   const resolvedUid = targetUid || me?.uid || '';
   const isSelf = resolvedUid === me?.uid;
@@ -32,6 +46,12 @@ export default function UserProfileScreen({ route, navigation }: any) {
   const [comments, setComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState('');
   const [posting, setPosting] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [noteDraft, setNoteDraft] = useState(personalNotes[resolvedUid] || '');
+
+  useEffect(() => {
+    setNoteDraft(personalNotes[resolvedUid] || '');
+  }, [resolvedUid, personalNotes]);
 
   useEffect(() => {
     if (!resolvedUid) return;
@@ -111,7 +131,9 @@ export default function UserProfileScreen({ route, navigation }: any) {
               <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
             <Text style={styles.topTitle}>ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ</Text>
-            <View style={{ width: 34 }} />
+            <TouchableOpacity style={styles.backCircle} onPress={() => setShowQrModal(true)}>
+              <Text style={{ fontSize: 15 }}>📱</Text>
+            </TouchableOpacity>
           </GlassCard>
         </View>
 
@@ -211,7 +233,95 @@ export default function UserProfileScreen({ route, navigation }: any) {
                 </>
               )}
             </View>
+
+            {!isSelf && (
+              <View style={[styles.actionsRow, { marginTop: 10 }]}>
+                <ScalePressable
+                  style={{ flex: 1 }}
+                  onPress={() =>
+                    startCall({
+                      uid: resolvedUid,
+                      nick: user.nick,
+                      avatar: user.avatar,
+                      isVideo: false,
+                    })
+                  }
+                >
+                  <View style={[styles.btnSec, { backgroundColor: 'rgba(34, 197, 94, 0.16)', borderColor: 'rgba(34, 197, 94, 0.4)' }]}>
+                    <Text style={styles.btnSecText}>📞 Аудио</Text>
+                  </View>
+                </ScalePressable>
+                <ScalePressable
+                  style={{ flex: 1 }}
+                  onPress={() =>
+                    startCall({
+                      uid: resolvedUid,
+                      nick: user.nick,
+                      avatar: user.avatar,
+                      isVideo: true,
+                    })
+                  }
+                >
+                  <View style={[styles.btnSec, { backgroundColor: 'rgba(59, 130, 246, 0.16)', borderColor: 'rgba(59, 130, 246, 0.4)' }]}>
+                    <Text style={styles.btnSecText}>📹 Видео</Text>
+                  </View>
+                </ScalePressable>
+                <ScalePressable
+                  style={{ flex: 1 }}
+                  onPress={() => toggleBlockUser(resolvedUid)}
+                >
+                  <View style={[styles.btnSec, { backgroundColor: 'rgba(239, 68, 68, 0.16)', borderColor: 'rgba(239, 68, 68, 0.35)' }]}>
+                    <Text style={[styles.btnSecText, { color: '#fca5a5' }]}>
+                      {(me?.blockedUids || []).includes(resolvedUid) ? '✓ Разблок.' : '🚫 В ЧС'}
+                    </Text>
+                  </View>
+                </ScalePressable>
+              </View>
+            )}
           </GlassCard>
+
+          {!isSelf && (
+            <GlassCard radius={RADII.CARD} style={[styles.showcase, { borderColor: theme.border }]}>
+              <Text style={[styles.showcaseTitle, { color: theme.accent }]}>
+                📝 ЛИЧНАЯ ЗАМЕТКА (ВИДНА ТОЛЬКО ВАМ)
+              </Text>
+              <View style={styles.commentComposer}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Напишите личную пометку о собеседнике..."
+                  placeholderTextColor="#64748b"
+                  value={noteDraft}
+                  onChangeText={setNoteDraft}
+                />
+                <TouchableOpacity
+                  style={[styles.commentSendBtn, { backgroundColor: theme.accent }]}
+                  onPress={() => {
+                    setPersonalNote(resolvedUid, noteDraft.trim());
+                    showToast('Заметка сохранена 📝', 'Видна только вам', 'success');
+                  }}
+                >
+                  <Text style={{ color: '#000', fontWeight: '900', fontSize: 12.5 }}>Сохр.</Text>
+                </TouchableOpacity>
+              </View>
+            </GlassCard>
+          )}
+
+          {(user.avatarHistory || []).length > 0 && (
+            <GlassCard radius={RADII.CARD} style={[styles.showcase, { borderColor: theme.border }]}>
+              <Text style={[styles.showcaseTitle, { color: theme.accent }]}>
+                🖼️ ИСТОРИЯ АВАТАРОК ({(user.avatarHistory || []).length})
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                {(user.avatarHistory || []).map((avaUri, idx) => (
+                  <Image
+                    key={idx}
+                    source={{ uri: avaUri }}
+                    style={{ width: 64, height: 64, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}
+                  />
+                ))}
+              </ScrollView>
+            </GlassCard>
+          )}
 
           <GlassCard radius={RADII.CARD} style={[styles.showcase, { borderColor: theme.border }]}>
             <Text style={[styles.showcaseTitle, { color: theme.accent }]}>📊 СТАТИСТИКА ПРОФИЛЯ</Text>
@@ -296,6 +406,13 @@ export default function UserProfileScreen({ route, navigation }: any) {
             )}
           </GlassCard>
         </ScrollView>
+        <ProfileQrAndNotesModal
+          visible={showQrModal}
+          onClose={() => setShowQrModal(false)}
+          uid={resolvedUid}
+          nick={user.nick}
+          avatar={user.avatar}
+        />
       </View>
     </LiquidBackground>
   );

@@ -16,6 +16,7 @@ function AnimatedTabPill({
   route,
   isFocused,
   onPress,
+  onLongPress,
   label,
   iconChar,
   badgeCount,
@@ -41,6 +42,7 @@ function AnimatedTabPill({
       accessibilityRole="button"
       accessibilityState={isFocused ? { selected: true } : {}}
       onPress={onPress}
+      onLongPress={onLongPress}
       style={styles.tabItem}
     >
       <Animated.View
@@ -89,7 +91,7 @@ function AnimatedTabPill({
 
 function TelegramTabBar({ state, navigation, userAvatar, unreadCount, reqsCount }: any) {
   const insets = useSafeAreaInsets();
-  const { appTheme } = useApp();
+  const { appTheme, markAllChatsRead, showToast } = useApp();
 
   return (
     <View
@@ -150,6 +152,14 @@ function TelegramTabBar({ state, navigation, userAvatar, unreadCount, reqsCount 
               route={route}
               isFocused={isFocused}
               onPress={onPress}
+              onLongPress={
+                route.name === 'Chats'
+                  ? () => {
+                      markAllChatsRead();
+                      showToast('Все чаты прочитаны ✓✓', undefined, 'success');
+                    }
+                  : undefined
+              }
               label={label}
               iconChar={iconChar}
               badgeCount={badgeCount}

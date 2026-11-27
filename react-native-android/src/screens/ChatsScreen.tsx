@@ -23,6 +23,8 @@ import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
 import { StoriesBar } from '../components/StoriesBar';
+import { SwipeableChatRow } from '../components/SwipeableChatRow';
+import { GlobalSearchModal } from '../components/GlobalSearchModal';
 import { RADII } from '../theme/liquidGlass';
 
 function formatTime(ms?: number) {
@@ -53,9 +55,13 @@ function formatLastMsgPreview(rawMsg?: string, isMine?: boolean) {
   const clean = stripHtml(rawMsg);
   let text = clean;
   if (clean.startsWith('data:image') || clean.includes('📷 Фото') || clean.includes('photo_')) text = '📷 Фотография';
+  else if (clean.includes('⭕') || clean.includes('Кружочек')) text = '⭕ Видеосообщение';
+  else if (clean.includes('🎬 GIF')) text = '🎬 GIF';
   else if (clean.includes('🎤') || clean.includes('[Голосовое]')) text = '🎤 Голосовое сообщение';
   else if (clean.includes('📎') || clean.includes('📄') || clean.includes('file_')) text = '📄 Документ';
   else if (clean.includes('📊') || clean.includes('Опрос:')) text = '📊 Опрос';
+  else if (clean.includes('✅ Чек-лист')) text = '✅ Чек-лист задач';
+  else if (clean.includes('📍')) text = clean;
   else if (clean.includes('🥧')) text = '🥧 Подарок пирожков';
   else if (clean.includes('✨ Стикер')) text = '✨ Стикер';
   return isMine ? `✓ ${text}` : text;
@@ -90,11 +96,13 @@ export default function ChatsScreen({ navigation }: any) {
     createCustomFolder,
     deleteCustomFolder,
     toggleChatInFolder,
+    markAllChatsRead,
   } = useApp();
 
   const [activeFolder, setActiveFolder] = useState<string>('all');
   const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState('');
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createMode, setCreateMode] = useState<'friend' | 'group' | 'channel'>('friend');
   const [createInput, setCreateInput] = useState('');
@@ -256,12 +264,21 @@ export default function ChatsScreen({ navigation }: any) {
     const unreadCount = item.unread || 0;
 
     return (
-      <ScalePressable
-        haptic
-        style={{ marginHorizontal: 12, marginVertical: 4 }}
-        onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, name: info.name })}
-        onLongPress={() => !isSaved && openChatPeek(item)}
+      <SwipeableChatRow
+        disabled={isSaved}
+        isPinned={isPinned}
+        isMuted={isMuted}
+        isArchived={archivedChatIds.includes(item.id)}
+        onTogglePin={() => togglePinChat(item.id)}
+        onToggleMute={() => toggleMuteChat(item.id)}
+        onToggleArchive={() => toggleArchiveChat(item.id)}
       >
+        <ScalePressable
+          haptic
+          style={{ marginHorizontal: 12, marginVertical: 4 }}
+          onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, name: info.name })}
+          onLongPress={() => !isSaved && openChatPeek(item)}
+        >
         <GlassCard radius={RADII.ITEM} style={styles.chatCard}>
           <View style={styles.avatarWrap}>
             {isSaved ? (
@@ -332,6 +349,7 @@ export default function ChatsScreen({ navigation }: any) {
           </View>
         </GlassCard>
       </ScalePressable>
+      </SwipeableChatRow>
     );
   };
 
@@ -368,6 +386,19 @@ export default function ChatsScreen({ navigation }: any) {
                   <Text style={styles.pirozhkiPlusText}>+</Text>
                 </View>
               </ScalePressable>
+
+              {(chats.some((c) => (c.unread || 0) > 0) || markedUnreadIds.length > 0) && (
+                <ScalePressable
+                  haptic
+                  style={styles.headerIconBtn}
+                  onPress={() => {
+                    markAllChatsRead();
+                    showToast('Прочитано ✓✓', 'Все чаты помечены прочитанными', 'success');
+                  }}
+                >
+                  <Text style={{ fontSize: 12, color: appTheme.accent, fontWeight: '900' }}>✓✓</Text>
+                </ScalePressable>
+              )}
 
               <ScalePressable
                 haptic
@@ -416,11 +447,24 @@ export default function ChatsScreen({ navigation }: any) {
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={[styles.searchInput, { color: appTheme.text }]}
-              placeholder="Поиск чатов и сообщений..."
+              placeholder="Поиск чатов..."
               placeholderTextColor={appTheme.textSub}
               value={search}
               onChangeText={setSearch}
             />
+            <TouchableOpacity
+              onPress={() => setShowGlobalSearch(true)}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 999,
+                backgroundColor: appTheme.accentSoft,
+              }}
+            >
+              <Text style={{ color: appTheme.accent, fontSize: 11.5, fontWeight: '800' }}>
+                🌐 Везде
+              </Text>
+            </TouchableOpacity>
           </GlassCard>
         </View>
 
@@ -850,6 +894,15 @@ export default function ChatsScreen({ navigation }: any) {
             </GlassCard>
           </View>
         </Modal>
+
+        <GlobalSearchModal
+          visible={showGlobalSearch}
+          onClose={() => setShowGlobalSearch(false)}
+          onOpenChatMessage={(cid, cname, mid) =>
+            navigation.navigate('ChatRoom', { chatId: cid, name: cname, jumpToMsgId: mid })
+          }
+          onOpenUser={(uid) => navigation.navigate('UserProfile', { uid })}
+        />
       </View>
     </LiquidBackground>
   );
