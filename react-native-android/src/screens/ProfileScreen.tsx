@@ -34,7 +34,7 @@ import { PowerTemplatesModal } from '../components/PowerTemplatesModal';
 import { SpecialBadges } from '../components/SpecialBadges';
 import { AiHubSettingsModal } from '../components/AiHubSettingsModal';
 import { AppInfoLegalReportModal, InfoModalMode } from '../components/AppInfoLegalReportModal';
-import { AppThemeKey, LIQUID_THEMES, RADII } from '../theme/liquidGlass';
+import { RADII } from '../theme/liquidGlass';
 
 export default function ProfileScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -44,21 +44,14 @@ export default function ProfileScreen({ navigation }: any) {
     grantSelfPirozhki,
     updateMyProfile,
     appTheme,
-    appThemeKey,
-    setAppTheme,
     showToast,
     showDialog,
     checkingUpdate,
     checkForUpdates,
     notificationsEnabled,
     openNotificationSettings,
-    testNotification,
     bgSyncEnabled,
     setBgSyncEnabled,
-    chatWallpaper,
-    setChatWallpaper,
-    chatFontSize,
-    setChatFontSize,
     pinCode,
     setPinCode,
     appLang,
@@ -158,136 +151,98 @@ export default function ProfileScreen({ navigation }: any) {
             </Text>
             {!!me.bio && <Text style={styles.userBio}>{me.bio}</Text>}
 
-            <View style={styles.heroBtns}>
-              <ScalePressable
-                haptic
-                style={{ flex: 1 }}
-                onPress={() => navigation.navigate('UserProfile', { uid: me.uid })}
-              >
-                <View style={[styles.heroBtn, { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent }]}>
-                  <Text style={styles.heroBtnTxt}>🪪 Мой профиль</Text>
-                </View>
-              </ScalePressable>
-              <ScalePressable
-                haptic
-                style={{ flex: 1 }}
-                onPress={() => navigation.navigate('ProfileCustomizer')}
-              >
-                <View style={[styles.heroBtn, { backgroundColor: 'rgba(245,158,11,0.22)', borderColor: 'rgba(245,158,11,0.5)' }]}>
-                  <Text style={styles.heroBtnTxt}>🎨 Темы и рамки</Text>
-                </View>
-              </ScalePressable>
-            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('UserProfile', { uid: me.uid })}
+              style={{
+                marginTop: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+                borderRadius: 999,
+                backgroundColor: 'rgba(255,255,255,0.07)',
+                borderWidth: 1,
+                borderColor: appTheme.border,
+              }}
+            >
+              <Text style={{ color: appTheme.accent, fontSize: 12.5, fontWeight: '800' }}>
+                🪪 Публичный профиль ›
+              </Text>
+            </TouchableOpacity>
           </GlassCard>
         </View>
 
-        {/* Pirozhki Glass Wallet */}
+        {/* Compact Pirozhki Glass Wallet */}
         <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
           <GlassCard
             radius={RADII.CARD}
             style={[styles.pirozhkiCard, { backgroundColor: 'rgba(245, 158, 11, 0.14)', borderColor: 'rgba(245, 158, 11, 0.4)' }]}
           >
-            <View style={styles.pirozhkiTop}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
                 <Image
                   source={require('../../android/app/src/main/assets/public/pirozhok.png')}
-                  style={{ width: 36, height: 36 }}
+                  style={{ width: 34, height: 34 }}
                 />
                 <View>
-                  <Text style={styles.pirozhkiLbl}>БАЛАНС ПИРОЖКОВ</Text>
+                  <Text style={styles.pirozhkiLbl}>ПИРОЖКИ</Text>
                   <Text style={styles.pirozhkiVal}>
                     {bal.toLocaleString('ru-RU')} 🥟{' '}
                     <Text style={{ fontSize: 12, color: '#cbd5e1', fontWeight: '600' }}>
-                      (~{(bal * 0.42).toFixed(2)} ₽)
+                      (~{(bal * 0.42).toFixed(0)} ₽)
                     </Text>
                   </Text>
                 </View>
               </View>
-              {isCreator && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {isCreator && (
+                  <ScalePressable
+                    haptic
+                    style={styles.creatorBtn}
+                    onPress={() =>
+                      grantSelfPirozhki(500).then(() => showToast('Готово 🥟', '+500 пирожков начислено!', 'success'))
+                    }
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 11.5 }}>+500</Text>
+                  </ScalePressable>
+                )}
                 <ScalePressable
                   haptic
-                  style={styles.creatorBtn}
-                  onPress={() =>
-                    grantSelfPirozhki(500).then(() => showToast('Готово 🥟', '+500 пирожков начислено!', 'success'))
-                  }
+                  style={{ backgroundColor: '#f59e0b', paddingHorizontal: 13, paddingVertical: 8, borderRadius: 999 }}
+                  onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'buy' })}
                 >
-                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>⚡ +500 себе</Text>
+                  <Text style={{ color: '#000', fontWeight: '900', fontSize: 12.5 }}>Магазин</Text>
                 </ScalePressable>
-              )}
-            </View>
-
-            <View style={styles.pirozhkiActions}>
-              <ScalePressable
-                haptic
-                style={{ flex: 1 }}
-                onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'buy' })}
-              >
-                <View style={[styles.pActBtn, { backgroundColor: '#f59e0b', borderColor: '#fbbf24' }]}>
-                  <Text style={{ color: '#000', fontWeight: '900', fontSize: 12.5 }}>+ Пополнить</Text>
-                </View>
-              </ScalePressable>
-              <ScalePressable
-                haptic
-                style={{ flex: 1 }}
-                onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'prefixes' })}
-              >
-                <View style={styles.pActBtn}>
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12.5 }}>🏷️ Префиксы</Text>
-                </View>
-              </ScalePressable>
-              <ScalePressable
-                haptic
-                style={{ flex: 1 }}
-                onPress={() => navigation.navigate('PirozhkiStore', { initialTab: 'gift' })}
-              >
-                <View style={styles.pActBtn}>
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12.5 }}>🎁 Угостить</Text>
-                </View>
-              </ScalePressable>
+              </View>
             </View>
           </GlassCard>
         </View>
 
-        {/* Liquid Glass App Theme Switcher */}
-        <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
-          <GlassCard radius={RADII.CARD} style={{ padding: 14 }}>
-            <Text style={[styles.themeTitle, { color: appTheme.textSub }]}>ТЕМА ИНТЕРФЕЙСА (LIQUID GLASS)</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {(Object.keys(LIQUID_THEMES) as AppThemeKey[]).map((k) => {
-                const t = LIQUID_THEMES[k];
-                const act = appThemeKey === k;
-                return (
-                  <TouchableOpacity
-                    key={k}
-                    style={[
-                      styles.themeChip,
-                      {
-                        backgroundColor: t.glass,
-                        borderColor: act ? t.accent : 'rgba(255,255,255,0.14)',
-                      },
-                    ]}
-                    onPress={() => setAppTheme(k)}
-                  >
-                    <View style={[styles.themeDot, { backgroundColor: t.accent }]} />
-                    <Text style={{ color: '#fff', fontSize: 12.5, fontWeight: act ? '800' : '600' }}>
-                      {t.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </GlassCard>
-        </View>
-
-        {/* Settings List */}
+        {/* Group 1: SuperApp, Appearance & Identity */}
         <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
           <GlassCard radius={RADII.CARD}>
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('SuperApp')}
+            >
+              <Text style={styles.settingIcon}>🚀</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Мини-аппы и ИИ-инструменты</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setShowAiModal(true)}
+            >
+              <Text style={styles.settingIcon}>🤖</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Настройки ИИ Хаба (7 моделей)</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => navigation.navigate('ProfileCustomizer')}
             >
               <Text style={styles.settingIcon}>🎨</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Темы профиля и рамки</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Оформление, темы, обои и шрифт</Text>
               <Text style={styles.settingVal}>{profileTheme.name}</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
@@ -307,27 +262,32 @@ export default function ProfileScreen({ navigation }: any) {
               onPress={() => navigation.navigate('PrefixSound')}
             >
               <Text style={styles.settingIcon}>🔊</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Звук префикса (до 2с)</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Звук префикса</Text>
               <Text style={styles.settingVal}>{me.prefixSoundName || 'Настроить'}</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => navigation.navigate('EditProfile')}
-            >
-              <Text style={styles.settingIcon}>✏️</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Редактировать данные и фото</Text>
-              <Text style={styles.settingArrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingItem}
+              style={[styles.settingItem, { borderBottomWidth: 0 }]}
               onPress={() => setShowQrModal(true)}
             >
               <Text style={styles.settingIcon}>📱</Text>
               <Text style={[styles.settingText, { color: appTheme.text }]}>Мой QR-код визитка</Text>
               <Text style={styles.settingVal}>@{me.nick}</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+          </GlassCard>
+        </View>
+
+        {/* Group 2: Privacy, Security & Notifications */}
+        <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
+          <GlassCard radius={RADII.CARD}>
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setShowAccountsModal(true)}
+            >
+              <Text style={styles.settingIcon}>🔄</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Аккаунты, Сеансы и Сейф</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
 
@@ -336,149 +296,40 @@ export default function ProfileScreen({ navigation }: any) {
               onPress={() => setShowStoragePrivacyModal(true)}
             >
               <Text style={styles.settingIcon}>🛡️</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Приватность, ЧС и Память 📊</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Приватность, ЧС и Память</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => setShowAccountsModal(true)}
-            >
-              <Text style={styles.settingIcon}>🔄</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Мультиаккаунт, Сеансы и Сейф 🕵️</Text>
-              <Text style={styles.settingArrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => setShowPowerModal(true)}
-            >
-              <Text style={styles.settingIcon}>🔋</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Энергосбережение и /шаблоны</Text>
-              <Text style={styles.settingArrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => setShowAiModal(true)}
-            >
-              <Text style={styles.settingIcon}>🤖</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Настройки ИИ Хаба (7 моделей)</Text>
-              <Text style={styles.settingArrow}>›</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
-              <Text style={styles.settingIcon}>🎙️</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.settingText, { color: appTheme.text }]}>ClearVoice AI™ (Шумодав)</Text>
-                <Text style={{ fontSize: 11.5, color: appTheme.textSub }}>
-                  Кристальный звук при звонках
-                </Text>
-              </View>
-              <Switch
-                value={clearVoiceConfig.enabled}
-                onValueChange={(v) => setClearVoiceConfig({ ...clearVoiceConfig, enabled: v })}
-                trackColor={{ false: 'rgba(255,255,255,0.1)', true: '#22c55e' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-
-            <View style={[styles.settingItem, { borderBottomColor: appTheme.border, flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
-              <Text style={[styles.settingText, { color: appTheme.text, fontWeight: '700' }]}>🌐 Язык интерфейса</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                {[
-                  { k: 'ru', l: '🇷🇺 Русский' },
-                  { k: 'en', l: '🇬🇧 English' },
-                  { k: 'uk', l: '🇺🇦 Українська' },
-                  { k: 'ru-pre', l: '📜 Дореформенный Ъ' },
-                ].map((lg) => {
-                  const act = appLang === lg.k;
-                  return (
-                    <TouchableOpacity
-                      key={lg.k}
-                      onPress={() => {
-                        setAppLang(lg.k as any);
-                        showToast('Язык изменён 🌐', lg.l, 'success');
-                      }}
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        borderRadius: 14,
-                        backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
-                        borderWidth: 1,
-                        borderColor: act ? appTheme.accent : appTheme.border,
-                      }}
-                    >
-                      <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 12, fontWeight: '700' }}>
-                        {lg.l}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
 
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => {
-                Share.share({ message: me.uid }).catch(() => {});
-                showToast('UID скопирован 🆔', me.uid, 'info');
+                setPinInput('');
+                setShowPinModal(true);
               }}
             >
-              <Text style={styles.settingIcon}>🆔</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Поделиться моим UID</Text>
-              <Text style={styles.settingVal} numberOfLines={1}>{me.uid.slice(0, 8)}...</Text>
+              <Text style={styles.settingIcon}>🔐</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Код-пароль (PIN)</Text>
+              <Text style={[styles.settingVal, { color: pinCode ? '#22c55e' : appTheme.textSub }]}>
+                {pinCode ? 'Вкл.' : 'Выкл.'}
+              </Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.settingItem, { borderBottomWidth: 0 }]}
-              onPress={() =>
-                Share.share({
-                  title: 'Беспонтовый Чат (NonsenseChat)',
-                  message: 'Присоединяйся к NonsenseChat: https://nonsensechat.ru',
-                })
-              }
+              style={styles.settingItem}
+              onPress={openNotificationSettings}
             >
-              <Text style={styles.settingIcon}>📤</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Поделиться приложением</Text>
+              <Text style={styles.settingIcon}>🔔</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Уведомления Android</Text>
+              <Text style={[styles.settingVal, { color: notificationsEnabled ? '#22c55e' : '#ef4444' }]}>
+                {notificationsEnabled ? 'Вкл.' : 'Выкл.'}
+              </Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
-          </GlassCard>
-        </View>
-
-        {/* Уведомления и фоновая служба */}
-        <View style={{ paddingHorizontal: 12, marginBottom: 14 }}>
-          <GlassCard radius={RADII.CARD}>
-            <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
-              <Text style={styles.settingIcon}>🔔</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.settingText, { color: appTheme.text }]}>Уведомления в системе</Text>
-                <Text style={{ fontSize: 11.5, color: notificationsEnabled ? '#22c55e' : '#ef4444' }}>
-                  {notificationsEnabled ? 'Разрешены в Android ✓' : 'Отключены в настройках Android ⚠️'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={openNotificationSettings}
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  borderRadius: 12,
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                }}
-              >
-                <Text style={{ color: appTheme.accent, fontSize: 12, fontWeight: '700' }}>Настройки</Text>
-              </TouchableOpacity>
-            </View>
 
             <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
               <Text style={styles.settingIcon}>⚡</Text>
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={[styles.settingText, { color: appTheme.text }]}>Фоновый приём сообщений</Text>
-                <Text style={{ fontSize: 11.5, color: appTheme.textSub }}>
-                  Приём сообщений в спящем режиме без постоянного значка
-                </Text>
-              </View>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Фоновый приём</Text>
               <Switch
                 value={bgSyncEnabled}
                 onValueChange={(val) => setBgSyncEnabled(val)}
@@ -487,106 +338,85 @@ export default function ProfileScreen({ navigation }: any) {
               />
             </View>
 
-            <TouchableOpacity
-              style={[styles.settingItem, { borderBottomWidth: 0 }]}
-              onPress={testNotification}
-            >
-              <Text style={styles.settingIcon}>🔊</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>Проверить звук и вибрацию</Text>
-              <Text style={styles.settingArrow}>›</Text>
-            </TouchableOpacity>
-          </GlassCard>
-        </View>
-
-        {/* Оформление чатов и Приватность (Обои, Шрифт, PIN) */}
-        <View style={{ paddingHorizontal: 12, marginBottom: 14 }}>
-          <GlassCard radius={RADII.CARD}>
-            <View style={[styles.settingItem, { borderBottomColor: appTheme.border, flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
-              <Text style={[styles.settingText, { color: appTheme.text, fontWeight: '700' }]}>🖼️ Обои в чатах</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                {[
-                  { key: 'stars', label: '✨ Звёзды' },
-                  { key: 'bubbles', label: '🫧 Пузыри' },
-                  { key: 'aurora', label: '🌌 Аврора' },
-                  { key: 'mesh', label: '🔮 Стекло' },
-                  { key: 'grid', label: '📐 Сетка' },
-                  { key: 'none', label: '🚫 Нет' },
-                ].map((wp) => {
-                  const act = chatWallpaper === wp.key;
-                  return (
-                    <TouchableOpacity
-                      key={wp.key}
-                      onPress={() => setChatWallpaper(wp.key as any)}
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        borderRadius: 14,
-                        backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
-                        borderWidth: 1,
-                        borderColor: act ? appTheme.accent : appTheme.border,
-                      }}
-                    >
-                      <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 12, fontWeight: '700' }}>
-                        {wp.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
             <View style={[styles.settingItem, { borderBottomColor: appTheme.border }]}>
-              <Text style={styles.settingIcon}>🔠</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.settingText, { color: appTheme.text }]}>Размер шрифта сообщений</Text>
-                <Text style={{ color: appTheme.textSub, fontSize: 11.5 }}>Предпросмотр: {chatFontSize}px</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => setChatFontSize(chatFontSize - 1)}
-                  style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ color: appTheme.text, fontWeight: '900', fontSize: 15 }}>A-</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setChatFontSize(chatFontSize + 1)}
-                  style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ color: appTheme.text, fontWeight: '900', fontSize: 15 }}>A+</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.settingIcon}>🎙️</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>ClearVoice AI™ (Шумодав)</Text>
+              <Switch
+                value={clearVoiceConfig.enabled}
+                onValueChange={(v) => setClearVoiceConfig({ ...clearVoiceConfig, enabled: v })}
+                trackColor={{ false: 'rgba(255,255,255,0.1)', true: '#22c55e' }}
+                thumbColor="#FFFFFF"
+              />
             </View>
 
             <TouchableOpacity
               style={[styles.settingItem, { borderBottomWidth: 0 }]}
-              onPress={() => {
-                setPinInput('');
-                setShowPinModal(true);
-              }}
+              onPress={() => setShowPowerModal(true)}
             >
-              <Text style={styles.settingIcon}>🔐</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.settingText, { color: appTheme.text }]}>Код-пароль (PIN)</Text>
-                <Text style={{ fontSize: 11.5, color: pinCode ? '#22c55e' : appTheme.textSub }}>
-                  {pinCode ? 'Включён 🔒 (запрос при входе)' : 'Выключен'}
-                </Text>
-              </View>
+              <Text style={styles.settingIcon}>🔋</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Энергосбережение и /шаблоны</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
           </GlassCard>
         </View>
 
+        {/* Group 3: App, Language & Updates */}
         <View style={{ paddingHorizontal: 12, marginBottom: 20 }}>
           <GlassCard radius={RADII.CARD}>
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => {
+                const order = ['ru', 'en', 'uk', 'ru-pre'] as const;
+                const labels: Record<string, string> = {
+                  ru: '🇷🇺 Русский',
+                  en: '🇬🇧 English',
+                  uk: '🇺🇦 Українська',
+                  'ru-pre': '📜 Дореформенный Ъ',
+                };
+                const idx = order.indexOf(appLang as any);
+                const next = order[(idx + 1) % order.length];
+                setAppLang(next);
+                showToast('Язык изменён 🌐', labels[next], 'success');
+              }}
+            >
+              <Text style={styles.settingIcon}>🌐</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Язык интерфейса</Text>
+              <Text style={styles.settingVal}>
+                {appLang === 'en'
+                  ? 'English'
+                  : appLang === 'uk'
+                  ? 'Українська'
+                  : appLang === 'ru-pre'
+                  ? 'Дореф. Ъ'
+                  : 'Русский'}
+              </Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() =>
+                Share.share({
+                  title: 'Беспонтовый Чат (NonsenseChat)',
+                  message: 'Присоединяйся к NonsenseChat: https://nonsensechat.ru',
+                })
+              }
+            >
+              <Text style={styles.settingIcon}>📤</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>Поделиться NonsenseChat</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => setInfoModalMode('info')}
             >
               <Text style={styles.settingIcon}>ℹ️</Text>
-              <Text style={[styles.settingText, { color: appTheme.text }]}>О приложении и Changelog</Text>
+              <Text style={[styles.settingText, { color: appTheme.text }]}>О NonsenseChat {APP_VERSION}</Text>
               <Text style={styles.settingVal}>v{APP_VERSION}</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => setInfoModalMode('legal')}
@@ -595,6 +425,7 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={[styles.settingText, { color: appTheme.text }]}>Правовая информация (152-ФЗ)</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => checkForUpdates(false)}
@@ -602,13 +433,14 @@ export default function ProfileScreen({ navigation }: any) {
             >
               <Text style={styles.settingIcon}>🔄</Text>
               <Text style={[styles.settingText, { color: appTheme.text }]}>
-                {checkingUpdate ? 'Проверка обновлений...' : 'Проверить обновления (VK Cloud)'}
+                {checkingUpdate ? 'Проверка обновлений...' : 'Проверить обновления'}
               </Text>
               <Text style={styles.settingVal}>
-                v{APP_VERSION} ({APP_VERSION_CODE})
+                {APP_VERSION} ({APP_VERSION_CODE})
               </Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.settingItem, { borderBottomWidth: 0 }]}
               onPress={handleLogout}

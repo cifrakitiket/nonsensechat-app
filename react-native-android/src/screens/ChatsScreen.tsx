@@ -456,18 +456,10 @@ export default function ChatsScreen({ navigation }: any) {
 
               <ScalePressable
                 haptic
-                style={styles.headerIconBtn}
-                onPress={() => navigation.navigate('ProfileCustomizer')}
-              >
-                <Text style={{ fontSize: 15 }}>🎨</Text>
-              </ScalePressable>
-
-              <ScalePressable
-                haptic
                 style={[styles.headerIconBtn, { backgroundColor: appTheme.accentSoft }]}
-                onPress={() => setShowCreateModal(true)}
+                onPress={() => navigation.navigate('SuperApp')}
               >
-                <Text style={{ fontSize: 19, color: appTheme.accent, fontWeight: '800' }}>＋</Text>
+                <Text style={{ fontSize: 16 }}>🚀</Text>
               </ScalePressable>
             </View>
           </GlassCard>
@@ -501,25 +493,38 @@ export default function ChatsScreen({ navigation }: any) {
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={[styles.searchInput, { color: appTheme.text }]}
-              placeholder="Поиск чатов..."
+              placeholder="Поиск"
               placeholderTextColor={appTheme.textSub}
               value={search}
               onChangeText={setSearch}
             />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 6 }}>
+                <Ionicons name="close-circle" size={18} color={appTheme.textSub} />
+              </TouchableOpacity>
+            )}
+          </GlassCard>
+          {search.trim().length > 0 && !isVaultQuery && (
             <TouchableOpacity
+              activeOpacity={0.8}
               onPress={() => setShowGlobalSearch(true)}
               style={{
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 999,
+                marginTop: 6,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 16,
                 backgroundColor: appTheme.accentSoft,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              <Text style={{ color: appTheme.accent, fontSize: 11.5, fontWeight: '800' }}>
-                🌐 Везде
+              <Text style={{ color: appTheme.accent, fontSize: 12.5, fontWeight: '700' }} numberOfLines={1}>
+                🔍 Искать «{search.trim()}» во всех сообщениях
               </Text>
+              <Ionicons name="chevron-forward" size={16} color={appTheme.accent} />
             </TouchableOpacity>
-          </GlassCard>
+          )}
           {isVaultQuery && (
             <View style={{ marginTop: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 14, backgroundColor: 'rgba(139,92,246,0.22)', borderWidth: 1, borderColor: '#8b5cf6' }}>
               <Text style={{ color: '#e9d5ff', fontWeight: '800', fontSize: 12.5 }}>
@@ -537,12 +542,14 @@ export default function ChatsScreen({ navigation }: any) {
           contentContainerStyle={[styles.foldersRow, { alignItems: 'center' }]}
         >
           {[
-            { key: 'all', label: 'ВСЕ' },
-            { key: 'dm', label: 'ЛС' },
-            { key: 'groups', label: 'ГРУППЫ' },
-            { key: 'channels', label: 'КАНАЛЫ' },
-            { key: 'reqs', label: incomingRequests.length > 0 ? `ЗАЯВКИ (${incomingRequests.length})` : 'ЗАЯВКИ' },
-            ...customFolders.map((cf) => ({ key: cf.id, label: `${cf.icon} ${cf.name.toUpperCase()}` })),
+            { key: 'all', label: 'Все' },
+            { key: 'dm', label: 'Личные' },
+            { key: 'groups', label: 'Группы' },
+            { key: 'channels', label: 'Каналы' },
+            ...(incomingRequests.length > 0
+              ? [{ key: 'reqs', label: `Заявки (${incomingRequests.length})` }]
+              : []),
+            ...customFolders.map((cf) => ({ key: cf.id, label: `${cf.icon} ${cf.name}` })),
           ].map((f) => {
             const act = activeFolder === f.key && !showArchived;
             return (
@@ -581,7 +588,12 @@ export default function ChatsScreen({ navigation }: any) {
           <TouchableOpacity
             style={[
               styles.folderTab,
-              { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: appTheme.border, paddingHorizontal: 10 },
+              {
+                backgroundColor: 'rgba(255,255,255,0.04)',
+                borderColor: appTheme.border,
+                paddingHorizontal: 10,
+                opacity: 0.75,
+              },
             ]}
             onPress={() => {
               setNewFolderName('');
@@ -590,7 +602,7 @@ export default function ChatsScreen({ navigation }: any) {
               setShowFolderModal(true);
             }}
           >
-            <Text style={[styles.folderTabText, { color: appTheme.accent }]}>＋ Папка</Text>
+            <Ionicons name="add" size={15} color={appTheme.textSub} />
           </TouchableOpacity>
         </ScrollView>
 
@@ -690,7 +702,7 @@ export default function ChatsScreen({ navigation }: any) {
               <View style={styles.emptyBox}>
                 <Text style={styles.emptyEmoji}>💬</Text>
                 <Text style={[styles.emptyText, { color: appTheme.textSub }]}>
-                  Чатов пока нет. Нажмите «＋», чтобы найти друга!
+                  Чатов пока нет. Нажмите ✏️ внизу справа, чтобы начать диалог!
                 </Text>
               </View>
             }
@@ -1164,7 +1176,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 92,
     right: 20,
     width: 56,
     height: 56,

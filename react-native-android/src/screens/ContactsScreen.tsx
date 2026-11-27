@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, FlatList, Image, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp, UserProfile } from '../context/AppContext';
 import { FramedAvatar } from '../components/FramedAvatar';
@@ -146,28 +147,12 @@ export default function ContactsScreen({ navigation }: any) {
                   </Text>
                 </View>
 
-                <View style={styles.actionButtons}>
-                  <ScalePressable
-                    style={styles.actBtn}
-                    onPress={() =>
-                      navigation.navigate('PirozhkiStore', {
-                        initialTab: 'gift',
-                        targetUid: item.uid,
-                      })
-                    }
-                  >
-                    <Image
-                      source={require('../../android/app/src/main/assets/public/pirozhok.png')}
-                      style={{ width: 17, height: 17 }}
-                    />
-                  </ScalePressable>
-                  <ScalePressable
-                    style={[styles.actBtn, { backgroundColor: appTheme.accentSoft }]}
-                    onPress={() => handleChat(item)}
-                  >
-                    <Text style={{ fontSize: 16 }}>💬</Text>
-                  </ScalePressable>
-                </View>
+                <ScalePressable
+                  style={[styles.actBtn, { backgroundColor: appTheme.accentSoft }]}
+                  onPress={() => handleChat(item)}
+                >
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={appTheme.accent} />
+                </ScalePressable>
               </GlassCard>
             </ScalePressable>
           )}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ref, onValue } from 'firebase/database';
 import { rtdb } from '../services/firebase';
@@ -39,14 +40,8 @@ export default function CallsScreen({ navigation }: any) {
     <LiquidBackground>
       <View style={{ flex: 1, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 10 }}>
-          <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
+          <GlassCard radius={RADII.PILL} strong style={[styles.headerPill, { justifyContent: 'center' }]}>
             <Text style={[styles.headerTitle, { color: appTheme.text }]}>Звонки</Text>
-            <ScalePressable
-              style={[styles.callBtn, { backgroundColor: appTheme.accentSoft }]}
-              onPress={() => navigation.navigate('Contacts')}
-            >
-              <Text style={[styles.callBtnText, { color: appTheme.accent }]}>📞 Контакты</Text>
-            </ScalePressable>
           </GlassCard>
         </View>
 
@@ -77,7 +72,14 @@ export default function CallsScreen({ navigation }: any) {
             const ts = item.timestamp || item.at;
             const timeStr = ts ? new Date(ts).toLocaleString('ru-RU') : '';
             return (
-              <View style={{ marginHorizontal: 12, marginVertical: 4 }}>
+              <ScalePressable
+                haptic
+                style={{ marginHorizontal: 12, marginVertical: 4 }}
+                onPress={() => {
+                  if (item.peerUid) handleCallContact(item.peerUid, peerName);
+                  else showToast('Звонок', `Контакт: ${peerName}`, 'info');
+                }}
+              >
                 <GlassCard radius={RADII.ITEM} style={styles.callCard}>
                   <FramedAvatar
                     uri={peer?.avatar || item.peerAva}
@@ -99,49 +101,27 @@ export default function CallsScreen({ navigation }: any) {
                     </Text>
                   </View>
 
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    {item.peerUid ? (
-                      <>
-                        <ScalePressable
-                          style={[styles.callbackBtn, { backgroundColor: 'rgba(34, 197, 94, 0.18)' }]}
-                          onPress={() =>
-                            startCall({
-                              uid: item.peerUid,
-                              nick: peerName,
-                              avatar: peer?.avatar || item.peerAva,
-                              isVideo: false,
-                            })
-                          }
-                        >
-                          <Text style={{ fontSize: 15 }}>📞</Text>
-                        </ScalePressable>
-                        <ScalePressable
-                          style={[styles.callbackBtn, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}
-                          onPress={() =>
-                            startCall({
-                              uid: item.peerUid,
-                              nick: peerName,
-                              avatar: peer?.avatar || item.peerAva,
-                              isVideo: true,
-                            })
-                          }
-                        >
-                          <Text style={{ fontSize: 15 }}>📹</Text>
-                        </ScalePressable>
-                      </>
-                    ) : null}
+                  {item.peerUid ? (
                     <ScalePressable
                       style={[styles.callbackBtn, { backgroundColor: appTheme.accentSoft }]}
-                      onPress={() => {
-                        if (item.peerUid) handleCallContact(item.peerUid, peerName);
-                        else showToast('Звонок', `Контакт: ${peerName}`, 'info');
-                      }}
+                      onPress={() =>
+                        startCall({
+                          uid: item.peerUid,
+                          nick: peerName,
+                          avatar: peer?.avatar || item.peerAva,
+                          isVideo: !!item.isVideo,
+                        })
+                      }
                     >
-                      <Text style={{ fontSize: 15 }}>💬</Text>
+                      <Ionicons
+                        name={item.isVideo ? 'videocam-outline' : 'call-outline'}
+                        size={19}
+                        color={appTheme.accent}
+                      />
                     </ScalePressable>
-                  </View>
+                  ) : null}
                 </GlassCard>
-              </View>
+              </ScalePressable>
             );
           }}
         />

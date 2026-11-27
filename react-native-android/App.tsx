@@ -33,6 +33,7 @@ import PirozhkiStoreScreen from './src/screens/PirozhkiStoreScreen';
 import ProfileCustomizerScreen from './src/screens/ProfileCustomizerScreen';
 import PrefixSoundScreen from './src/screens/PrefixSoundScreen';
 import EditProfileScreen from './src/screens/EditProfileScreen';
+import SuperAppScreen from './src/screens/SuperAppScreen';
 
 export const navigationRef = createNavigationContainerRef<any>();
 
@@ -140,6 +141,7 @@ function RootNavigator() {
             <Stack.Screen name="ProfileCustomizer" component={ProfileCustomizerScreen} />
             <Stack.Screen name="PrefixSound" component={PrefixSoundScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="SuperApp" component={SuperAppScreen} />
           </>
         )}
       </Stack.Navigator>

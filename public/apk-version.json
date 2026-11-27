@@ -1,9 +1,9 @@
 {
-  "version": "6.0.0",
-  "versionCode": 600,
+  "version": "3.0",
+  "versionCode": 3000,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 24025353,
-  "publishedAt": "2026-11-27T11:54:28.788Z",
-  "releaseNotes": "NonsenseChat v6.0.0 — Unified SuperApp Edition: ИИ Хаб (7 нейросетей) + быстрые команды gemini:/grok:/claude: + ИИ-пересказ чата, живой калькулятор с корнями √/∛, вкладка Суперапп (Колесо Фортуны, Канбан, Конвертер, Редкие шрифты), сворачивание звонков + ClearVoice AI™, спец-бейджи ♀ и </>, суперсилы Создателя по UID, история пирожков, просмотр стикерпаков, ключ E2EE и Правовой центр!"
+  "fileSize": 24025197,
+  "publishedAt": "2026-11-27T12:08:06.455Z",
+  "releaseNotes": "NonsenseChat 3.0 — Генеральная уборка и минимализм в стиле Telegram: чистые шапки и панель ввода без лишних кнопок, единое меню чата и оформления, просторная навигация и все фишки Супераппа на своих местах!"
 }

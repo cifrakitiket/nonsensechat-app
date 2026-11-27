@@ -1969,11 +1969,13 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                         })}
                       </View>
                       <Text style={styles.voiceDur}>{formatDuration(item.duration || 2)}</Text>
-                      <TouchableOpacity style={styles.speedPill} onPress={cycleGlobalAudioSpeed}>
-                        <Text style={{ color: appTheme.accent, fontSize: 10.5, fontWeight: '900' }}>
-                          {activeSpd}x
-                        </Text>
-                      </TouchableOpacity>
+                      {isPlaying && (
+                        <TouchableOpacity style={styles.speedPill} onPress={cycleGlobalAudioSpeed}>
+                          <Text style={{ color: appTheme.accent, fontSize: 10.5, fontWeight: '900' }}>
+                            {activeSpd}x
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
                         style={styles.speedPill}
                         onPress={() => toggleVoiceTranscript(item)}
@@ -2299,7 +2301,12 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               <TouchableOpacity
                 style={styles.headerProfileTouch}
                 activeOpacity={0.75}
-                onPress={() => partnerUid && navigation.navigate('UserProfile', { uid: partnerUid })}
+                onPress={() => {
+                  if (partnerUid) navigation.navigate('UserProfile', { uid: partnerUid });
+                  else if (isAiHub) setShowAiSettings(true);
+                  else if (chat?.type === 'group' || chat?.type === 'channel') setShowGroupAdminModal(true);
+                  else if (isSaved) setShowSharedMedia(true);
+                }}
               >
                 <FramedAvatar
                   uri={partner?.avatar}
@@ -2349,43 +2356,14 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                       ? 'в сети'
                       : partner
                       ? formatLastSeen(partner.lastSeen)
+                      : chat?.type === 'channel'
+                      ? `канал · ${(chat?.members || []).length} подп.`
+                      : chat?.type === 'group'
+                      ? `${(chat?.members || []).length} участн.`
                       : 'нажмите для профиля'}
                   </Text>
                 </View>
               </TouchableOpacity>
-
-              {isAiHub ? (
-                <ScalePressable style={styles.circleBtn} onPress={() => setShowAiSettings(true)}>
-                  <Ionicons name="settings-outline" size={18} color="#38bdf8" />
-                </ScalePressable>
-              ) : null}
-
-              {(chat?.type === 'group' || chat?.type === 'channel') ? (
-                <ScalePressable
-                  style={[styles.circleBtn, { backgroundColor: 'rgba(34,197,94,0.16)' }]}
-                  onPress={() => setShowVoiceRoom(true)}
-                >
-                  <Ionicons name="mic-outline" size={18} color="#4ade80" />
-                </ScalePressable>
-              ) : null}
-
-              {chat?.type === 'channel' ? (
-                <ScalePressable
-                  style={[styles.circleBtn, { backgroundColor: 'rgba(245,158,11,0.18)', width: 'auto', paddingHorizontal: 9 }]}
-                  onPress={async () => {
-                    try {
-                      await boostChannelWithPirozhki(chatId, 25);
-                      showToast('Канал забущен ⚡', '+1 голос каналу (за 25 🥟)!', 'success');
-                    } catch (e: any) {
-                      showToast('Буст канала ⚡', e?.message || 'Недостаточно пирожков', 'error');
-                    }
-                  }}
-                >
-                  <Text style={{ color: '#fbbf24', fontSize: 11.5, fontWeight: '900' }}>
-                    ⚡ Ур.{Math.floor((Number(chat?.boostCount) || 0) / 3) + 1}
-                  </Text>
-                </ScalePressable>
-              ) : null}
 
               {partnerUid ? (
                 <ScalePressable
@@ -2400,24 +2378,35 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                     })
                   }
                 >
-                  <Ionicons name="call-outline" size={18} color="#4ade80" />
+                  <Ionicons name="call-outline" size={18} color={appTheme.text} />
+                </ScalePressable>
+              ) : (chat?.type === 'group' || chat?.type === 'channel') ? (
+                <ScalePressable
+                  style={styles.circleBtn}
+                  onPress={() => setShowVoiceRoom(true)}
+                >
+                  <Ionicons
+                    name="mic-outline"
+                    size={18}
+                    color={activeVoiceCount > 0 ? '#4ade80' : appTheme.text}
+                  />
+                </ScalePressable>
+              ) : isAiHub ? (
+                <ScalePressable style={styles.circleBtn} onPress={() => setShowAiSettings(true)}>
+                  <Ionicons name="options-outline" size={18} color={appTheme.accent} />
+                </ScalePressable>
+              ) : isSaved ? (
+                <ScalePressable
+                  style={styles.circleBtn}
+                  onPress={() => {
+                    setSearchOpen((v) => !v);
+                    setSearchQuery('');
+                    setSearchMatchIdx(0);
+                  }}
+                >
+                  <Ionicons name={searchOpen ? 'close' : 'search'} size={18} color={appTheme.text} />
                 </ScalePressable>
               ) : null}
-
-              <ScalePressable
-                style={styles.circleBtn}
-                onPress={() => {
-                  setSearchOpen((v) => !v);
-                  setSearchQuery('');
-                  setSearchMatchIdx(0);
-                }}
-              >
-                <Ionicons name={searchOpen ? 'close' : 'search'} size={18} color={appTheme.text} />
-              </ScalePressable>
-
-              <ScalePressable style={styles.circleBtn} onPress={() => setShowSharedMedia(true)}>
-                <Ionicons name="images-outline" size={18} color={appTheme.accent} />
-              </ScalePressable>
 
               <ScalePressable style={styles.circleBtn} onPress={() => setShowChatMenu(true)}>
                 <Ionicons name="ellipsis-vertical" size={17} color={appTheme.text} />
@@ -2452,6 +2441,16 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               </TouchableOpacity>
               <TouchableOpacity onPress={() => jumpToSearchMatch(searchMatchIdx - 1)} style={{ padding: 4 }}>
                 <Ionicons name="chevron-down" size={18} color={appTheme.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchOpen(false);
+                  setSearchQuery('');
+                  setSearchMatchIdx(0);
+                }}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="close" size={18} color={appTheme.textSub} />
               </TouchableOpacity>
             </GlassCard>
           </View>
@@ -2815,37 +2814,23 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* Channel 2.0 Paid Post & Signature Toggles */}
-        {chat?.type === 'channel' && (chat.owner === me?.uid || (chat.admins || []).includes(me?.uid || '')) && (
-          <View style={{ paddingHorizontal: 14, paddingBottom: 2, flexDirection: 'row', gap: 8 }}>
+        {/* Subtle Paid Channel Post Badge (only if paid post is active) */}
+        {chat?.type === 'channel' && channelPaidCost > 0 && (
+          <View style={{ paddingHorizontal: 14, paddingBottom: 2 }}>
             <TouchableOpacity
-              onPress={() => setChannelPaidCost((c) => (c === 0 ? 15 : c === 15 ? 50 : c === 50 ? 100 : 0))}
+              onPress={() => setShowSendOptions(true)}
               style={[
                 styles.mentionChip,
                 {
+                  alignSelf: 'flex-start',
                   paddingVertical: 4,
-                  backgroundColor: channelPaidCost > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.05)',
-                  borderColor: channelPaidCost > 0 ? '#f59e0b' : appTheme.border,
+                  backgroundColor: 'rgba(245,158,11,0.2)',
+                  borderColor: '#f59e0b',
                 },
               ]}
             >
-              <Text style={{ color: channelPaidCost > 0 ? '#fbbf24' : appTheme.textSub, fontSize: 11, fontWeight: '800' }}>
-                🥟 {channelPaidCost > 0 ? `Платный: ${channelPaidCost} пирожк.` : 'Бесплатный пост'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setChannelAuthorSig((v) => !v)}
-              style={[
-                styles.mentionChip,
-                {
-                  paddingVertical: 4,
-                  backgroundColor: channelAuthorSig ? appTheme.accentSoft : 'rgba(255,255,255,0.05)',
-                  borderColor: channelAuthorSig ? appTheme.accent : appTheme.border,
-                },
-              ]}
-            >
-              <Text style={{ color: channelAuthorSig ? appTheme.accent : appTheme.textSub, fontSize: 11, fontWeight: '800' }}>
-                ✍️ {channelAuthorSig ? `Подпись: ${me?.nick}` : 'Без подписи'}
+              <Text style={{ color: '#fbbf24', fontSize: 11, fontWeight: '800' }}>
+                🥟 Платный пост: {channelPaidCost} 🥟 (нажмите для изменения)
               </Text>
             </TouchableOpacity>
           </View>
@@ -2888,7 +2873,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           ) : (
             <GlassCard radius={RADII.PILL} strong style={styles.composerPill}>
               <ScalePressable style={styles.composerIconBtn} onPress={() => setShowAttachSheet(true)}>
-                <Text style={{ color: appTheme.accent, fontSize: 21, fontWeight: '700' }}>＋</Text>
+                <Ionicons name="attach" size={23} color={appTheme.textSub} />
               </ScalePressable>
 
               <TextInput
@@ -2904,15 +2889,6 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                 onChangeText={handleTextChange}
               />
 
-              <ScalePressable
-                style={styles.composerIconBtn}
-                onPress={() => setShowFormatBar((v) => !v)}
-              >
-                <Text style={{ color: showFormatBar ? appTheme.accent : appTheme.textSub, fontSize: 13, fontWeight: '900' }}>
-                  Aa
-                </Text>
-              </ScalePressable>
-
               {scheduledMsgs.length > 0 && (
                 <ScalePressable
                   style={styles.composerIconBtn}
@@ -2926,7 +2902,11 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                 style={styles.composerIconBtn}
                 onPress={() => setShowEmojiDrawer((prev) => !prev)}
               >
-                <Text style={{ fontSize: 19 }}>😊</Text>
+                <Ionicons
+                  name={showEmojiDrawer ? 'keypad-outline' : 'happy-outline'}
+                  size={22}
+                  color={showEmojiDrawer ? appTheme.accent : appTheme.textSub}
+                />
               </ScalePressable>
 
               {text.trim() ? (
@@ -2942,20 +2922,17 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   <Text style={{ color: '#000', fontSize: 16, fontWeight: '900' }}>➤</Text>
                 </TouchableOpacity>
               ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <ScalePressable
-                    style={[styles.sendCircle, { backgroundColor: 'rgba(59,130,246,0.2)' }]}
-                    onPress={() => setShowVideoNoteModal(true)}
-                  >
-                    <Text style={{ fontSize: 16 }}>⭕</Text>
-                  </ScalePressable>
-                  <ScalePressable
-                    style={[styles.sendCircle, { backgroundColor: appTheme.accentSoft }]}
-                    onPress={startVoiceRec}
-                  >
-                    <Text style={{ fontSize: 18 }}>🎤</Text>
-                  </ScalePressable>
-                </View>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[styles.sendCircle, { backgroundColor: appTheme.accentSoft }]}
+                  onPress={startVoiceRec}
+                  onLongPress={() => {
+                    triggerHaptic(14);
+                    setShowVideoNoteModal(true);
+                  }}
+                >
+                  <Ionicons name="mic-outline" size={21} color={appTheme.accent} />
+                </TouchableOpacity>
               )}
             </GlassCard>
           )}
@@ -2966,6 +2943,10 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           visible={showAttachSheet}
           mode="chat"
           onClose={() => setShowAttachSheet(false)}
+          onOpenVideoNote={() => {
+            setShowAttachSheet(false);
+            setTimeout(() => setShowVideoNoteModal(true), 180);
+          }}
           onSendPhotos={handleSendPhotos}
           onSendFile={handleSendFile}
           onSendMusic={handleSendMusic}
@@ -2998,6 +2979,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                 ))}
               </View>
 
+              <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
               <TouchableOpacity
                 style={styles.sheetRow}
                 onPress={() => {
@@ -3162,6 +3144,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   </Text>
                 </TouchableOpacity>
               )}
+              </ScrollView>
             </GlassCard>
           </TouchableOpacity>
         </Modal>
@@ -3309,11 +3292,11 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
         </Modal>
 
-        {/* Long-Press Send Options (Message Effects, Silent, Scheduled) */}
+        {/* Long-Press Send Options (Message Effects, Silent, Scheduled, Formatting, Channel Options) */}
         <Modal visible={showSendOptions} transparent animationType="fade" onRequestClose={() => setShowSendOptions(false)}>
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSendOptions(false)}>
             <GlassCard radius={26} strong style={styles.sheetCard}>
-              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Особая отправка и Эффекты</Text>
+              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Особая отправка и Формат</Text>
               <View style={styles.quickReactRow}>
                 {['🔥', '🎉', '❤️', '⚡', '💎'].map((ef) => (
                   <TouchableOpacity
@@ -3328,6 +3311,37 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   </TouchableOpacity>
                 ))}
               </View>
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={() => {
+                  setShowSendOptions(false);
+                  setShowFormatBar((v) => !v);
+                }}
+              >
+                <Text style={styles.sheetRowText}>
+                  {showFormatBar ? '✓ Панель форматирования (Aa) включена' : 'Aa Панель форматирования текста'}
+                </Text>
+              </TouchableOpacity>
+              {chat?.type === 'channel' && (chat.owner === me?.uid || (chat.admins || []).includes(me?.uid || '')) && (
+                <>
+                  <TouchableOpacity
+                    style={styles.sheetRow}
+                    onPress={() => setChannelPaidCost((c) => (c === 0 ? 15 : c === 15 ? 50 : c === 50 ? 100 : 0))}
+                  >
+                    <Text style={styles.sheetRowText}>
+                      🥟 Платный пост: {channelPaidCost > 0 ? `${channelPaidCost} пирожков` : 'Бесплатно'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.sheetRow}
+                    onPress={() => setChannelAuthorSig((v) => !v)}
+                  >
+                    <Text style={styles.sheetRowText}>
+                      ✍️ Подпись автора: {channelAuthorSig ? me?.nick : 'Скрыта'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
               <TouchableOpacity
                 style={styles.sheetRow}
                 onPress={() => {
@@ -3445,66 +3459,118 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           />
         )}
 
-        {/* Chat Extras Menu (Calls, Auto-Delete Timer, Date Jump, Group Admin, Export, Pirozhki) */}
+        {/* Chat Extras Menu (Telegram Quick Grid + Settings) */}
         <Modal visible={showChatMenu} transparent animationType="fade" onRequestClose={() => setShowChatMenu(false)}>
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowChatMenu(false)}>
             <GlassCard radius={28} strong style={styles.sheetCard}>
               <Text style={[styles.sheetTitle, { color: appTheme.text }]}>{displayName}</Text>
 
-              {partnerUid && (
-                <>
-                  <TouchableOpacity
-                    style={styles.sheetRow}
-                    onPress={() => {
-                      setShowChatMenu(false);
+              {/* 4-Icon Quick Actions Row */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}
+                  onPress={() => {
+                    setShowChatMenu(false);
+                    setSearchOpen(true);
+                  }}
+                >
+                  <Ionicons name="search-outline" size={20} color={appTheme.accent} />
+                  <Text style={{ color: appTheme.text, fontSize: 11, fontWeight: '700', marginTop: 4 }}>Поиск</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}
+                  onPress={() => {
+                    setShowChatMenu(false);
+                    setShowSharedMedia(true);
+                  }}
+                >
+                  <Ionicons name="images-outline" size={20} color={appTheme.accent} />
+                  <Text style={{ color: appTheme.text, fontSize: 11, fontWeight: '700', marginTop: 4 }}>Медиа</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}
+                  onPress={() => {
+                    setShowChatMenu(false);
+                    setShowDateModal(true);
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={20} color={appTheme.accent} />
+                  <Text style={{ color: appTheme.text, fontSize: 11, fontWeight: '700', marginTop: 4 }}>Дата</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}
+                  onPress={async () => {
+                    setShowChatMenu(false);
+                    if (partnerUid) {
                       startCall({ uid: partnerUid, nick: displayName, avatar: partner?.avatar, isVideo: true, chatId });
-                    }}
-                  >
-                    <Text style={styles.sheetRowText}>📹 Видеозвонок 1-на-1</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.sheetRow}
-                    onPress={() => {
-                      setShowChatMenu(false);
-                      navigation.navigate('PirozhkiStore', { initialTab: 'gift', targetUid: partnerUid });
-                    }}
-                  >
-                    <Text style={styles.sheetRowText}>🥟 Подарить пирожки</Text>
-                  </TouchableOpacity>
-                </>
+                    } else if (chat?.type === 'channel') {
+                      try {
+                        await boostChannelWithPirozhki(chatId, 25);
+                        showToast('Канал забущен ⚡', '+1 голос каналу (за 25 🥟)!', 'success');
+                      } catch (e: any) {
+                        showToast('Буст канала ⚡', e?.message || 'Недостаточно пирожков', 'error');
+                      }
+                    } else if (chat?.type === 'group') {
+                      setShowVoiceRoom(true);
+                    } else if (isAiHub) {
+                      setShowAiSettings(true);
+                    } else {
+                      handleExportChat();
+                    }
+                  }}
+                >
+                  <Ionicons
+                    name={
+                      partnerUid
+                        ? 'videocam-outline'
+                        : chat?.type === 'channel'
+                        ? 'flash-outline'
+                        : chat?.type === 'group'
+                        ? 'mic-outline'
+                        : isAiHub
+                        ? 'options-outline'
+                        : 'download-outline'
+                    }
+                    size={20}
+                    color={chat?.type === 'channel' ? '#fbbf24' : appTheme.accent}
+                  />
+                  <Text style={{ color: appTheme.text, fontSize: 11, fontWeight: '700', marginTop: 4 }}>
+                    {partnerUid
+                      ? 'Видео'
+                      : chat?.type === 'channel'
+                      ? `Ур.${Math.floor((Number(chat?.boostCount) || 0) / 3) + 1}`
+                      : chat?.type === 'group'
+                      ? 'Эфир'
+                      : isAiHub
+                      ? 'ИИ API'
+                      : 'Экспорт'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+              {partnerUid && (
+                <TouchableOpacity
+                  style={styles.sheetRow}
+                  onPress={() => {
+                    setShowChatMenu(false);
+                    navigation.navigate('PirozhkiStore', { initialTab: 'gift', targetUid: partnerUid });
+                  }}
+                >
+                  <Text style={styles.sheetRowText}>🥟 Подарить пирожки</Text>
+                </TouchableOpacity>
               )}
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  setShowChatMenu(false);
-                  setShowDateModal(true);
-                }}
-              >
-                <Text style={styles.sheetRowText}>📅 Перейти к дате (Календарь)</Text>
-              </TouchableOpacity>
-
               {(chat?.type === 'group' || chat?.type === 'channel') && (
-                <>
-                  <TouchableOpacity
-                    style={styles.sheetRow}
-                    onPress={() => {
-                      setShowChatMenu(false);
-                      setShowVoiceRoom(true);
-                    }}
-                  >
-                    <Text style={styles.sheetRowText}>🎙️ Голосовая комната (Voice Chat)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.sheetRow}
-                    onPress={() => {
-                      setShowChatMenu(false);
-                      setShowGroupAdminModal(true);
-                    }}
-                  >
-                    <Text style={styles.sheetRowText}>👑 Темы, Инвайты, Админы и Журнал</Text>
-                  </TouchableOpacity>
-                </>
+                <TouchableOpacity
+                  style={styles.sheetRow}
+                  onPress={() => {
+                    setShowChatMenu(false);
+                    setShowGroupAdminModal(true);
+                  }}
+                >
+                  <Text style={styles.sheetRowText}>👑 Темы, Инвайты, Админы и Журнал</Text>
+                </TouchableOpacity>
               )}
 
               <View style={[styles.sheetRow, { flexDirection: 'column', gap: 8 }]}>
@@ -3597,7 +3663,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                       `Сделай краткий структурированный пересказ последних сообщений переписки:\n\n${recent}`,
                       { maxChars: 800 }
                     );
-                    Alert_placeholder: showToast('✨ Пересказ готов', summary.slice(0, 120), 'success');
+                    showToast('✨ Пересказ готов', summary.slice(0, 120), 'success');
                     await pushChatMessage(
                       {
                         uid: me!.uid,
@@ -3664,6 +3730,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
               >
                 <Text style={styles.sheetRowText}>📤 Экспортировать историю чата</Text>
               </TouchableOpacity>
+              </ScrollView>
             </GlassCard>
           </TouchableOpacity>
         </Modal>

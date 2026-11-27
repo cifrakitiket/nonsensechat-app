@@ -178,7 +178,24 @@ export default function SuperAppScreen({ navigation }: any) {
       >
         <View style={{ paddingTop: 6 }}>
           <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
-            <Text style={[styles.headerTitle, { color: appTheme.text }]}>🚀 Суперапп БЧ</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {navigation.canGoBack() && (
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 18, color: '#fff', fontWeight: '800' }}>←</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={[styles.headerTitle, { color: appTheme.text }]}>🚀 Суперапп БЧ</Text>
+            </View>
             <Text style={{ color: '#fbbf24', fontWeight: '900', fontSize: 13 }}>
               🥧 {(me?.pirozhki || 0).toLocaleString('ru-RU')}
             </Text>

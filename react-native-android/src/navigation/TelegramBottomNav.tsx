@@ -8,7 +8,6 @@ import { RADII } from '../theme/liquidGlass';
 import ChatsScreen from '../screens/ChatsScreen';
 import ContactsScreen from '../screens/ContactsScreen';
 import CallsScreen from '../screens/CallsScreen';
-import SuperAppScreen from '../screens/SuperAppScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -140,9 +139,6 @@ function TelegramTabBar({ state, navigation, userAvatar, unreadCount, reqsCount 
             label = 'Чаты';
             iconChar = '💬';
             badgeCount = unreadCount || 0;
-          } else if (route.name === 'SuperApp') {
-            label = 'Суперапп';
-            iconChar = '🚀';
           } else if (route.name === 'Profile') {
             label = 'Профиль';
             iconChar = '⚙️';
@@ -199,7 +195,6 @@ export default function TelegramBottomNav() {
       <Tab.Screen name="Contacts" component={ContactsScreen} />
       <Tab.Screen name="Calls" component={CallsScreen} />
       <Tab.Screen name="Chats" component={ChatsScreen} />
-      <Tab.Screen name="SuperApp" component={SuperAppScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -250,7 +245,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  tabLabel: { fontSize: 10.5, fontWeight: '600' },
+  tabLabel: { fontSize: 11, fontWeight: '600' },
   badge: {
     position: 'absolute',
     top: -4,

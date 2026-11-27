@@ -89,6 +89,7 @@ interface TelegramAttachSheetProps {
   onSendPirozhki?: (amount: number, note: string) => Promise<void> | void;
   onSendContact?: (user: UserProfile) => Promise<void> | void;
   onPickAvatar?: (dataUrl: string) => Promise<void> | void;
+  onOpenVideoNote?: () => void;
   canGiftPirozhki?: boolean;
   isChannelPost?: boolean;
 }
@@ -117,6 +118,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   onSendPirozhki,
   onSendContact,
   onPickAvatar,
+  onOpenVideoNote,
   canGiftPirozhki = true,
   isChannelPost = false,
 }) => {
@@ -593,11 +595,18 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                   <Text style={[styles.cancelText, { color: appTheme.accent }]}>Отмена</Text>
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: appTheme.text }]}>{tabTitle}</Text>
-                <View style={[styles.headerSideBtn, { alignItems: 'flex-end' }]}>
+                <View style={[styles.headerSideBtn, { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'flex-end', gap: 6 }]}>
                   {activeTab === 'gallery' ? (
-                    <TouchableOpacity onPress={handleCamera} style={styles.iconBtn}>
-                      <Ionicons name="camera-outline" size={22} color={appTheme.accent} />
-                    </TouchableOpacity>
+                    <>
+                      {mode === 'chat' && onOpenVideoNote ? (
+                        <TouchableOpacity onPress={onOpenVideoNote} style={styles.iconBtn}>
+                          <Ionicons name="videocam-outline" size={22} color={appTheme.accent} />
+                        </TouchableOpacity>
+                      ) : null}
+                      <TouchableOpacity onPress={handleCamera} style={styles.iconBtn}>
+                        <Ionicons name="camera-outline" size={22} color={appTheme.accent} />
+                      </TouchableOpacity>
+                    </>
                   ) : activeTab === 'file' || activeTab === 'contact' ? (
                     <TouchableOpacity
                       onPress={() => {
@@ -1370,6 +1379,11 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
               {/* Bottom Tabs */}
               {tabs.length > 1 && (
                 <View style={[styles.tabBar, { borderTopColor: appTheme.border }]}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 10, gap: 6, flexGrow: 1, justifyContent: 'space-around' }}
+                  >
                   {tabs.map((t) => {
                     const active = activeTab === t.key;
                     return (
@@ -1399,6 +1413,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
                       </TouchableOpacity>
                     );
                   })}
+                  </ScrollView>
                 </View>
               )}
 
@@ -1696,13 +1711,14 @@ const styles = StyleSheet.create({
     borderRadius: 21,
   },
   tabBar: {
-    flexDirection: 'row',
     borderTopWidth: 1,
     paddingTop: 8,
     paddingBottom: 2,
   },
   tabItem: {
-    flex: 1,
+    minWidth: 60,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
     alignItems: 'center',
     gap: 3,
   },

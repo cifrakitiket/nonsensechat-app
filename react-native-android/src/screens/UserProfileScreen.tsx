@@ -7,7 +7,9 @@ import {
   StyleSheet,
   TextInput,
   Image,
+  Modal,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
 import { rtdb } from '../services/firebase';
@@ -51,6 +53,8 @@ export default function UserProfileScreen({ route, navigation }: any) {
   const [posting, setPosting] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [sharedPhotos, setSharedPhotos] = useState<string[]>([]);
   const [noteDraft, setNoteDraft] = useState(personalNotes[resolvedUid] || '');
 
@@ -151,16 +155,16 @@ export default function UserProfileScreen({ route, navigation }: any) {
             <TouchableOpacity style={styles.backCircle} onPress={() => navigation.goBack()}>
               <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.topTitle}>ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ</Text>
+            <Text style={styles.topTitle}>@{user.nickLower || user.nick}</Text>
             <View style={{ flexDirection: 'row', gap: 6 }}>
+              <TouchableOpacity style={styles.backCircle} onPress={() => setShowQrModal(true)}>
+                <Ionicons name="qr-code-outline" size={17} color="#fff" />
+              </TouchableOpacity>
               {!isSelf && (
-                <TouchableOpacity style={styles.backCircle} onPress={() => setShowReportModal(true)}>
-                  <Text style={{ fontSize: 14 }}>⚠️</Text>
+                <TouchableOpacity style={styles.backCircle} onPress={() => setShowMoreMenu(true)}>
+                  <Ionicons name="ellipsis-vertical" size={17} color="#fff" />
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.backCircle} onPress={() => setShowQrModal(true)}>
-                <Text style={{ fontSize: 15 }}>📱</Text>
-              </TouchableOpacity>
             </View>
           </GlassCard>
         </View>
@@ -263,38 +267,53 @@ export default function UserProfileScreen({ route, navigation }: any) {
                 <>
                   <ScalePressable style={{ flex: 1 }} onPress={() => navigation.navigate('EditProfile')}>
                     <View style={styles.btnSec}>
-                      <Text style={styles.btnSecText}>✏️ Редактировать</Text>
+                      <Text style={styles.btnSecText}>✏️ Изменить</Text>
                     </View>
                   </ScalePressable>
                   <ScalePressable style={{ flex: 1 }} onPress={() => navigation.navigate('ProfileCustomizer')}>
                     <View style={[styles.btnGold, { backgroundColor: '#d97706' }]}>
-                      <Text style={styles.btnPriText}>🎨 Оформить</Text>
+                      <Text style={styles.btnPriText}>🎨 Оформление</Text>
                     </View>
                   </ScalePressable>
                 </>
               ) : (
                 <>
                   <ScalePressable style={{ flex: 1 }} onPress={handleWrite}>
-                    <View style={[styles.btnPri, { backgroundColor: theme.accent }]}>
-                      <Text style={[styles.btnPriText, { color: '#000' }]}>💬 Написать</Text>
+                    <View style={styles.tgTile}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.accent} />
+                      <Text style={styles.tgTileLbl}>Чат</Text>
                     </View>
                   </ScalePressable>
                   <ScalePressable
                     style={{ flex: 1 }}
-                    onPress={async () => {
-                      if (alreadyFriend || reqSent) return;
-                      try {
-                        await sendFriendRequest(resolvedUid);
-                        showToast('Заявка отправлена ✓', `Запрос отправлен ${user.nick}`, 'success');
-                      } catch (e: any) {
-                        showToast('Ошибка', e?.message || 'Не удалось отправить заявку', 'error');
-                      }
-                    }}
+                    onPress={() =>
+                      startCall({
+                        uid: resolvedUid,
+                        nick: user.nick,
+                        avatar: user.avatar,
+                        isVideo: false,
+                      })
+                    }
                   >
-                    <View style={[styles.btnSec, { opacity: alreadyFriend || reqSent ? 0.7 : 1 }]}>
-                      <Text style={styles.btnSecText}>
-                        {alreadyFriend ? '✓ В друзьях' : reqSent ? '⏳ Заявка' : '➕ В друзья'}
-                      </Text>
+                    <View style={styles.tgTile}>
+                      <Ionicons name="call-outline" size={20} color="#4ade80" />
+                      <Text style={styles.tgTileLbl}>Звонок</Text>
+                    </View>
+                  </ScalePressable>
+                  <ScalePressable
+                    style={{ flex: 1 }}
+                    onPress={() =>
+                      startCall({
+                        uid: resolvedUid,
+                        nick: user.nick,
+                        avatar: user.avatar,
+                        isVideo: true,
+                      })
+                    }
+                  >
+                    <View style={styles.tgTile}>
+                      <Ionicons name="videocam-outline" size={20} color="#60a5fa" />
+                      <Text style={styles.tgTileLbl}>Видео</Text>
                     </View>
                   </ScalePressable>
                   <ScalePressable
@@ -306,61 +325,17 @@ export default function UserProfileScreen({ route, navigation }: any) {
                       })
                     }
                   >
-                    <View style={[styles.btnGold, { backgroundColor: '#d97706' }]}>
-                      <Text style={styles.btnPriText}>🥟 Угостить</Text>
+                    <View style={styles.tgTile}>
+                      <Text style={{ fontSize: 18 }}>🥟</Text>
+                      <Text style={styles.tgTileLbl}>Подарок</Text>
                     </View>
                   </ScalePressable>
                 </>
               )}
             </View>
-
-            {!isSelf && (
-              <View style={[styles.actionsRow, { marginTop: 10 }]}>
-                <ScalePressable
-                  style={{ flex: 1 }}
-                  onPress={() =>
-                    startCall({
-                      uid: resolvedUid,
-                      nick: user.nick,
-                      avatar: user.avatar,
-                      isVideo: false,
-                    })
-                  }
-                >
-                  <View style={[styles.btnSec, { backgroundColor: 'rgba(34, 197, 94, 0.16)', borderColor: 'rgba(34, 197, 94, 0.4)' }]}>
-                    <Text style={styles.btnSecText}>📞 Аудио</Text>
-                  </View>
-                </ScalePressable>
-                <ScalePressable
-                  style={{ flex: 1 }}
-                  onPress={() =>
-                    startCall({
-                      uid: resolvedUid,
-                      nick: user.nick,
-                      avatar: user.avatar,
-                      isVideo: true,
-                    })
-                  }
-                >
-                  <View style={[styles.btnSec, { backgroundColor: 'rgba(59, 130, 246, 0.16)', borderColor: 'rgba(59, 130, 246, 0.4)' }]}>
-                    <Text style={styles.btnSecText}>📹 Видео</Text>
-                  </View>
-                </ScalePressable>
-                <ScalePressable
-                  style={{ flex: 1 }}
-                  onPress={() => toggleBlockUser(resolvedUid)}
-                >
-                  <View style={[styles.btnSec, { backgroundColor: 'rgba(239, 68, 68, 0.16)', borderColor: 'rgba(239, 68, 68, 0.35)' }]}>
-                    <Text style={[styles.btnSecText, { color: '#fca5a5' }]}>
-                      {(me?.blockedUids || []).includes(resolvedUid) ? '✓ Разблок.' : '🚫 В ЧС'}
-                    </Text>
-                  </View>
-                </ScalePressable>
-              </View>
-            )}
           </GlassCard>
 
-          {!isSelf && (
+          {!isSelf && (Boolean(personalNotes[resolvedUid]?.trim()) || showNoteEditor) && (
             <GlassCard radius={RADII.CARD} style={[styles.showcase, { borderColor: theme.border }]}>
               <Text style={[styles.showcaseTitle, { color: theme.accent }]}>
                 📝 ЛИЧНАЯ ЗАМЕТКА (ВИДНА ТОЛЬКО ВАМ)
@@ -535,6 +510,67 @@ export default function UserProfileScreen({ route, navigation }: any) {
           reportTargetName={user.nick}
           reportTargetId={resolvedUid}
         />
+
+        {/* Profile More Actions Menu */}
+        <Modal visible={showMoreMenu} transparent animationType="fade" onRequestClose={() => setShowMoreMenu(false)}>
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 20 }}
+            activeOpacity={1}
+            onPress={() => setShowMoreMenu(false)}
+          >
+            <GlassCard radius={26} strong style={{ padding: 16 }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 10 }}>
+                {user.nick}
+              </Text>
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={async () => {
+                  setShowMoreMenu(false);
+                  if (alreadyFriend || reqSent) return;
+                  try {
+                    await sendFriendRequest(resolvedUid);
+                    showToast('Заявка отправлена ✓', `Запрос отправлен ${user.nick}`, 'success');
+                  } catch (e: any) {
+                    showToast('Ошибка', e?.message || 'Не удалось отправить заявку', 'error');
+                  }
+                }}
+              >
+                <Text style={styles.menuRowTxt}>
+                  {alreadyFriend ? '✓ Уже в друзьях' : reqSent ? '⏳ Заявка отправлена' : '➕ Добавить в друзья'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={() => {
+                  setShowMoreMenu(false);
+                  setShowNoteEditor(true);
+                }}
+              >
+                <Text style={styles.menuRowTxt}>📝 Личная заметка</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={() => {
+                  setShowMoreMenu(false);
+                  toggleBlockUser(resolvedUid);
+                }}
+              >
+                <Text style={[styles.menuRowTxt, { color: '#fb923c' }]}>
+                  {(me?.blockedUids || []).includes(resolvedUid) ? '✓ Разблокировать' : '🚫 Заблокировать'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.menuRow, { borderBottomWidth: 0 }]}
+                onPress={() => {
+                  setShowMoreMenu(false);
+                  setShowReportModal(true);
+                }}
+              >
+                <Text style={[styles.menuRowTxt, { color: '#ef4444' }]}>⚠️ Пожаловаться</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          </TouchableOpacity>
+        </Modal>
       </View>
     </LiquidBackground>
   );
@@ -562,6 +598,23 @@ const styles = StyleSheet.create({
   btnSec: { paddingVertical: 11, borderRadius: 999, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   btnPriText: { color: '#fff', fontWeight: '800', fontSize: 13.5 },
   btnSecText: { color: '#e2e8f0', fontWeight: '700', fontSize: 13.5 },
+  tgTile: {
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  tgTileLbl: { color: '#e2e8f0', fontSize: 11.5, fontWeight: '700' },
+  menuRow: {
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  menuRowTxt: { color: '#f8fafc', fontSize: 15, fontWeight: '600' },
   showcase: { padding: 16 },
   showcaseTitle: { fontSize: 11.5, fontWeight: '800', letterSpacing: 0.7, marginBottom: 12 },
   statsRow: { flexDirection: 'row', gap: 8 },

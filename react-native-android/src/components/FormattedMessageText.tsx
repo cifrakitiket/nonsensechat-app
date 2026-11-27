@@ -119,7 +119,7 @@ function InlineFormattedLine({
               style={[styles.codeInline, { fontSize: Math.max(12, fontSize - 1) }]}
             >
               {' '}
-              {codeVal} 📋{' '}
+              {codeVal}{' '}
             </Text>
           );
         }

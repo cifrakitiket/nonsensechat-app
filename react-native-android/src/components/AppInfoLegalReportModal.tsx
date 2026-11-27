@@ -104,12 +104,13 @@ export const AppInfoLegalReportModal: React.FC<AppInfoLegalReportModalProps> = (
                   Беспонтовый Чат
                 </Text>
                 <Text style={{ color: appTheme.accent, fontWeight: '800', fontSize: 13 }}>
-                  v{APP_VERSION} Unified SuperApp (Build {APP_VERSION_CODE})
+                  NonsenseChat {APP_VERSION} Minimalist Edition (Build {APP_VERSION_CODE})
                 </Text>
               </View>
               <View style={styles.infoBox}>
                 <Text style={styles.infoHead}>🚀 CHANGELOG</Text>
                 <Text style={styles.infoTxt}>
+                  • v3.0 Minimalist Edition: Генеральная уборка интерфейса в стиле Telegram — чистые шапки чатов и панель ввода без лишних кнопок, единый центр оформления чатов и профиля, плавная 4-вкладочная навигация и быстрый доступ к Супераппу.{'\n'}
                   • v6.0.0 SuperApp: Единое слияние веб-версии и Android! Вкладка Суперапп (ИИ Хаб 7 моделей, Колесо Фортуны, Канбан, Конвертер, Редкие шрифты), живой калькулятор с корнями ∛√, быстрые команды gemini:/grok:, сворачивание звонков + ClearVoice AI™, E2EE-ключ, спец-бейджи ♀ и &lt;/&gt;, история пирожков.{'\n'}
                   • v5.3.0: Эффекты сообщений, Фоторедактор, Спойлеры фото, Плавающий плеер и MP3, Переводчик RU↔EN, Расшифровка ГС, Бусты и Платные посты, Голосовые комнаты, Инвайты, Сейф.{'\n'}
                   • v5.2.0: WebRTC-звонки 1-на-1, Кружочки, Мини-игры ТГ, GIF и свои стикерпаки, Опросы 2.0, Чек-листы, Темы форума, Глобальный поиск, QR-визитка.{'\n'}
