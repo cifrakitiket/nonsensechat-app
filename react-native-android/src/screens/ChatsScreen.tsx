@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Animated,
   PanResponder,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -109,16 +110,18 @@ export default function ChatsScreen({ navigation }: any) {
     stories,
   } = useApp();
 
+  const { width: screenWidth } = useWindowDimensions();
   const [activeFolder, setActiveFolder] = useState<string>('all');
   const [showArchived, setShowArchived] = useState(false);
   const [storiesExpanded, setStoriesExpanded] = useState(true);
   const storiesAnim = useRef(new Animated.Value(1)).current;
-  const scrollYRef = useRef(0);
-  const listHeightRef = useRef(0);
-  const contentHeightRef = useRef(0);
+  const scrollYMapRef = useRef<Record<string, number>>({});
+  const listHeightMapRef = useRef<Record<string, number>>({});
+  const contentHeightMapRef = useRef<Record<string, number>>({});
   const gestureHandledRef = useRef(false);
   const storyTouchStartYRef = useRef(0);
   const folderScrollRef = useRef<ScrollView | null>(null);
+  const pagerRef = useRef<ScrollView | null>(null);
   const folderTabXRef = useRef<Record<string, number>>({});
 
   const storiesExpandedRef = useRef(storiesExpanded);
@@ -127,7 +130,6 @@ export default function ChatsScreen({ navigation }: any) {
   activeFolderRef.current = activeFolder;
 
   useEffect(() => {
-    scrollYRef.current = 0;
     const x = folderTabXRef.current[activeFolder];
     if (typeof x === 'number') {
       folderScrollRef.current?.scrollTo({ x: Math.max(0, x - 28), animated: true });
@@ -159,38 +161,23 @@ export default function ChatsScreen({ navigation }: any) {
     [incomingRequests.length, customFolders]
   );
 
-  const folderTabsRef = useRef(folderTabs);
-  folderTabsRef.current = folderTabs;
-
-  const selectFolderBySwipe = (delta: 1 | -1) => {
-    const tabs = folderTabsRef.current;
-    const curIdx = tabs.findIndex((f) => f.key === activeFolderRef.current);
-    const baseIdx = curIdx >= 0 ? curIdx : 0;
-    const nextIdx = baseIdx + delta;
-    if (nextIdx < 0 || nextIdx >= tabs.length) return;
-    triggerHaptic(8);
-    setShowArchived(false);
-    setActiveFolder(tabs[nextIdx].key);
-  };
-
   const listPanResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (_evt, g) => {
         const ax = Math.abs(g.dx);
         const ay = Math.abs(g.dy);
-        // 1. Horizontal swipe between folders
-        if (ax > 20 && ax > ay * 1.35) return true;
-        // 2. Pull down at top of list to reveal stories
-        if (!storiesExpandedRef.current && scrollYRef.current <= 4 && g.dy > 16 && ay > ax * 1.3) {
+        const curKey = activeFolderRef.current;
+        const scrollY = scrollYMapRef.current[curKey] || 0;
+        const listH = listHeightMapRef.current[curKey] || 0;
+        const contentH = contentHeightMapRef.current[curKey] || 0;
+        // Never steal horizontal swipes from the fluid ViewPager
+        if (ax >= ay) return false;
+        // Pull down at top of list to reveal stories
+        if (!storiesExpandedRef.current && scrollY <= 4 && g.dy > 14 && ay > ax * 1.4) {
           return true;
         }
-        // 3. Swipe up when list doesn't scroll vertically to collapse stories
-        if (
-          storiesExpandedRef.current &&
-          contentHeightRef.current <= listHeightRef.current + 16 &&
-          g.dy < -16 &&
-          ay > ax * 1.3
-        ) {
+        // Swipe up when list doesn't scroll vertically to collapse stories
+        if (storiesExpandedRef.current && contentH <= listH + 16 && g.dy < -16 && ay > ax * 1.4) {
           return true;
         }
         return false;
@@ -202,18 +189,15 @@ export default function ChatsScreen({ navigation }: any) {
         if (gestureHandledRef.current) return;
         const ax = Math.abs(g.dx);
         const ay = Math.abs(g.dy);
-        if (ax > 44 && ax > ay * 1.3) {
-          gestureHandledRef.current = true;
-          selectFolderBySwipe(g.dx < 0 ? 1 : -1);
-          return;
-        }
-        if (!storiesExpandedRef.current && scrollYRef.current <= 4 && g.dy > 26 && ay > ax * 1.2) {
+        const curKey = activeFolderRef.current;
+        const scrollY = scrollYMapRef.current[curKey] || 0;
+        if (!storiesExpandedRef.current && scrollY <= 4 && g.dy > 24 && ay > ax * 1.25) {
           gestureHandledRef.current = true;
           triggerHaptic(8);
           setStoriesVisible(true);
           return;
         }
-        if (storiesExpandedRef.current && g.dy < -24 && ay > ax * 1.2) {
+        if (storiesExpandedRef.current && g.dy < -24 && ay > ax * 1.25) {
           gestureHandledRef.current = true;
           triggerHaptic(8);
           setStoriesVisible(false);
@@ -330,65 +314,75 @@ export default function ChatsScreen({ navigation }: any) {
 
   const isVaultQuery = !!vaultPasscode && search.trim() === vaultPasscode;
 
-  const filteredChats = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const custom = customFolders.find((f) => f.id === activeFolder);
+  const getChatsForFolder = useCallback(
+    (folderKey: string, archivedOnly = false) => {
+      const q = search.trim().toLowerCase();
+      const custom = customFolders.find((f) => f.id === folderKey);
 
-    const base = chats.filter((c) => {
-      const inVault = hiddenVaultChatIds.includes(c.id);
-      if (isVaultQuery) return inVault;
-      if (inVault) return false;
+      const base = chats.filter((c) => {
+        const inVault = hiddenVaultChatIds.includes(c.id);
+        if (isVaultQuery) return inVault;
+        if (inVault) return false;
 
-      const isArch = archivedChatIds.includes(c.id);
-      if (showArchived ? !isArch : isArch) return false;
+        const isArch = archivedChatIds.includes(c.id);
+        if (archivedOnly ? !isArch : isArch) return false;
 
-      if (activeFolder === 'dm' && c.type !== 'dm') return false;
-      if (activeFolder === 'groups' && c.type !== 'group') return false;
-      if (activeFolder === 'channels' && c.type !== 'channel') return false;
-      if (custom && !custom.chatIds.includes(c.id)) return false;
+        if (!archivedOnly) {
+          if (folderKey === 'dm' && c.type !== 'dm') return false;
+          if (folderKey === 'groups' && c.type !== 'group') return false;
+          if (folderKey === 'channels' && c.type !== 'channel') return false;
+          if (custom && !custom.chatIds.includes(c.id)) return false;
+        }
 
-      if (q) {
-        const info = getChatDisplay(c);
-        return (
-          info.name.toLowerCase().includes(q) ||
-          stripHtml(c.lastMsg).toLowerCase().includes(q)
-        );
+        if (q) {
+          const info = getChatDisplay(c);
+          return (
+            info.name.toLowerCase().includes(q) ||
+            stripHtml(c.lastMsg).toLowerCase().includes(q)
+          );
+        }
+        return true;
+      });
+
+      const sorted = [...base].sort((a, b) => {
+        const ap = pinnedChatIds.includes(a.id) ? 1 : 0;
+        const bp = pinnedChatIds.includes(b.id) ? 1 : 0;
+        if (ap !== bp) return bp - ap;
+        return (b.lastMsgAt || 0) - (a.lastMsgAt || 0);
+      });
+
+      if (!archivedOnly && !q && folderKey === 'all' && me) {
+        const savedCard: ChatItem = {
+          id: `fav_${me.uid}`,
+          type: 'saved',
+          name: 'Избранное',
+          members: [me.uid],
+          lastMsg: 'Заметки, фото и облако',
+          lastMsgAt: 0,
+        };
+        const aiCard: ChatItem = {
+          id: `aihub_${me.uid}`,
+          type: 'ai_hub',
+          name: '🤖 ИИ Хаб',
+          members: [me.uid],
+          lastMsg: 'Нейросети Gemini, Grok, Claude, GPT',
+          lastMsgAt: 0,
+        };
+        return [
+          savedCard,
+          aiCard,
+          ...sorted.filter((c) => c.id !== `fav_${me.uid}` && c.id !== `aihub_${me.uid}`),
+        ];
       }
-      return true;
-    });
+      return sorted;
+    },
+    [chats, search, me, usersMap, archivedChatIds, pinnedChatIds, customFolders, hiddenVaultChatIds, isVaultQuery]
+  );
 
-    const sorted = [...base].sort((a, b) => {
-      const ap = pinnedChatIds.includes(a.id) ? 1 : 0;
-      const bp = pinnedChatIds.includes(b.id) ? 1 : 0;
-      if (ap !== bp) return bp - ap;
-      return (b.lastMsgAt || 0) - (a.lastMsgAt || 0);
-    });
-
-    if (!showArchived && !q && activeFolder === 'all' && me) {
-      const savedCard: ChatItem = {
-        id: `fav_${me.uid}`,
-        type: 'saved',
-        name: 'Избранное',
-        members: [me.uid],
-        lastMsg: 'Заметки, фото и облако',
-        lastMsgAt: 0,
-      };
-      const aiCard: ChatItem = {
-        id: `aihub_${me.uid}`,
-        type: 'ai_hub',
-        name: '🤖 ИИ Хаб',
-        members: [me.uid],
-        lastMsg: 'Нейросети Gemini, Grok, Claude, GPT',
-        lastMsgAt: 0,
-      };
-      return [
-        savedCard,
-        aiCard,
-        ...sorted.filter((c) => c.id !== `fav_${me.uid}` && c.id !== `aihub_${me.uid}`),
-      ];
-    }
-    return sorted;
-  }, [chats, activeFolder, showArchived, search, me, usersMap, archivedChatIds, pinnedChatIds, customFolders, hiddenVaultChatIds, isVaultQuery]);
+  const archivedChatsList = useMemo(
+    () => (showArchived ? getChatsForFolder('all', true) : []),
+    [showArchived, getChatsForFolder]
+  );
 
   const handleCreateSubmit = async () => {
     if (!createInput.trim()) return;
@@ -736,6 +730,12 @@ export default function ChatsScreen({ navigation }: any) {
                   onPress={() => {
                     setShowArchived(false);
                     setActiveFolder(f.key);
+                    const idx = folderTabs.findIndex((t) => t.key === f.key);
+                    if (idx >= 0) {
+                      setTimeout(() => {
+                        pagerRef.current?.scrollTo({ x: idx * screenWidth, animated: true });
+                      }, 16);
+                    }
                   }}
                   onLongPress={() => {
                     if (f.key.startsWith('fld_')) {
@@ -779,7 +779,7 @@ export default function ChatsScreen({ navigation }: any) {
           </ScrollView>
         </View>
 
-        {/* Swipeable Chats & Requests Container (PanResponderCapture for Android FlatList) */}
+        {/* Fluid Horizontal ViewPager + Vertical Pull-to-Stories */}
         <View style={{ flex: 1 }} {...listPanResponder.panHandlers}>
         {/* Archive Toggle Pill */}
         {archivedChatIds.length > 0 && activeFolder !== 'reqs' && (
@@ -798,118 +798,165 @@ export default function ChatsScreen({ navigation }: any) {
           </TouchableOpacity>
         )}
 
-        {/* Chats List or Friend Requests */}
-        {activeFolder === 'reqs' ? (
+        {showArchived ? (
           <FlatList
-            data={incomingRequests}
-            keyExtractor={(item) => item.id}
-            removeClippedSubviews={false}
-            contentContainerStyle={styles.listContent}
-            scrollEventThrottle={16}
-            onLayout={(e) => {
-              listHeightRef.current = e.nativeEvent.layout.height;
-            }}
-            onContentSizeChange={(_w, h) => {
-              contentHeightRef.current = h;
-            }}
-            onScroll={(e) => {
-              const y = e.nativeEvent.contentOffset.y;
-              scrollYRef.current = y;
-              if (y > 18 && storiesExpandedRef.current) setStoriesVisible(false);
-            }}
-            ListEmptyComponent={
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyEmoji}>🤝</Text>
-                <Text style={[styles.emptyText, { color: appTheme.textSub }]}>
-                  Входящих заявок в друзья пока нет
-                </Text>
-              </View>
-            }
-            renderItem={({ item }) => {
-              const sender = usersMap[item.from];
-              const nick = sender?.nick || item.fromNick || 'Пользователь';
-              return (
-                <View style={{ marginHorizontal: 12, marginVertical: 4 }}>
-                  <GlassCard radius={RADII.ITEM} style={styles.chatCard}>
-                    <FramedAvatar
-                      uri={sender?.avatar}
-                      name={nick}
-                      frameId={sender?.steamFrame || 'none'}
-                      size={48}
-                      online={!!sender?.online}
-                    />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={{ color: appTheme.text, fontWeight: '800', fontSize: 15 }}>{nick}</Text>
-                      <Text style={{ color: appTheme.textSub, fontSize: 12.5 }}>Хочет добавить вас в друзья</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TouchableOpacity
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 7,
-                          borderRadius: 14,
-                          backgroundColor: appTheme.accent,
-                        }}
-                        onPress={async () => {
-                          const chat = await acceptFriendRequest(item);
-                          showToast('Принято ✓', `${nick} добавлен в друзья`, 'success');
-                          if (chat) {
-                            navigation.navigate('ChatRoom', { chatId: chat.id, name: nick });
-                          }
-                        }}
-                      >
-                        <Text style={{ color: '#000', fontWeight: '800', fontSize: 12 }}>Принять</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={{
-                          paddingHorizontal: 10,
-                          paddingVertical: 7,
-                          borderRadius: 14,
-                          backgroundColor: 'rgba(239,68,68,0.16)',
-                        }}
-                        onPress={async () => {
-                          await declineFriendRequest(item.id);
-                          showToast('Отклонено', `Заявка от ${nick} отклонена`, 'info');
-                        }}
-                      >
-                        <Text style={{ color: '#ef4444', fontWeight: '800', fontSize: 12 }}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </GlassCard>
-                </View>
-              );
-            }}
-          />
-        ) : (
-          <FlatList
-            data={filteredChats}
+            data={archivedChatsList}
             keyExtractor={(item) => item.id}
             renderItem={renderChatItem}
             removeClippedSubviews={false}
             contentContainerStyle={styles.listContent}
-            scrollEventThrottle={16}
-            onLayout={(e) => {
-              listHeightRef.current = e.nativeEvent.layout.height;
-            }}
-            onContentSizeChange={(_w, h) => {
-              contentHeightRef.current = h;
-            }}
-            onScroll={(e) => {
-              const y = e.nativeEvent.contentOffset.y;
-              scrollYRef.current = y;
-              if (y > 18 && storiesExpandedRef.current) {
-                setStoriesVisible(false);
-              }
-            }}
             ListEmptyComponent={
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyEmoji}>💬</Text>
-                <Text style={[styles.emptyText, { color: appTheme.textSub }]}>
-                  Чатов пока нет. Нажмите ✏️ внизу справа, чтобы начать диалог!
-                </Text>
+                <Text style={styles.emptyEmoji}>📦</Text>
+                <Text style={[styles.emptyText, { color: appTheme.textSub }]}>Архив пуст</Text>
               </View>
             }
           />
+        ) : (
+          <ScrollView
+            ref={pagerRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            nestedScrollEnabled
+            scrollEventThrottle={16}
+            onMomentumScrollEnd={(e) => {
+              if (!screenWidth) return;
+              const pageIdx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+              const targetTab = folderTabs[pageIdx];
+              if (targetTab && targetTab.key !== activeFolderRef.current) {
+                triggerHaptic(8);
+                setActiveFolder(targetTab.key);
+              }
+            }}
+          >
+            {folderTabs.map((tab) => {
+              if (tab.key === 'reqs') {
+                return (
+                  <View key={tab.key} style={{ width: screenWidth, flex: 1 }}>
+                    <FlatList
+                      data={incomingRequests}
+                      keyExtractor={(item) => item.id}
+                      removeClippedSubviews={false}
+                      contentContainerStyle={styles.listContent}
+                      scrollEventThrottle={16}
+                      onLayout={(e) => {
+                        listHeightMapRef.current[tab.key] = e.nativeEvent.layout.height;
+                      }}
+                      onContentSizeChange={(_w, h) => {
+                        contentHeightMapRef.current[tab.key] = h;
+                      }}
+                      onScroll={(e) => {
+                        const y = e.nativeEvent.contentOffset.y;
+                        scrollYMapRef.current[tab.key] = y;
+                        if (y > 18 && storiesExpandedRef.current) setStoriesVisible(false);
+                      }}
+                      ListEmptyComponent={
+                        <View style={styles.emptyBox}>
+                          <Text style={styles.emptyEmoji}>🤝</Text>
+                          <Text style={[styles.emptyText, { color: appTheme.textSub }]}>
+                            Входящих заявок в друзья пока нет
+                          </Text>
+                        </View>
+                      }
+                      renderItem={({ item }) => {
+                        const sender = usersMap[item.from];
+                        const nick = sender?.nick || item.fromNick || 'Пользователь';
+                        return (
+                          <View style={{ marginHorizontal: 12, marginVertical: 4 }}>
+                            <GlassCard radius={RADII.ITEM} style={styles.chatCard}>
+                              <FramedAvatar
+                                uri={sender?.avatar}
+                                name={nick}
+                                frameId={sender?.steamFrame || 'none'}
+                                size={48}
+                                online={!!sender?.online}
+                              />
+                              <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={{ color: appTheme.text, fontWeight: '800', fontSize: 15 }}>{nick}</Text>
+                                <Text style={{ color: appTheme.textSub, fontSize: 12.5 }}>Хочет добавить вас в друзья</Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', gap: 8 }}>
+                                <TouchableOpacity
+                                  style={{
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 7,
+                                    borderRadius: 14,
+                                    backgroundColor: appTheme.accent,
+                                  }}
+                                  onPress={async () => {
+                                    const chat = await acceptFriendRequest(item);
+                                    showToast('Принято ✓', `${nick} добавлен в друзья`, 'success');
+                                    if (chat) {
+                                      navigation.navigate('ChatRoom', { chatId: chat.id, name: nick });
+                                    }
+                                  }}
+                                >
+                                  <Text style={{ color: '#000', fontWeight: '800', fontSize: 12 }}>Принять</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={{
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 7,
+                                    borderRadius: 14,
+                                    backgroundColor: 'rgba(239,68,68,0.16)',
+                                  }}
+                                  onPress={async () => {
+                                    await declineFriendRequest(item.id);
+                                    showToast('Отклонено', `Заявка от ${nick} отклонена`, 'info');
+                                  }}
+                                >
+                                  <Text style={{ color: '#ef4444', fontWeight: '800', fontSize: 12 }}>✕</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </GlassCard>
+                          </View>
+                        );
+                      }}
+                    />
+                  </View>
+                );
+              }
+
+              const tabChats = getChatsForFolder(tab.key, false);
+              return (
+                <View key={tab.key} style={{ width: screenWidth, flex: 1 }}>
+                  <FlatList
+                    data={tabChats}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderChatItem}
+                    removeClippedSubviews={false}
+                    contentContainerStyle={styles.listContent}
+                    scrollEventThrottle={16}
+                    onLayout={(e) => {
+                      listHeightMapRef.current[tab.key] = e.nativeEvent.layout.height;
+                    }}
+                    onContentSizeChange={(_w, h) => {
+                      contentHeightMapRef.current[tab.key] = h;
+                    }}
+                    onScroll={(e) => {
+                      const y = e.nativeEvent.contentOffset.y;
+                      scrollYMapRef.current[tab.key] = y;
+                      if (y > 18 && storiesExpandedRef.current) {
+                        setStoriesVisible(false);
+                      }
+                    }}
+                    ListEmptyComponent={
+                      <View style={styles.emptyBox}>
+                        <Text style={styles.emptyEmoji}>💬</Text>
+                        <Text style={[styles.emptyText, { color: appTheme.textSub }]}>
+                          {tab.key === 'all'
+                            ? 'Чатов пока нет. Нажмите ✏️ внизу справа, чтобы начать диалог!'
+                            : 'В этой папке пока нет чатов'}
+                        </Text>
+                      </View>
+                    }
+                  />
+                </View>
+              );
+            })}
+          </ScrollView>
         )}
         </View>
 
