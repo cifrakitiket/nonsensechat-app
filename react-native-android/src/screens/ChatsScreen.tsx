@@ -109,9 +109,16 @@ export default function ChatsScreen({ navigation }: any) {
     stories,
   } = useApp();
 
+  const [activeFolder, setActiveFolder] = useState<string>('all');
+  const [showArchived, setShowArchived] = useState(false);
   const [storiesExpanded, setStoriesExpanded] = useState(true);
   const scrollYRef = useRef(0);
+  const touchStartXRef = useRef(0);
   const touchStartYRef = useRef(0);
+  const gestureHandledRef = useRef(false);
+  const storyTouchStartYRef = useRef(0);
+  const folderScrollRef = useRef<ScrollView | null>(null);
+  const folderTabXRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     NativeModules.NativeStorageModule?.getItem?.('nc_stories_expanded')
@@ -121,11 +128,44 @@ export default function ChatsScreen({ navigation }: any) {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    scrollYRef.current = 0;
+    const x = folderTabXRef.current[activeFolder];
+    if (typeof x === 'number') {
+      folderScrollRef.current?.scrollTo({ x: Math.max(0, x - 28), animated: true });
+    }
+  }, [activeFolder, showArchived]);
+
   const setStoriesVisible = (next: boolean) => {
     if (next === storiesExpanded) return;
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setStoriesExpanded(next);
     NativeModules.NativeStorageModule?.setItem?.('nc_stories_expanded', next ? '1' : '0')?.catch?.(() => {});
+  };
+
+  const folderTabs = useMemo(
+    () => [
+      { key: 'all', label: 'Все' },
+      { key: 'dm', label: 'Личные' },
+      { key: 'groups', label: 'Группы' },
+      { key: 'channels', label: 'Каналы' },
+      ...(incomingRequests.length > 0
+        ? [{ key: 'reqs', label: `Заявки (${incomingRequests.length})` }]
+        : []),
+      ...customFolders.map((cf) => ({ key: cf.id, label: `${cf.icon} ${cf.name}` })),
+    ],
+    [incomingRequests.length, customFolders]
+  );
+
+  const selectFolderBySwipe = (delta: 1 | -1) => {
+    const curIdx = folderTabs.findIndex((f) => f.key === activeFolder);
+    const baseIdx = curIdx >= 0 ? curIdx : 0;
+    const nextIdx = baseIdx + delta;
+    if (nextIdx < 0 || nextIdx >= folderTabs.length) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    triggerHaptic(8);
+    setShowArchived(false);
+    setActiveFolder(folderTabs[nextIdx].key);
   };
 
   const storyMiniAvatars = useMemo(() => {
@@ -140,8 +180,6 @@ export default function ChatsScreen({ navigation }: any) {
     return list.slice(0, 3);
   }, [stories]);
 
-  const [activeFolder, setActiveFolder] = useState<string>('all');
-  const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState('');
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -438,14 +476,7 @@ export default function ChatsScreen({ navigation }: any) {
         {/* Liquid Glass Header Pill */}
         <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 8 }}>
           <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.logoRow}
-              onPress={() => {
-                triggerHaptic(8);
-                setStoriesVisible(!storiesExpanded);
-              }}
-            >
+            <View style={styles.logoRow}>
               <Image
                 source={require('../../android/app/src/main/assets/public/logo.png')}
                 style={styles.headerLogo}
@@ -453,43 +484,36 @@ export default function ChatsScreen({ navigation }: any) {
               <Text style={[styles.headerTitle, { color: appTheme.text }]} numberOfLines={1}>
                 NonsenseChat
               </Text>
-              <View style={styles.storiesMiniCluster}>
-                {!storiesExpanded && storyMiniAvatars.length > 0 && (
-                  <View style={styles.miniAvatarsStack}>
-                    {storyMiniAvatars.map((st, idx) =>
-                      st.avatar ? (
-                        <Image
-                          key={st.uid}
-                          source={{ uri: st.avatar }}
-                          style={[
-                            styles.miniStoryAva,
-                            { borderColor: appTheme.accent, marginLeft: idx === 0 ? 0 : -7 },
-                          ]}
-                        />
-                      ) : (
-                        <View
-                          key={st.uid}
-                          style={[
-                            styles.miniStoryAva,
-                            styles.miniStoryFallback,
-                            { borderColor: appTheme.accent, marginLeft: idx === 0 ? 0 : -7 },
-                          ]}
-                        >
-                          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>
-                            {(st.nick || '?').charAt(0).toUpperCase()}
-                          </Text>
-                        </View>
-                      )
-                    )}
-                  </View>
-                )}
-                <Ionicons
-                  name={storiesExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={14}
-                  color={appTheme.textSub}
-                />
-              </View>
-            </TouchableOpacity>
+              {!storiesExpanded && storyMiniAvatars.length > 0 && (
+                <View style={styles.miniAvatarsStack}>
+                  {storyMiniAvatars.map((st, idx) =>
+                    st.avatar ? (
+                      <Image
+                        key={st.uid}
+                        source={{ uri: st.avatar }}
+                        style={[
+                          styles.miniStoryAva,
+                          { borderColor: appTheme.accent, marginLeft: idx === 0 ? 0 : -7 },
+                        ]}
+                      />
+                    ) : (
+                      <View
+                        key={st.uid}
+                        style={[
+                          styles.miniStoryAva,
+                          styles.miniStoryFallback,
+                          { borderColor: appTheme.accent, marginLeft: idx === 0 ? 0 : -7 },
+                        ]}
+                      >
+                        <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>
+                          {(st.nick || '?').charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )
+                  )}
+                </View>
+              )}
+            </View>
 
             <View style={styles.headerActions}>
               <ScalePressable
@@ -608,6 +632,16 @@ export default function ChatsScreen({ navigation }: any) {
               : styles.storiesCollapsedWrap
           }
           pointerEvents={storiesExpanded ? 'auto' : 'none'}
+          onTouchStart={(e) => {
+            storyTouchStartYRef.current = e.nativeEvent.pageY;
+          }}
+          onTouchMove={(e) => {
+            const dy = e.nativeEvent.pageY - storyTouchStartYRef.current;
+            if (dy < -28 && storiesExpanded) {
+              triggerHaptic(8);
+              setStoriesVisible(false);
+            }
+          }}
         >
           <StoriesBar onReplyToStory={handleReplyToStory} />
         </View>
@@ -615,25 +649,20 @@ export default function ChatsScreen({ navigation }: any) {
         {/* Pill Folder Tabs (with Custom Folders) */}
         <View style={{ flexShrink: 0, height: 42, marginBottom: 6, justifyContent: 'center' }}>
           <ScrollView
+            ref={folderScrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             style={{ flexGrow: 0 }}
             contentContainerStyle={[styles.foldersRow, { alignItems: 'center' }]}
           >
-            {[
-              { key: 'all', label: 'Все' },
-              { key: 'dm', label: 'Личные' },
-              { key: 'groups', label: 'Группы' },
-              { key: 'channels', label: 'Каналы' },
-              ...(incomingRequests.length > 0
-                ? [{ key: 'reqs', label: `Заявки (${incomingRequests.length})` }]
-                : []),
-              ...customFolders.map((cf) => ({ key: cf.id, label: `${cf.icon} ${cf.name}` })),
-            ].map((f) => {
+            {folderTabs.map((f) => {
               const act = activeFolder === f.key && !showArchived;
               return (
                 <TouchableOpacity
                   key={f.key}
+                  onLayout={(e) => {
+                    folderTabXRef.current[f.key] = e.nativeEvent.layout.x;
+                  }}
                   style={[
                     styles.folderTab,
                     {
@@ -642,6 +671,7 @@ export default function ChatsScreen({ navigation }: any) {
                     },
                   ]}
                   onPress={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                     setShowArchived(false);
                     setActiveFolder(f.key);
                   }}
@@ -687,6 +717,39 @@ export default function ChatsScreen({ navigation }: any) {
           </ScrollView>
         </View>
 
+        {/* Swipeable Chats & Requests Container (Vertical swipe: Stories, Horizontal swipe: Folders) */}
+        <View
+          style={{ flex: 1 }}
+          onTouchStart={(e) => {
+            touchStartXRef.current = e.nativeEvent.pageX;
+            touchStartYRef.current = e.nativeEvent.pageY;
+            gestureHandledRef.current = false;
+          }}
+          onTouchMove={(e) => {
+            if (gestureHandledRef.current) return;
+            const dx = e.nativeEvent.pageX - touchStartXRef.current;
+            const dy = e.nativeEvent.pageY - touchStartYRef.current;
+            if (Math.abs(dx) > 54 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+              gestureHandledRef.current = true;
+              selectFolderBySwipe(dx < 0 ? 1 : -1);
+              return;
+            }
+            if (dy > 34 && Math.abs(dy) > Math.abs(dx) * 1.3 && scrollYRef.current <= 8 && !storiesExpanded) {
+              gestureHandledRef.current = true;
+              triggerHaptic(8);
+              setStoriesVisible(true);
+              return;
+            }
+            if (dy < -36 && Math.abs(dy) > Math.abs(dx) * 1.3 && storiesExpanded) {
+              gestureHandledRef.current = true;
+              triggerHaptic(8);
+              setStoriesVisible(false);
+            }
+          }}
+          onTouchEnd={() => {
+            gestureHandledRef.current = false;
+          }}
+        >
         {/* Archive Toggle Pill */}
         {archivedChatIds.length > 0 && activeFolder !== 'reqs' && (
           <TouchableOpacity
@@ -710,6 +773,12 @@ export default function ChatsScreen({ navigation }: any) {
             data={incomingRequests}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
+            scrollEventThrottle={32}
+            onScroll={(e) => {
+              const y = e.nativeEvent.contentOffset.y;
+              scrollYRef.current = y;
+              if (y > 24 && storiesExpanded) setStoriesVisible(false);
+            }}
             ListEmptyComponent={
               <View style={styles.emptyBox}>
                 <Text style={styles.emptyEmoji}>🤝</Text>
@@ -783,19 +852,9 @@ export default function ChatsScreen({ navigation }: any) {
             onScroll={(e) => {
               const y = e.nativeEvent.contentOffset.y;
               scrollYRef.current = y;
-              if (y > 28 && storiesExpanded) {
+              if (y > 24 && storiesExpanded) {
                 setStoriesVisible(false);
               } else if (y < -28 && !storiesExpanded) {
-                triggerHaptic(8);
-                setStoriesVisible(true);
-              }
-            }}
-            onTouchStart={(e) => {
-              touchStartYRef.current = e.nativeEvent.pageY;
-            }}
-            onTouchEnd={(e) => {
-              const dy = e.nativeEvent.pageY - touchStartYRef.current;
-              if (scrollYRef.current <= 4 && dy > 44 && !storiesExpanded) {
                 triggerHaptic(8);
                 setStoriesVisible(true);
               }
@@ -810,6 +869,7 @@ export default function ChatsScreen({ navigation }: any) {
             }
           />
         )}
+        </View>
 
         {/* Floating Action Button for new chat */}
         <TouchableOpacity
@@ -1136,7 +1196,6 @@ const styles = StyleSheet.create({
   logoRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: 6 },
   headerLogo: { width: 30, height: 30, borderRadius: 15 },
   headerTitle: { fontSize: 16, fontWeight: '800', flexShrink: 1 },
-  storiesMiniCluster: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   miniAvatarsStack: { flexDirection: 'row', alignItems: 'center' },
   miniStoryAva: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5 },
   miniStoryFallback: { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' },
