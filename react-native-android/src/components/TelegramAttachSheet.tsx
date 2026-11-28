@@ -122,7 +122,7 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
   canGiftPirozhki = true,
   isChannelPost = false,
 }) => {
-  const { appTheme, me, usersMap, showToast } = useApp();
+  const { appTheme, me, usersMap, chats, showToast } = useApp();
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState<SheetTab>('gallery');
@@ -527,11 +527,19 @@ export const TelegramAttachSheet: React.FC<TelegramAttachSheetProps> = ({
 
   const contacts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    const friendUids = new Set<string>();
+    chats.forEach((c) => {
+      if (c.type === 'dm') {
+        (c.members || []).forEach((uid) => {
+          if (uid !== me?.uid) friendUids.add(uid);
+        });
+      }
+    });
     return Object.values(usersMap)
-      .filter((u) => u.uid !== me?.uid)
+      .filter((u) => u.uid !== me?.uid && friendUids.has(u.uid))
       .filter((u) => !q || u.nick.toLowerCase().includes(q) || (u.bio || '').toLowerCase().includes(q))
       .sort((a, b) => a.nick.localeCompare(b.nick));
-  }, [usersMap, me?.uid, searchQuery]);
+  }, [usersMap, chats, me?.uid, searchQuery]);
 
   const tabTitle =
     activeTab === 'gallery'

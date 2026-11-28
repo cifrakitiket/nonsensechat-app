@@ -55,13 +55,13 @@ export default function CallsScreen({ navigation }: any) {
                 <Text style={{ fontSize: 38, marginBottom: 10 }}>📞</Text>
                 <Text style={[styles.emptyTitle, { color: appTheme.text }]}>История звонков пуста</Text>
                 <Text style={[styles.emptySub, { color: appTheme.textSub }]}>
-                  Откройте чат или выберите собеседника во вкладке «Контакты»
+                  Откройте любой диалог во вкладке «Чаты», чтобы позвонить собеседнику
                 </Text>
                 <ScalePressable
                   style={[styles.goContactsBtn, { backgroundColor: appTheme.accent }]}
-                  onPress={() => navigation.navigate('Contacts')}
+                  onPress={() => navigation.navigate('Chats')}
                 >
-                  <Text style={{ color: '#000', fontWeight: '800' }}>Перейти к контактам</Text>
+                  <Text style={{ color: '#000', fontWeight: '800' }}>Перейти к чатам</Text>
                 </ScalePressable>
               </GlassCard>
             </View>

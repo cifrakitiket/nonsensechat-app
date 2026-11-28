@@ -6,7 +6,6 @@ import { useApp } from '../context/AppContext';
 import { RADII } from '../theme/liquidGlass';
 
 import ChatsScreen from '../screens/ChatsScreen';
-import ContactsScreen from '../screens/ContactsScreen';
 import CallsScreen from '../screens/CallsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -128,11 +127,7 @@ function TelegramTabBar({ state, navigation, userAvatar, unreadCount, reqsCount 
           let iconChar = '💬';
           let badgeCount = 0;
 
-          if (route.name === 'Contacts') {
-            label = 'Контакты';
-            iconChar = '👤';
-            badgeCount = reqsCount || 0;
-          } else if (route.name === 'Calls') {
+          if (route.name === 'Calls') {
             label = 'Звонки';
             iconChar = '📞';
           } else if (route.name === 'Chats') {
@@ -192,7 +187,6 @@ export default function TelegramBottomNav() {
         />
       )}
     >
-      <Tab.Screen name="Contacts" component={ContactsScreen} />
       <Tab.Screen name="Calls" component={CallsScreen} />
       <Tab.Screen name="Chats" component={ChatsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />

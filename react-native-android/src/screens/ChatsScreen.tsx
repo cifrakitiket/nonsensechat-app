@@ -23,7 +23,6 @@ import { LiquidBackground } from '../components/LiquidBackground';
 import { GlassCard } from '../components/GlassCard';
 import { ScalePressable } from '../components/ScalePressable';
 import { StoriesBar } from '../components/StoriesBar';
-import { SwipeableChatRow } from '../components/SwipeableChatRow';
 import { GlobalSearchModal } from '../components/GlobalSearchModal';
 import { SpecialBadges } from '../components/SpecialBadges';
 import { CREATOR_UID } from '../constants/catalogs';
@@ -306,28 +305,19 @@ export default function ChatsScreen({ navigation }: any) {
     const unreadCount = item.unread || 0;
 
     return (
-      <SwipeableChatRow
-        disabled={isSaved || isAiHubItem}
-        isPinned={isPinned}
-        isMuted={isMuted}
-        isArchived={archivedChatIds.includes(item.id)}
-        onTogglePin={() => togglePinChat(item.id)}
-        onToggleMute={() => toggleMuteChat(item.id)}
-        onToggleArchive={() => toggleArchiveChat(item.id)}
+      <ScalePressable
+        haptic
+        style={{ marginHorizontal: 12, marginVertical: 4 }}
+        onPress={async () => {
+          if (isAiHubItem) {
+            const aiChat = await openAiHubChat();
+            if (aiChat) navigation.navigate('ChatRoom', { chatId: aiChat.id, name: '🤖 ИИ Хаб' });
+            return;
+          }
+          navigation.navigate('ChatRoom', { chatId: item.id, name: info.name });
+        }}
+        onLongPress={() => !isSaved && !isAiHubItem && openChatPeek(item)}
       >
-        <ScalePressable
-          haptic
-          style={{ marginHorizontal: 12, marginVertical: 4 }}
-          onPress={async () => {
-            if (isAiHubItem) {
-              const aiChat = await openAiHubChat();
-              if (aiChat) navigation.navigate('ChatRoom', { chatId: aiChat.id, name: '🤖 ИИ Хаб' });
-              return;
-            }
-            navigation.navigate('ChatRoom', { chatId: item.id, name: info.name });
-          }}
-          onLongPress={() => !isSaved && !isAiHubItem && openChatPeek(item)}
-        >
         <GlassCard radius={RADII.ITEM} style={styles.chatCard}>
           <View style={styles.avatarWrap}>
             {isSaved ? (
@@ -403,7 +393,6 @@ export default function ChatsScreen({ navigation }: any) {
           </View>
         </GlassCard>
       </ScalePressable>
-      </SwipeableChatRow>
     );
   };
 
