@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Modal,
   ScrollView,
   ActivityIndicator,
+  LayoutAnimation,
+  NativeModules,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -104,7 +106,39 @@ export default function ChatsScreen({ navigation }: any) {
     joinChatByInvite,
     openAiHubChat,
     creatorAddFriendDirect,
+    stories,
   } = useApp();
+
+  const [storiesExpanded, setStoriesExpanded] = useState(true);
+  const scrollYRef = useRef(0);
+  const touchStartYRef = useRef(0);
+
+  useEffect(() => {
+    NativeModules.NativeStorageModule?.getItem?.('nc_stories_expanded')
+      .then((val: string | null) => {
+        if (val === '0') setStoriesExpanded(false);
+      })
+      .catch(() => {});
+  }, []);
+
+  const setStoriesVisible = (next: boolean) => {
+    if (next === storiesExpanded) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setStoriesExpanded(next);
+    NativeModules.NativeStorageModule?.setItem?.('nc_stories_expanded', next ? '1' : '0')?.catch?.(() => {});
+  };
+
+  const storyMiniAvatars = useMemo(() => {
+    const seen = new Set<string>();
+    const list: Array<{ uid: string; nick: string; avatar?: string }> = [];
+    stories.forEach((s) => {
+      if (!seen.has(s.uid)) {
+        seen.add(s.uid);
+        list.push({ uid: s.uid, nick: s.nick, avatar: s.avatar });
+      }
+    });
+    return list.slice(0, 3);
+  }, [stories]);
 
   const [activeFolder, setActiveFolder] = useState<string>('all');
   const [showArchived, setShowArchived] = useState(false);
@@ -404,13 +438,58 @@ export default function ChatsScreen({ navigation }: any) {
         {/* Liquid Glass Header Pill */}
         <View style={{ paddingHorizontal: 12, paddingTop: 6, paddingBottom: 8 }}>
           <GlassCard radius={RADII.PILL} strong style={styles.headerPill}>
-            <View style={styles.logoRow}>
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.logoRow}
+              onPress={() => {
+                triggerHaptic(8);
+                setStoriesVisible(!storiesExpanded);
+              }}
+            >
               <Image
                 source={require('../../android/app/src/main/assets/public/logo.png')}
                 style={styles.headerLogo}
               />
-              <Text style={[styles.headerTitle, { color: appTheme.text }]}>NonsenseChat</Text>
-            </View>
+              <Text style={[styles.headerTitle, { color: appTheme.text }]} numberOfLines={1}>
+                NonsenseChat
+              </Text>
+              <View style={styles.storiesMiniCluster}>
+                {!storiesExpanded && storyMiniAvatars.length > 0 && (
+                  <View style={styles.miniAvatarsStack}>
+                    {storyMiniAvatars.map((st, idx) =>
+                      st.avatar ? (
+                        <Image
+                          key={st.uid}
+                          source={{ uri: st.avatar }}
+                          style={[
+                            styles.miniStoryAva,
+                            { borderColor: appTheme.accent, marginLeft: idx === 0 ? 0 : -7 },
+                          ]}
+                        />
+                      ) : (
+                        <View
+                          key={st.uid}
+                          style={[
+                            styles.miniStoryAva,
+                            styles.miniStoryFallback,
+                            { borderColor: appTheme.accent, marginLeft: idx === 0 ? 0 : -7 },
+                          ]}
+                        >
+                          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>
+                            {(st.nick || '?').charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                      )
+                    )}
+                  </View>
+                )}
+                <Ionicons
+                  name={storiesExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color={appTheme.textSub}
+                />
+              </View>
+            </TouchableOpacity>
 
             <View style={styles.headerActions}>
               <ScalePressable
@@ -522,7 +601,16 @@ export default function ChatsScreen({ navigation }: any) {
             </View>
           )}
         </View>
-        <StoriesBar onReplyToStory={handleReplyToStory} />
+        <View
+          style={
+            storiesExpanded
+              ? styles.storiesOpenWrap
+              : styles.storiesCollapsedWrap
+          }
+          pointerEvents={storiesExpanded ? 'auto' : 'none'}
+        >
+          <StoriesBar onReplyToStory={handleReplyToStory} />
+        </View>
 
         {/* Pill Folder Tabs (with Custom Folders) */}
         <View style={{ flexShrink: 0, height: 42, marginBottom: 6, justifyContent: 'center' }}>
@@ -691,6 +779,27 @@ export default function ChatsScreen({ navigation }: any) {
             keyExtractor={(item) => item.id}
             renderItem={renderChatItem}
             contentContainerStyle={styles.listContent}
+            scrollEventThrottle={32}
+            onScroll={(e) => {
+              const y = e.nativeEvent.contentOffset.y;
+              scrollYRef.current = y;
+              if (y > 28 && storiesExpanded) {
+                setStoriesVisible(false);
+              } else if (y < -28 && !storiesExpanded) {
+                triggerHaptic(8);
+                setStoriesVisible(true);
+              }
+            }}
+            onTouchStart={(e) => {
+              touchStartYRef.current = e.nativeEvent.pageY;
+            }}
+            onTouchEnd={(e) => {
+              const dy = e.nativeEvent.pageY - touchStartYRef.current;
+              if (scrollYRef.current <= 4 && dy > 44 && !storiesExpanded) {
+                triggerHaptic(8);
+                setStoriesVisible(true);
+              }
+            }}
             ListEmptyComponent={
               <View style={styles.emptyBox}>
                 <Text style={styles.emptyEmoji}>💬</Text>
@@ -1024,9 +1133,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  logoRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: 6 },
   headerLogo: { width: 30, height: 30, borderRadius: 15 },
-  headerTitle: { fontSize: 16.5, fontWeight: '800' },
+  headerTitle: { fontSize: 16, fontWeight: '800', flexShrink: 1 },
+  storiesMiniCluster: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  miniAvatarsStack: { flexDirection: 'row', alignItems: 'center' },
+  miniStoryAva: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5 },
+  miniStoryFallback: { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' },
+  storiesOpenWrap: { overflow: 'hidden' },
+  storiesCollapsedWrap: { height: 0, opacity: 0, overflow: 'hidden' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pirozhkiPill: {
     flexDirection: 'row',

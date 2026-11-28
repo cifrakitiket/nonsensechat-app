@@ -1,9 +1,9 @@
 {
   "version": "3.0",
-  "versionCode": 3002,
+  "versionCode": 3003,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 24021497,
-  "publishedAt": "2026-11-28T06:25:49.032Z",
-  "releaseNotes": "NonsenseChat 3.0 (build 3002) — Исправлено обрезание полосы папок в списке чатов и подпись «История»"
+  "fileSize": 24022689,
+  "publishedAt": "2026-11-28T06:30:42.008Z",
+  "releaseNotes": "NonsenseChat 3.0 (build 3003) — Истории теперь сворачиваются в шапку с мини-кружочками как в Telegram (по тапу на заголовок или скроллу чатов)!"
 }
