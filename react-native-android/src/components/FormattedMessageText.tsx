@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { triggerHaptic } from '../services/firebase';
 import { UserProfile } from '../context/AppContext';
 
@@ -10,6 +10,8 @@ interface FormattedMessageTextProps {
   fontSize?: number;
   highlightQuery?: string;
   usersMap?: Record<string, UserProfile>;
+  customEmojiMap?: Record<string, string>;
+  onCustomEmojiPress?: (packId: string, itemId: string) => void;
   onMentionPress?: (uid: string) => void;
   onHashtagPress?: (tag: string) => void;
   onCopyCode?: (code: string) => void;
@@ -241,6 +243,8 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
   fontSize = 15,
   highlightQuery,
   usersMap,
+  customEmojiMap,
+  onCustomEmojiPress,
   onMentionPress,
   onHashtagPress,
   onCopyCode,
@@ -259,7 +263,116 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
   }, [text]);
 
   if (!text) return null;
+  const trimmedAll = String(text).trim();
+  const isJumboCustomOnly = /^(\s*\[ce:[^:\]]+:[^:\]]+\]\s*){1,4}$/.test(trimmedAll);
+
+  if (isJumboCustomOnly) {
+    const tokens = trimmedAll.match(/\[ce:[^:\]]+:[^:\]]+\]/g) || [];
+    return (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        {tokens.map((tok, i) => {
+          const m = tok.match(/^\[ce:([^:\]]+):([^:\]]+)\]$/);
+          const pid = m?.[1] || '';
+          const iid = m?.[2] || '';
+          const uri = customEmojiMap?.[`${pid}:${iid}`];
+          return (
+            <TouchableOpacity
+              key={`${pid}_${iid}_${i}`}
+              activeOpacity={0.75}
+              onPress={() => {
+                triggerHaptic(8);
+                onCustomEmojiPress?.(pid, iid);
+              }}
+            >
+              {uri ? (
+                <Image
+                  source={{ uri }}
+                  style={{ width: 46, height: 46, borderRadius: 10 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={{ fontSize: 32 }}>🎨</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  }
+
   const lines = String(text).split('\n');
+
+  const renderLineWithCustomEmojis = (lineStr: string, fSize: number, keyIdx: number) => {
+    if (!/\[ce:[^:\]]+:[^:\]]+\]/.test(lineStr)) {
+      return (
+        <InlineFormattedLine
+          key={keyIdx}
+          line={lineStr}
+          color={color}
+          accent={accent}
+          fontSize={fSize}
+          highlightQuery={highlightQuery}
+          usersMap={usersMap}
+          onMentionPress={onMentionPress}
+          onHashtagPress={onHashtagPress}
+          onCopyCode={onCopyCode}
+          onTimecodePress={onTimecodePress}
+        />
+      );
+    }
+
+    const segments = lineStr.split(/(\[ce:[^:\]]+:[^:\]]+\])/g).filter((s) => s.length > 0);
+    const ceSize = Math.round(fSize * 1.45);
+    return (
+      <View key={keyIdx} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+        {segments.flatMap((seg, sIdx) => {
+          const ceMatch = seg.match(/^\[ce:([^:\]]+):([^:\]]+)\]$/);
+          if (ceMatch) {
+            const pid = ceMatch[1];
+            const iid = ceMatch[2];
+            const uri = customEmojiMap?.[`${pid}:${iid}`];
+            return (
+              <TouchableOpacity
+                key={`ce_${keyIdx}_${sIdx}`}
+                activeOpacity={0.75}
+                onPress={() => {
+                  triggerHaptic(8);
+                  onCustomEmojiPress?.(pid, iid);
+                }}
+                style={{ marginHorizontal: 2, marginVertical: 1 }}
+              >
+                {uri ? (
+                  <Image
+                    source={{ uri }}
+                    style={{ width: ceSize, height: ceSize, borderRadius: 5 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={{ fontSize: fSize }}>🎨</Text>
+                )}
+              </TouchableOpacity>
+            );
+          }
+          // Split long text segments by spaces so flexWrap flows naturally around inline custom emojis
+          return seg.split(/( )/).filter(Boolean).map((word, wIdx) => (
+            <InlineFormattedLine
+              key={`w_${keyIdx}_${sIdx}_${wIdx}`}
+              line={word}
+              color={color}
+              accent={accent}
+              fontSize={fSize}
+              highlightQuery={highlightQuery}
+              usersMap={usersMap}
+              onMentionPress={onMentionPress}
+              onHashtagPress={onHashtagPress}
+              onCopyCode={onCopyCode}
+              onTimecodePress={onTimecodePress}
+            />
+          ));
+        })}
+      </View>
+    );
+  };
 
   return (
     <View style={{ gap: 4 }}>
@@ -267,36 +380,11 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
         if (line.startsWith('> ')) {
           return (
             <View key={i} style={[styles.quoteBox, { borderLeftColor: accent }]}>
-              <InlineFormattedLine
-                line={line.slice(2)}
-                color={color}
-                accent={accent}
-                fontSize={Math.max(13, fontSize - 1)}
-                highlightQuery={highlightQuery}
-                usersMap={usersMap}
-                onMentionPress={onMentionPress}
-                onHashtagPress={onHashtagPress}
-                onCopyCode={onCopyCode}
-                onTimecodePress={onTimecodePress}
-              />
+              {renderLineWithCustomEmojis(line.slice(2), Math.max(13, fontSize - 1), i)}
             </View>
           );
         }
-        return (
-          <InlineFormattedLine
-            key={i}
-            line={line}
-            color={color}
-            accent={accent}
-            fontSize={fontSize}
-            highlightQuery={highlightQuery}
-            usersMap={usersMap}
-            onMentionPress={onMentionPress}
-            onHashtagPress={onHashtagPress}
-            onCopyCode={onCopyCode}
-            onTimecodePress={onTimecodePress}
-          />
-        );
+        return renderLineWithCustomEmojis(line, fontSize, i);
       })}
 
       {firstUrl && (

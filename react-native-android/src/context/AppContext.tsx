@@ -393,6 +393,11 @@ interface AppContextValue {
   setClearVoiceConfig: (cfg: ClearVoiceConfig) => void;
   installedPackIds: string[];
   toggleInstallStickerPack: (packId: string) => void;
+  installedEmojiPackIds: string[];
+  toggleInstallEmojiPack: (packId: string) => void;
+  recentCustomEmojis: string[];
+  pushRecentCustomEmoji: (token: string) => void;
+  customEmojiMap: Record<string, string>;
   lastWheelSpinAt: number;
   claimDailyWheelBonus: (amount: number) => Promise<void>;
   grantPirozhkiToUser: (targetUid: string, amount: number) => Promise<void>;
@@ -465,6 +470,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     mode: 'voice',
   });
   const [installedPackIds, setInstalledPackIds] = useState<string[]>([]);
+  const [installedEmojiPackIds, setInstalledEmojiPackIds] = useState<string[]>([]);
+  const [recentCustomEmojis, setRecentCustomEmojis] = useState<string[]>([]);
+  const [customEmojiMap, setCustomEmojiMap] = useState<Record<string, string>>({});
   const [lastWheelSpinAt, setLastWheelSpinAt] = useState<number>(0);
 
   // Global Floating Audio Player state
@@ -515,6 +523,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setClearVoiceConfigState(p.clearVoiceConfig);
           }
           if (Array.isArray(p.installedPackIds)) setInstalledPackIds(p.installedPackIds);
+          if (Array.isArray(p.installedEmojiPackIds)) setInstalledEmojiPackIds(p.installedEmojiPackIds);
+          if (Array.isArray(p.recentCustomEmojis)) setRecentCustomEmojis(p.recentCustomEmojis);
           if (typeof p.lastWheelSpinAt === 'number') setLastWheelSpinAt(p.lastWheelSpinAt);
           if (typeof p.deviceSessionId === 'string' && p.deviceSessionId) {
             setDeviceSessionId(p.deviceSessionId);
@@ -556,6 +566,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         appLang,
         clearVoiceConfig,
         installedPackIds,
+        installedEmojiPackIds,
+        recentCustomEmojis,
         lastWheelSpinAt,
       });
       NativeModules.NativeStorageModule?.setItem?.('nc_tg_prefs_v1', payload);
@@ -584,8 +596,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     appLang,
     clearVoiceConfig,
     installedPackIds,
+    installedEmojiPackIds,
+    recentCustomEmojis,
     lastWheelSpinAt,
   ]);
+
+  // Listen to custom_emoji_packs solely to resolve image URLs inside incoming messages/reactions (never exposed globally in picker)
+  useEffect(() => {
+    if (!authUser) {
+      setCustomEmojiMap({});
+      return;
+    }
+    const ceRef = ref(rtdb, 'custom_emoji_packs');
+    const unsub = onValue(
+      ceRef,
+      (snap) => {
+        const val = snap.val() || {};
+        const nextMap: Record<string, string> = {};
+        Object.keys(val).forEach((pid) => {
+          const pack = val[pid];
+          if (!pack || typeof pack !== 'object') return;
+          const items = Array.isArray(pack.items)
+            ? pack.items
+            : pack.items && typeof pack.items === 'object'
+            ? Object.values(pack.items)
+            : [];
+          items.forEach((it: any, idx: number) => {
+            if (it && it.url) {
+              const itemId = it.id !== undefined ? String(it.id) : String(idx);
+              nextMap[`${pid}:${itemId}`] = it.url;
+            }
+          });
+        });
+        setCustomEmojiMap(nextMap);
+      },
+      () => {}
+    );
+    return () => unsub();
+  }, [authUser?.uid]);
 
   const toggleIdInList = (setter: React.Dispatch<React.SetStateAction<string[]>>, id: string) => {
     triggerHaptic(10);
@@ -978,6 +1026,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setInstalledPackIds((prev) =>
       prev.includes(packId) ? prev.filter((id) => id !== packId) : [packId, ...prev]
     );
+  };
+
+  const toggleInstallEmojiPack = (packId: string) => {
+    if (!packId) return;
+    triggerHaptic(10);
+    setInstalledEmojiPackIds((prev) =>
+      prev.includes(packId) ? prev.filter((id) => id !== packId) : [packId, ...prev]
+    );
+  };
+
+  const pushRecentCustomEmoji = (token: string) => {
+    if (!token) return;
+    setRecentCustomEmojis((prev) => [token, ...prev.filter((t) => t !== token)].slice(0, 24));
   };
 
   const claimDailyWheelBonus = async (amount: number) => {
@@ -2079,6 +2140,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setClearVoiceConfig,
         installedPackIds,
         toggleInstallStickerPack,
+        installedEmojiPackIds,
+        toggleInstallEmojiPack,
+        recentCustomEmojis,
+        pushRecentCustomEmoji,
+        customEmojiMap,
         lastWheelSpinAt,
         claimDailyWheelBonus,
         grantPirozhkiToUser,

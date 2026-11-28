@@ -18,15 +18,19 @@ import { GlassCard } from './GlassCard';
 interface StickerPackPreviewModalProps {
   visible: boolean;
   stickerUrl: string;
+  customEmojiPackId?: string;
   onClose: () => void;
   onSendSticker: (url: string, emoji?: string) => void;
+  onSelectCustomEmoji?: (token: string) => void;
 }
 
 export const StickerPackPreviewModal: React.FC<StickerPackPreviewModalProps> = ({
   visible,
   stickerUrl,
+  customEmojiPackId = '',
   onClose,
   onSendSticker,
+  onSelectCustomEmoji,
 }) => {
   const {
     appTheme,
@@ -34,48 +38,79 @@ export const StickerPackPreviewModal: React.FC<StickerPackPreviewModalProps> = (
     toggleFavoriteSticker,
     installedPackIds,
     toggleInstallStickerPack,
+    installedEmojiPackIds,
+    toggleInstallEmojiPack,
+    pushRecentCustomEmoji,
     showToast,
   } = useApp();
 
+  const isCustomEmojiMode = !!customEmojiPackId;
   const [loading, setLoading] = useState(false);
   const [pack, setPack] = useState<{
     id: string;
     title: string;
-    stickers: Array<{ url: string; emoji?: string }>;
+    stickers: Array<{ url: string; emoji?: string; itemId?: string }>;
   } | null>(null);
 
   useEffect(() => {
-    if (!visible || !stickerUrl) return;
+    if (!visible || (!stickerUrl && !customEmojiPackId)) return;
     setLoading(true);
     setPack(null);
     (async () => {
       try {
-        const snap = await get(ref(rtdb, 'sticker_packs'));
-        const val = snap.val() || {};
-        for (const pid of Object.keys(val)) {
-          const raw = val[pid];
-          if (!raw || typeof raw !== 'object') continue;
-          const stickers = Array.isArray(raw.stickers)
-            ? raw.stickers.filter((s: any) => s && s.url)
-            : raw.stickers && typeof raw.stickers === 'object'
-            ? Object.values(raw.stickers).filter((s: any) => s && s.url)
-            : [];
-          if (stickers.some((s: any) => s.url === stickerUrl)) {
+        if (customEmojiPackId) {
+          const snap = await get(ref(rtdb, `custom_emoji_packs/${customEmojiPackId}`));
+          const raw = snap.val();
+          if (raw && typeof raw === 'object') {
+            const itemsRaw = Array.isArray(raw.items)
+              ? raw.items
+              : raw.items && typeof raw.items === 'object'
+              ? Object.values(raw.items)
+              : [];
+            const mapped = itemsRaw
+              .filter((s: any) => s && s.url)
+              .map((s: any, idx: number) => ({
+                url: s.url,
+                itemId: s.id !== undefined ? String(s.id) : String(idx),
+              }));
             setPack({
-              id: pid,
-              title: raw.title || 'Стикерпак',
-              stickers: stickers as any,
+              id: customEmojiPackId,
+              title: raw.title || 'Кастомные эмодзи',
+              stickers: mapped,
             });
-            break;
+          }
+        } else if (stickerUrl) {
+          const snap = await get(ref(rtdb, 'sticker_packs'));
+          const val = snap.val() || {};
+          for (const pid of Object.keys(val)) {
+            const raw = val[pid];
+            if (!raw || typeof raw !== 'object') continue;
+            const stickers = Array.isArray(raw.stickers)
+              ? raw.stickers.filter((s: any) => s && s.url)
+              : raw.stickers && typeof raw.stickers === 'object'
+              ? Object.values(raw.stickers).filter((s: any) => s && s.url)
+              : [];
+            if (stickers.some((s: any) => s.url === stickerUrl)) {
+              setPack({
+                id: pid,
+                title: raw.title || 'Стикерпак',
+                stickers: stickers as any,
+              });
+              break;
+            }
           }
         }
       } catch (_) {}
       setLoading(false);
     })();
-  }, [visible, stickerUrl]);
+  }, [visible, stickerUrl, customEmojiPackId]);
 
-  const isFav = favoriteStickers.includes(stickerUrl);
-  const isInstalled = pack ? installedPackIds.includes(pack.id) : false;
+  const isFav = !isCustomEmojiMode && favoriteStickers.includes(stickerUrl);
+  const isInstalled = pack
+    ? isCustomEmojiMode
+      ? installedEmojiPackIds.includes(pack.id)
+      : installedPackIds.includes(pack.id)
+    : false;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -84,10 +119,13 @@ export const StickerPackPreviewModal: React.FC<StickerPackPreviewModalProps> = (
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: appTheme.text }]} numberOfLines={1}>
-                ✨ {pack?.title || 'Стикер'}
+                {isCustomEmojiMode ? '🎨 ' : '✨ '}
+                {pack?.title || (isCustomEmojiMode ? 'Кастомные эмодзи' : 'Стикер')}
               </Text>
               <Text style={{ color: appTheme.textSub, fontSize: 12 }}>
-                {pack ? `Стикеров в наборе: ${pack.stickers.length}` : 'Нажмите на стикер для отправки'}
+                {pack
+                  ? `${isCustomEmojiMode ? 'Эмодзи' : 'Стикеров'} в наборе: ${pack.stickers.length}`
+                  : 'Нажмите для вставки'}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose}>
@@ -100,42 +138,60 @@ export const StickerPackPreviewModal: React.FC<StickerPackPreviewModalProps> = (
           ) : pack ? (
             <FlatList
               data={pack.stickers}
-              numColumns={4}
+              numColumns={isCustomEmojiMode ? 5 : 4}
               keyExtractor={(_it, idx) => String(idx)}
               style={{ maxHeight: 260 }}
               contentContainerStyle={{ gap: 8 }}
               columnWrapperStyle={{ gap: 8 }}
-              renderItem={({ item }) => (
+              renderItem={({ item, index }) => (
                 <TouchableOpacity
                   style={styles.cell}
                   onPress={() => {
                     triggerHaptic(10);
                     onClose();
-                    onSendSticker(item.url, item.emoji);
+                    if (isCustomEmojiMode && onSelectCustomEmoji) {
+                      const tok = `[ce:${pack.id}:${item.itemId ?? String(index)}]`;
+                      pushRecentCustomEmoji(tok);
+                      onSelectCustomEmoji(tok);
+                    } else {
+                      onSendSticker(item.url, item.emoji);
+                    }
                   }}
                 >
-                  <Image source={{ uri: item.url }} style={{ width: 58, height: 58 }} resizeMode="contain" />
+                  <Image
+                    source={{ uri: item.url }}
+                    style={
+                      isCustomEmojiMode
+                        ? { width: 42, height: 42, borderRadius: 9 }
+                        : { width: 58, height: 58 }
+                    }
+                    resizeMode={isCustomEmojiMode ? 'cover' : 'contain'}
+                  />
                 </TouchableOpacity>
               )}
             />
           ) : (
             <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-              <Image source={{ uri: stickerUrl }} style={{ width: 128, height: 128 }} resizeMode="contain" />
+              {stickerUrl ? (
+                <Image source={{ uri: stickerUrl }} style={{ width: 128, height: 128 }} resizeMode="contain" />
+              ) : null}
             </View>
           )}
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-            <TouchableOpacity
-              style={[styles.btnSec, { flex: 1, borderColor: appTheme.border }]}
-              onPress={() => {
-                toggleFavoriteSticker(stickerUrl);
-                showToast(isFav ? 'Убрано из избранного' : 'Добавлено в ⭐ Избранные', undefined, 'info');
-              }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12.5 }}>
-                {isFav ? '⭐ В избранном' : '☆ В избранные'}
-              </Text>
-            </TouchableOpacity>
+            {!isCustomEmojiMode && (
+              <TouchableOpacity
+                style={[styles.btnSec, { flex: 1, borderColor: appTheme.border }]}
+                onPress={() => {
+                  toggleFavoriteSticker(stickerUrl);
+                  showToast(isFav ? 'Убрано из избранного' : 'Добавлено в ⭐ Избранные', undefined, 'info');
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12.5 }}>
+                  {isFav ? '⭐ В избранном' : '☆ В избранные'}
+                </Text>
+              </TouchableOpacity>
+            )}
             {pack && (
               <TouchableOpacity
                 style={[
@@ -143,12 +199,21 @@ export const StickerPackPreviewModal: React.FC<StickerPackPreviewModalProps> = (
                   { flex: 1, backgroundColor: isInstalled ? 'rgba(34,197,94,0.22)' : appTheme.accent },
                 ]}
                 onPress={() => {
-                  toggleInstallStickerPack(pack.id);
-                  showToast(
-                    isInstalled ? 'Пак удалён из своих' : 'Стикерпак добавлен ✓',
-                    pack.title,
-                    'success'
-                  );
+                  if (isCustomEmojiMode) {
+                    toggleInstallEmojiPack(pack.id);
+                    showToast(
+                      isInstalled ? 'Набор эмодзи удалён' : 'Набор эмодзи добавлен 🎨',
+                      pack.title,
+                      'success'
+                    );
+                  } else {
+                    toggleInstallStickerPack(pack.id);
+                    showToast(
+                      isInstalled ? 'Пак удалён из своих' : 'Стикерпак добавлен ✓',
+                      pack.title,
+                      'success'
+                    );
+                  }
                 }}
               >
                 <Text style={{ color: isInstalled ? '#4ade80' : '#000', fontWeight: '900', fontSize: 12.5 }}>

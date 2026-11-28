@@ -1,9 +1,9 @@
 {
   "version": "3.0",
-  "versionCode": 3007,
+  "versionCode": 3008,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 24024641,
-  "publishedAt": "2026-11-28T07:09:49.246Z",
-  "releaseNotes": "NonsenseChat 3.0 (build 3007) — Исправлен жест разворачивания свёрнутых историй на Android (ранний перехват PanResponder до системного touchSlop 8dp + свайп с области поиска/папок)!"
+  "fileSize": 24032449,
+  "publishedAt": "2026-11-28T07:26:36.371Z",
+  "releaseNotes": "NonsenseChat 3.0 (build 3008) — Контекстное меню чатов как в Telegram (превью переписки + меню с иконками и подменю папок) + личные кастомные эмодзи и приватные стикерпаки (чужие наборы не видны в общем списке)!"
 }

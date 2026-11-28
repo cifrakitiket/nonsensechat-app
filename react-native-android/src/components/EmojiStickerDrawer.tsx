@@ -103,13 +103,26 @@ const FALLBACK_GIFS = [
 interface StickerPack {
   id: string;
   title: string;
+  ownerUid?: string;
+  isPublic?: boolean;
+  isBuiltin?: boolean;
   stickers: Array<{ url: string; emoji?: string }>;
+}
+
+interface CustomEmojiPack {
+  id: string;
+  title: string;
+  ownerUid?: string;
+  isPublic?: boolean;
+  isBuiltin?: boolean;
+  items: Array<{ id: string; url: string }>;
 }
 
 interface EmojiStickerDrawerProps {
   onSelectEmoji: (emoji: string) => void;
   onBackspace: () => void;
   onSelectSticker: (url: string, emoji?: string) => void;
+  onSelectCustomEmoji?: (token: string) => void;
   onSelectGif?: (gifUrl: string) => void;
 }
 
@@ -117,31 +130,43 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
   onSelectEmoji,
   onBackspace,
   onSelectSticker,
+  onSelectCustomEmoji,
   onSelectGif,
 }) => {
   const {
+    me,
     appTheme,
     favoriteStickers,
     recentStickers,
     installedPackIds,
+    toggleInstallStickerPack,
+    installedEmojiPackIds,
+    toggleInstallEmojiPack,
+    recentCustomEmojis,
+    pushRecentCustomEmoji,
+    customEmojiMap,
     toggleFavoriteSticker,
     pushRecentSticker,
     showToast,
   } = useApp();
 
-  const [mode, setMode] = useState<'emoji' | 'stickers' | 'gif'>('emoji');
+  const [mode, setMode] = useState<'emoji' | 'custom' | 'stickers' | 'gif'>('emoji');
   const [catId, setCatId] = useState<string>('popular');
   const [packs, setPacks] = useState<StickerPack[]>([]);
   const [selectedPackId, setSelectedPackId] = useState<string>('');
   const [loadingPacks, setLoadingPacks] = useState(false);
+
+  const [emojiPacks, setEmojiPacks] = useState<CustomEmojiPack[]>([]);
+  const [selectedEmojiPackId, setSelectedEmojiPackId] = useState<string>('');
+  const [loadingEmojiPacks, setLoadingEmojiPacks] = useState(false);
 
   // GIF state
   const [gifQuery, setGifQuery] = useState('');
   const [gifs, setGifs] = useState<string[]>(FALLBACK_GIFS);
   const [loadingGifs, setLoadingGifs] = useState(false);
 
-  // Custom Sticker Pack builder modal
-  const [showBuilder, setShowBuilder] = useState(false);
+  // Private Sticker Pack / Custom Emoji Pack builder modal
+  const [builderKind, setBuilderKind] = useState<'sticker' | 'custom' | null>(null);
   const [packTitle, setPackTitle] = useState('');
   const [packPhotos, setPackPhotos] = useState<string[]>([]);
   const [savingPack, setSavingPack] = useState(false);
@@ -166,17 +191,58 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
             list.push({
               id: pid,
               title: raw.title || 'Стикеры',
+              ownerUid: raw.ownerUid,
+              isPublic: !!raw.isPublic,
+              isBuiltin: !!raw.isBuiltin,
               stickers: stickers as any,
             });
           }
         });
         setPacks(list);
-        if (list.length > 0 && !selectedPackId) {
-          setSelectedPackId(list[0].id);
-        }
         setLoadingPacks(false);
       },
       () => setLoadingPacks(false)
+    );
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    setLoadingEmojiPacks(true);
+    const ceRef = ref(rtdb, 'custom_emoji_packs');
+    const unsub = onValue(
+      ceRef,
+      (snap) => {
+        const val = snap.val() || {};
+        const list: CustomEmojiPack[] = [];
+        Object.keys(val).forEach((pid) => {
+          const raw = val[pid];
+          if (!raw || typeof raw !== 'object') return;
+          const itemsRaw = Array.isArray(raw.items)
+            ? raw.items
+            : raw.items && typeof raw.items === 'object'
+            ? Object.values(raw.items)
+            : [];
+          const items = itemsRaw
+            .filter((s: any) => s && s.url)
+            .map((s: any, idx: number) => ({
+              id: s.id !== undefined ? String(s.id) : String(idx),
+              url: s.url,
+            }));
+          if (items.length > 0) {
+            list.push({
+              id: pid,
+              title: raw.title || 'Эмодзи',
+              ownerUid: raw.ownerUid,
+              isPublic: !!raw.isPublic,
+              isBuiltin: !!raw.isBuiltin,
+              items,
+            });
+          }
+        });
+        setEmojiPacks(list);
+        setLoadingEmojiPacks(false);
+      },
+      () => setLoadingEmojiPacks(false)
     );
     return () => unsub();
   }, []);
@@ -208,6 +274,7 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
     }
   }, [mode]);
 
+  // Privacy: show ONLY built-in/public packs, packs created by this user, or packs explicitly installed by this user
   const allPacks = useMemo(() => {
     const virtual: StickerPack[] = [];
     if (favoriteStickers.length > 0) {
@@ -224,46 +291,109 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
         stickers: recentStickers.map((u) => ({ url: u })),
       });
     }
-    const installedFirst = packs
-      .filter((p) => installedPackIds.includes(p.id))
-      .map((p) => ({ ...p, title: `✓ ${p.title}` }));
-    const rest = packs.filter((p) => !installedPackIds.includes(p.id));
-    return [...virtual, ...installedFirst, ...rest];
-  }, [favoriteStickers, recentStickers, packs, installedPackIds]);
+    const visibleUserPacks = packs.filter(
+      (p) =>
+        p.isPublic === true ||
+        p.isBuiltin === true ||
+        (me?.uid && p.ownerUid === me.uid) ||
+        installedPackIds.includes(p.id)
+    );
+    return [...virtual, ...visibleUserPacks];
+  }, [favoriteStickers, recentStickers, packs, installedPackIds, me?.uid]);
+
+  const visibleEmojiPacks = useMemo(() => {
+    const virtual: CustomEmojiPack[] = [];
+    if (recentCustomEmojis.length > 0) {
+      const recentItems = recentCustomEmojis
+        .map((tok) => {
+          const m = tok.match(/^\[ce:([^:\]]+):([^:\]]+)\]$/);
+          if (!m) return null;
+          const url = customEmojiMap[`${m[1]}:${m[2]}`];
+          return url ? { id: `${m[1]}:${m[2]}`, url, token: tok } : null;
+        })
+        .filter(Boolean) as Array<{ id: string; url: string }>;
+      if (recentItems.length > 0) {
+        virtual.push({ id: '__ce_recent__', title: '🕒 Недавние', items: recentItems });
+      }
+    }
+    const ownOrInstalled = emojiPacks.filter(
+      (p) =>
+        p.isPublic === true ||
+        p.isBuiltin === true ||
+        (me?.uid && p.ownerUid === me.uid) ||
+        installedEmojiPackIds.includes(p.id)
+    );
+    return [...virtual, ...ownOrInstalled];
+  }, [recentCustomEmojis, customEmojiMap, emojiPacks, installedEmojiPackIds, me?.uid]);
 
   const currentCat = EMOJI_CATEGORIES.find((c) => c.id === catId) || EMOJI_CATEGORIES[0];
   const currentPack = allPacks.find((p) => p.id === selectedPackId) || allPacks[0];
+  const currentEmojiPack = visibleEmojiPacks.find((p) => p.id === selectedEmojiPackId) || visibleEmojiPacks[0];
 
   const handleAddPackPhoto = async () => {
     try {
       const picked = await pickNativePhotoFromGallery();
       if (picked?.dataUrl) {
-        setPackPhotos((prev) => [...prev, picked.dataUrl].slice(0, 12));
+        setPackPhotos((prev) => [...prev, picked.dataUrl].slice(0, 16));
       }
     } catch (_) {}
   };
 
   const handleSavePack = async () => {
     const clean = packTitle.trim();
-    if (!clean || packPhotos.length === 0 || savingPack) {
-      showToast('Стикерпак', 'Укажите название и добавьте хотя бы 1 картинку', 'error');
+    if (!clean || packPhotos.length === 0 || savingPack || !builderKind) {
+      showToast(
+        builderKind === 'custom' ? 'Кастомные эмодзи' : 'Стикерпак',
+        'Укажите название и добавьте хотя бы 1 картинку',
+        'error'
+      );
       return;
     }
     setSavingPack(true);
     try {
-      const pRef = push(ref(rtdb, 'sticker_packs'));
-      await set(pRef, {
-        title: clean,
-        stickers: packPhotos.map((url) => ({ url, emoji: '✨' })),
-        createdAt: Date.now(),
-      });
-      setShowBuilder(false);
-      setPackTitle('');
-      setPackPhotos([]);
-      if (pRef.key) setSelectedPackId(pRef.key);
-      showToast('Стикерпак создан ✨', `Пак «${clean}» доступен всем!`, 'success');
+      if (builderKind === 'custom') {
+        const ceRef = push(ref(rtdb, 'custom_emoji_packs'));
+        await set(ceRef, {
+          title: clean,
+          ownerUid: me?.uid || '',
+          ownerNick: me?.nick || '',
+          isPublic: false,
+          items: packPhotos.map((url, idx) => ({ id: String(idx), url })),
+          createdAt: Date.now(),
+        });
+        if (ceRef.key) {
+          if (!installedEmojiPackIds.includes(ceRef.key)) {
+            toggleInstallEmojiPack(ceRef.key);
+          }
+          setSelectedEmojiPackId(ceRef.key);
+        }
+        setBuilderKind(null);
+        setPackTitle('');
+        setPackPhotos([]);
+        showToast('Набор эмодзи создан 🎨', 'Личный набор: виден только вам и получателям в чате', 'success');
+      } else {
+        const pRef = push(ref(rtdb, 'sticker_packs'));
+        await set(pRef, {
+          title: clean,
+          ownerUid: me?.uid || '',
+          ownerNick: me?.nick || '',
+          isPublic: false,
+          stickers: packPhotos.map((url) => ({ url, emoji: '✨' })),
+          createdAt: Date.now(),
+        });
+        if (pRef.key) {
+          if (!installedPackIds.includes(pRef.key)) {
+            toggleInstallStickerPack(pRef.key);
+          }
+          setSelectedPackId(pRef.key);
+        }
+        setBuilderKind(null);
+        setPackTitle('');
+        setPackPhotos([]);
+        showToast('Личный стикерпак создан ✨', 'Виден только вам (другие могут добавить по вашему стикеру)', 'success');
+      }
     } catch (e: any) {
-      showToast('Ошибка', e?.message || 'Не удалось сохранить стикерпак', 'error');
+      showToast('Ошибка', e?.message || 'Не удалось сохранить набор', 'error');
     } finally {
       setSavingPack(false);
     }
@@ -274,10 +404,11 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
       <GlassCard radius={24} strong style={styles.container}>
         {/* Top Mode Tabs + Backspace */}
         <View style={[styles.topRow, { borderBottomColor: appTheme.border }]}>
-          <View style={styles.modeTabs}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modeTabs}>
             {[
               { k: 'emoji', l: '😀 Эмодзи' },
-              { k: 'stickers', l: `✨ Стикеры` },
+              { k: 'custom', l: '🎨 Кастом' },
+              { k: 'stickers', l: '✨ Стикеры' },
               { k: 'gif', l: '🎬 GIF' },
             ].map((tb) => {
               const act = mode === tb.k;
@@ -299,7 +430,7 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
 
           {mode === 'emoji' && (
             <TouchableOpacity
@@ -354,11 +485,95 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
               )}
             />
           </>
+        ) : mode === 'custom' ? (
+          <View style={{ height: 226 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catStrip}>
+              <TouchableOpacity
+                onPress={() => {
+                  setPackTitle('');
+                  setPackPhotos([]);
+                  setBuilderKind('custom');
+                }}
+                style={[styles.packPill, { borderColor: appTheme.accent, backgroundColor: appTheme.accentSoft }]}
+              >
+                <Text style={{ color: appTheme.accent, fontSize: 12, fontWeight: '800' }}>＋ Свой набор</Text>
+              </TouchableOpacity>
+              {visibleEmojiPacks.map((p) => {
+                const active = p.id === (currentEmojiPack?.id || '');
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    onPress={() => {
+                      triggerHaptic(6);
+                      setSelectedEmojiPackId(p.id);
+                    }}
+                    style={[
+                      styles.packPill,
+                      active && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accent },
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        color: active ? appTheme.accent : appTheme.textSub,
+                        fontSize: 12,
+                        fontWeight: '700',
+                      }}
+                      numberOfLines={1}
+                    >
+                      {p.title}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {loadingEmojiPacks ? (
+              <View style={styles.centerBox}>
+                <ActivityIndicator size="small" color={appTheme.accent} />
+              </View>
+            ) : !currentEmojiPack ? (
+              <View style={styles.centerBox}>
+                <Text style={{ color: appTheme.textSub, fontSize: 12.5, textAlign: 'center' }}>
+                  Создайте свой личный набор кастомных эмодзи — другие не увидят его, пока вы не отправите их в чат!
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                key="custom_emoji_grid"
+                data={currentEmojiPack.items}
+                keyExtractor={(it, idx) => `${currentEmojiPack.id}_${it.id}_${idx}`}
+                numColumns={7}
+                contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 8 }}
+                renderItem={({ item }) => {
+                  const tok =
+                    currentEmojiPack.id === '__ce_recent__'
+                      ? `[ce:${item.id}]`
+                      : `[ce:${currentEmojiPack.id}:${item.id}]`;
+                  return (
+                    <TouchableOpacity
+                      style={styles.customEmojiCell}
+                      onPress={() => {
+                        triggerHaptic(8);
+                        pushRecentCustomEmoji(tok);
+                        onSelectCustomEmoji?.(tok);
+                      }}
+                    >
+                      <Image source={{ uri: item.url }} style={styles.customEmojiImg} resizeMode="cover" />
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+          </View>
         ) : mode === 'stickers' ? (
           <View style={{ height: 226 }}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catStrip}>
               <TouchableOpacity
-                onPress={() => setShowBuilder(true)}
+                onPress={() => {
+                  setPackTitle('');
+                  setPackPhotos([]);
+                  setBuilderKind('sticker');
+                }}
                 style={[styles.packPill, { borderColor: appTheme.accent, backgroundColor: appTheme.accentSoft }]}
               >
                 <Text style={{ color: appTheme.accent, fontSize: 12, fontWeight: '800' }}>＋ Свой пак</Text>
@@ -501,17 +716,20 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
         )}
       </GlassCard>
 
-      {/* Custom Sticker Pack Builder Modal */}
-      <Modal visible={showBuilder} transparent animationType="fade" onRequestClose={() => setShowBuilder(false)}>
+      {/* Private Sticker / Custom Emoji Pack Builder Modal */}
+      <Modal visible={!!builderKind} transparent animationType="fade" onRequestClose={() => setBuilderKind(null)}>
         <View style={styles.modalBackdrop}>
           <GlassCard radius={26} strong style={{ padding: 18 }}>
-            <Text style={{ color: appTheme.text, fontSize: 17, fontWeight: '800', marginBottom: 10 }}>
-              ✨ Создать свой стикерпак
+            <Text style={{ color: appTheme.text, fontSize: 17, fontWeight: '800', marginBottom: 4 }}>
+              {builderKind === 'custom' ? '🎨 Личный набор кастомных эмодзи' : '✨ Личный стикерпак'}
+            </Text>
+            <Text style={{ color: appTheme.textSub, fontSize: 12, marginBottom: 10 }}>
+              Другие пользователи не увидят ваш набор в каталоге — только если вы сами отправите его в чат.
             </Text>
             <TextInput
               value={packTitle}
               onChangeText={setPackTitle}
-              placeholder="Название стикерпака..."
+              placeholder={builderKind === 'custom' ? 'Название набора эмодзи...' : 'Название стикерпака...'}
               placeholderTextColor={appTheme.textSub}
               style={[styles.gifInput, { color: appTheme.text, borderColor: appTheme.border, marginBottom: 10 }]}
             />
@@ -528,7 +746,7 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
               </TouchableOpacity>
             </ScrollView>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-              <TouchableOpacity onPress={() => setShowBuilder(false)} style={{ padding: 10 }}>
+              <TouchableOpacity onPress={() => setBuilderKind(null)} style={{ padding: 10 }}>
                 <Text style={{ color: appTheme.textSub, fontWeight: '700' }}>Отмена</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -537,7 +755,7 @@ export const EmojiStickerDrawer: React.FC<EmojiStickerDrawerProps> = ({
                 style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999, backgroundColor: appTheme.accent }}
               >
                 <Text style={{ color: '#000', fontWeight: '900' }}>
-                  {savingPack ? '...' : `Опубликовать (${packPhotos.length})`}
+                  {savingPack ? '...' : `Создать (${packPhotos.length})`}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -579,6 +797,8 @@ const styles = StyleSheet.create({
   },
   emojiCell: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center' },
   emojiChar: { fontSize: 23 },
+  customEmojiCell: { flex: 1, height: 44, padding: 3, alignItems: 'center', justifyContent: 'center' },
+  customEmojiImg: { width: 34, height: 34, borderRadius: 8 },
   stickerCell: { flex: 1, height: 76, padding: 4, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   stickerImg: { width: 66, height: 66 },
   favStar: { position: 'absolute', top: 2, right: 4, fontSize: 10 },

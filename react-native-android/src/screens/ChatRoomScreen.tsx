@@ -183,6 +183,8 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     boostChannelWithPirozhki,
     aiSettings,
     callAiHubProvider,
+    customEmojiMap,
+    recentCustomEmojis,
   } = useApp();
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -249,6 +251,7 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   const [showAiSettings, setShowAiSettings] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [previewStickerUrl, setPreviewStickerUrl] = useState<string>('');
+  const [previewCustomEmojiPackId, setPreviewCustomEmojiPackId] = useState<string>('');
   const [infoModalMode, setInfoModalMode] = useState<InfoModalMode | null>(null);
   const [activeVoiceCount, setActiveVoiceCount] = useState(0);
 
@@ -797,17 +800,18 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     if (silent) payload.silent = true;
     setText('');
     setShowEmojiDrawer(false);
+    const cleanPreview = clean.replace(/\[ce:[^\]]+\]/g, '🎨');
     await pushChatMessage(
       payload,
       payload.paidCost
         ? `🥟 Эксклюзивный пост (${payload.paidCost} пирожк.)`
         : effectEmoji
-        ? `${effectEmoji} ${clean}`
+        ? `${effectEmoji} ${cleanPreview}`
         : isMiniGame
         ? `${clean} Мини-игра`
         : silent
-        ? `🔇 ${clean}`
-        : clean,
+        ? `🔇 ${cleanPreview}`
+        : cleanPreview,
       silent
     );
 
@@ -2140,6 +2144,8 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   fontSize={chatFontSize}
                   highlightQuery={searchOpen ? searchQuery : ''}
                   usersMap={usersMap}
+                  customEmojiMap={customEmojiMap}
+                  onCustomEmojiPress={(packId) => setPreviewCustomEmojiPackId(packId)}
                   onMentionPress={(uid) => navigation.navigate('UserProfile', { uid })}
                   onHashtagPress={(tag) => {
                     setSearchOpen(true);
@@ -2181,6 +2187,8 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   const count = Object.keys(usersObj || {}).length;
                   const mine = !!(me && usersObj && usersObj[me.uid]);
                   if (!count) return null;
+                  const ceMatch = String(emoji).match(/^ce~([^~]+)~([^~]+)$/);
+                  const ceUri = ceMatch ? customEmojiMap[`${ceMatch[1]}:${ceMatch[2]}`] : '';
                   return (
                     <TouchableOpacity
                       key={emoji}
@@ -2191,9 +2199,20 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                       onPress={() => toggleReaction(item, emoji)}
                       onLongPress={() => setReactionsDetailMsg(item)}
                     >
-                      <Text style={styles.reactionTxt}>
-                        {emoji} {count}
-                      </Text>
+                      {ceMatch ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          {ceUri ? (
+                            <Image source={{ uri: ceUri }} style={{ width: 17, height: 17, borderRadius: 4 }} />
+                          ) : (
+                            <Text style={styles.reactionTxt}>🎨</Text>
+                          )}
+                          <Text style={styles.reactionTxt}>{count}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.reactionTxt}>
+                          {emoji} {count}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -2641,10 +2660,11 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* Full Emoji, Sticker & GIF Drawer */}
+        {/* Full Emoji, Custom Emoji, Sticker & GIF Drawer */}
         {showEmojiDrawer && (
           <EmojiStickerDrawer
             onSelectEmoji={(em) => setText((prev) => prev + em)}
+            onSelectCustomEmoji={(tok) => setText((prev) => prev + tok)}
             onBackspace={() =>
               setText((prev) => {
                 const chars = Array.from(prev);
@@ -2978,6 +2998,35 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {recentCustomEmojis.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ maxHeight: 42, marginBottom: 8 }}
+                  contentContainerStyle={{ gap: 8, paddingHorizontal: 4 }}
+                >
+                  {recentCustomEmojis.slice(0, 12).map((tok) => {
+                    const m = tok.match(/^\[ce:([^:\]]+):([^:\]]+)\]$/);
+                    if (!m) return null;
+                    const uri = customEmojiMap[`${m[1]}:${m[2]}`];
+                    if (!uri) return null;
+                    return (
+                      <TouchableOpacity
+                        key={tok}
+                        style={styles.quickReactBtn}
+                        onPress={() => {
+                          const targetMsg = actionMsg;
+                          setActionMsg(null);
+                          if (targetMsg) toggleReaction(targetMsg, `ce~${m[1]}~${m[2]}`);
+                        }}
+                      >
+                        <Image source={{ uri }} style={{ width: 26, height: 26, borderRadius: 6 }} />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
 
               <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
               <TouchableOpacity
@@ -3772,14 +3821,22 @@ export default function ChatRoomScreen({ route, navigation }: any) {
                   РЕАКЦИИ:
                 </Text>
                 {Object.entries(reactionsDetailMsg?.reactions || {}).flatMap(([em, uMap]: any) =>
-                  Object.keys(uMap || {}).map((u) => (
-                    <View key={`${em}_${u}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-                      <Text style={{ color: '#fff', fontWeight: '700' }}>
-                        {usersMap[u]?.nick || (u === me?.uid ? me?.nick : u.slice(0, 8))}
-                      </Text>
-                      <Text style={{ fontSize: 18 }}>{em}</Text>
-                    </View>
-                  ))
+                  Object.keys(uMap || {}).map((u) => {
+                    const ceM = String(em).match(/^ce~([^~]+)~([^~]+)$/);
+                    const ceUri = ceM ? customEmojiMap[`${ceM[1]}:${ceM[2]}`] : '';
+                    return (
+                      <View key={`${em}_${u}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 }}>
+                        <Text style={{ color: '#fff', fontWeight: '700' }}>
+                          {usersMap[u]?.nick || (u === me?.uid ? me?.nick : u.slice(0, 8))}
+                        </Text>
+                        {ceUri ? (
+                          <Image source={{ uri: ceUri }} style={{ width: 22, height: 22, borderRadius: 5 }} />
+                        ) : (
+                          <Text style={{ fontSize: 18 }}>{ceM ? '🎨' : em}</Text>
+                        )}
+                      </View>
+                    );
+                  })
                 )}
               </ScrollView>
             </GlassCard>
@@ -3849,12 +3906,17 @@ export default function ChatRoomScreen({ route, navigation }: any) {
         {/* AI Hub Settings Modal */}
         <AiHubSettingsModal visible={showAiSettings} onClose={() => setShowAiSettings(false)} />
 
-        {/* Sticker Pack Preview Modal */}
+        {/* Sticker Pack & Custom Emoji Pack Preview Modal */}
         <StickerPackPreviewModal
-          visible={!!previewStickerUrl}
+          visible={!!previewStickerUrl || !!previewCustomEmojiPackId}
           stickerUrl={previewStickerUrl}
-          onClose={() => setPreviewStickerUrl('')}
+          customEmojiPackId={previewCustomEmojiPackId}
+          onClose={() => {
+            setPreviewStickerUrl('');
+            setPreviewCustomEmojiPackId('');
+          }}
           onSendSticker={handleSendSticker}
+          onSelectCustomEmoji={(tok) => setText((prev) => prev + tok)}
         />
 
         {/* E2EE Key & Report Modal */}

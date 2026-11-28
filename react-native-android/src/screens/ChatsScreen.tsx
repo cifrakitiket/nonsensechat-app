@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { get, push, ref, set, update } from 'firebase/database';
+import { get, push, ref, remove, set, update } from 'firebase/database';
 import { rtdb, triggerHaptic } from '../services/firebase';
 import { useApp, ChatItem } from '../context/AppContext';
 import { FramedAvatar } from '../components/FramedAvatar';
@@ -51,6 +51,7 @@ function stripHtml(text?: string) {
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
+    .replace(/\[ce:[^\]]+\]/g, '🎨')
     .trim();
 }
 
@@ -68,6 +69,7 @@ function formatLastMsgPreview(rawMsg?: string, isMine?: boolean) {
   else if (clean.includes('📍')) text = clean;
   else if (clean.includes('🥧')) text = '🥧 Подарок пирожков';
   else if (clean.includes('✨ Стикер')) text = '✨ Стикер';
+  else if (/^(🎨\s*)+$/.test(clean)) text = '🎨 Кастомный эмодзи';
   return isMine ? `✓ ${text}` : text;
 }
 
@@ -108,6 +110,7 @@ export default function ChatsScreen({ navigation }: any) {
     openAiHubChat,
     creatorAddFriendDirect,
     stories,
+    showDialog,
   } = useApp();
 
   const { width: screenWidth } = useWindowDimensions();
@@ -274,6 +277,7 @@ export default function ChatsScreen({ navigation }: any) {
   const [peekChat, setPeekChat] = useState<ChatItem | null>(null);
   const [peekMessages, setPeekMessages] = useState<any[]>([]);
   const [loadingPeek, setLoadingPeek] = useState(false);
+  const [peekSubmenu, setPeekSubmenu] = useState<'main' | 'folders'>('main');
 
   // Create Custom Folder Modal state
   const [showFolderModal, setShowFolderModal] = useState(false);
@@ -312,6 +316,7 @@ export default function ChatsScreen({ navigation }: any) {
 
   const openChatPeek = async (chat: ChatItem) => {
     triggerHaptic(16);
+    setPeekSubmenu('main');
     setPeekChat(chat);
     setPeekMessages([]);
     setLoadingPeek(true);
@@ -322,7 +327,7 @@ export default function ChatsScreen({ navigation }: any) {
         .filter((k) => val[k] && typeof val[k] === 'object')
         .map((k) => ({ id: k, ...val[k] }))
         .sort((a, b) => (a.at || 0) - (b.at || 0))
-        .slice(-5);
+        .slice(-7);
       setPeekMessages(list);
     } catch (_) {
     } finally {
@@ -1105,121 +1110,294 @@ export default function ChatsScreen({ navigation }: any) {
           </View>
         </Modal>
 
-        {/* Quick Peek Preview + Chat Context Menu Modal */}
+        {/* Telegram-Style Live Chat Preview + Context Menu Modal */}
         <Modal visible={!!peekChat} transparent animationType="fade" onRequestClose={() => setPeekChat(null)}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setPeekChat(null)}>
-            {peekChat && (
-              <GlassCard radius={RADII.CARD} strong style={styles.modalCard}>
-                <Text style={[styles.modalTitle, { color: appTheme.text, marginBottom: 8 }]}>
-                  👁️ {getChatDisplay(peekChat).name}
-                </Text>
-                <View style={styles.peekBox}>
-                  {loadingPeek ? (
-                    <ActivityIndicator color={appTheme.accent} />
-                  ) : peekMessages.length === 0 ? (
-                    <Text style={{ color: appTheme.textSub, fontSize: 12.5 }}>Сообщений пока нет</Text>
-                  ) : (
-                    peekMessages.map((pm) => (
-                      <View key={pm.id} style={{ marginBottom: 6 }}>
-                        <Text style={{ color: appTheme.accent, fontSize: 11.5, fontWeight: '700' }}>
-                          {pm.author || 'Участник'}
-                        </Text>
-                        <Text style={{ color: appTheme.text, fontSize: 13 }} numberOfLines={2}>
-                          {stripHtml(pm.text) || 'Медиа-сообщение'}
-                        </Text>
-                      </View>
-                    ))
-                  )}
-                </View>
+          <TouchableOpacity
+            style={styles.tgPeekBackdrop}
+            activeOpacity={1}
+            onPress={() => setPeekChat(null)}
+          >
+            {peekChat && (() => {
+              const info = getChatDisplay(peekChat);
+              const isPinned = pinnedChatIds.includes(peekChat.id);
+              const isMuted = mutedChatIds.includes(peekChat.id);
+              const isArchived = archivedChatIds.includes(peekChat.id);
+              const isMarked = markedUnreadIds.includes(peekChat.id);
+              const isVault = hiddenVaultChatIds.includes(peekChat.id);
+              const isCommunity = peekChat.type === 'group' || peekChat.type === 'channel';
 
-                <View style={{ marginTop: 10, gap: 4 }}>
+              return (
+                <View style={styles.tgPeekStack} onStartShouldSetResponder={() => true}>
+                  {/* Top: Mini Chat Preview Card */}
                   <TouchableOpacity
-                    style={styles.ctxRow}
+                    activeOpacity={0.92}
                     onPress={() => {
-                      const id = peekChat.id;
+                      const c = peekChat;
                       setPeekChat(null);
-                      togglePinChat(id);
+                      navigation.navigate('ChatRoom', { chatId: c.id, name: info.name });
                     }}
                   >
-                    <Text style={styles.ctxText}>
-                      {pinnedChatIds.includes(peekChat.id) ? '📌 Открепить чат' : '📌 Закрепить сверху'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.ctxRow}
-                    onPress={() => {
-                      const id = peekChat.id;
-                      setPeekChat(null);
-                      toggleMuteChat(id);
-                    }}
-                  >
-                    <Text style={styles.ctxText}>
-                      {mutedChatIds.includes(peekChat.id) ? '🔔 Включить звук' : '🔇 Без звука'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.ctxRow}
-                    onPress={() => {
-                      const id = peekChat.id;
-                      setPeekChat(null);
-                      toggleArchiveChat(id);
-                    }}
-                  >
-                    <Text style={styles.ctxText}>
-                      {archivedChatIds.includes(peekChat.id) ? '📤 Убрать из архива' : '📦 В архив'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.ctxRow}
-                    onPress={() => {
-                      const id = peekChat.id;
-                      setPeekChat(null);
-                      toggleMarkUnread(id);
-                    }}
-                  >
-                    <Text style={styles.ctxText}>
-                      {markedUnreadIds.includes(peekChat.id) ? '✓ Снять непрочитанное' : '🔵 Пометить непрочитанным'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.ctxRow}
-                    onPress={() => {
-                      const id = peekChat.id;
-                      setPeekChat(null);
-                      toggleVaultChat(id);
-                      showToast(
-                        hiddenVaultChatIds.includes(id) ? 'Возвращён из сейфа' : 'Скрыт в Сейф 🕵️',
-                        `Код сейфа: ${vaultPasscode}`,
-                        'info'
-                      );
-                    }}
-                  >
-                    <Text style={styles.ctxText}>
-                      {hiddenVaultChatIds.includes(peekChat.id)
-                        ? '🔓 Вернуть чат из Сейфа'
-                        : '🕵️ Скрыть чат в Секретный сейф'}
-                    </Text>
-                  </TouchableOpacity>
-                  {customFolders.map((cf) => {
-                    const inFld = cf.chatIds.includes(peekChat.id);
-                    return (
-                      <TouchableOpacity
-                        key={cf.id}
-                        style={styles.ctxRow}
-                        onPress={() => {
-                          toggleChatInFolder(cf.id, peekChat.id);
-                          setPeekChat(null);
-                        }}
+                    <GlassCard radius={22} strong style={styles.tgPreviewCard}>
+                      <View style={[styles.tgPreviewHeader, { borderBottomColor: appTheme.border }]}>
+                        <FramedAvatar
+                          uri={info.avatar}
+                          name={info.name}
+                          frameId={info.frame}
+                          size={34}
+                          online={info.online}
+                        />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={[styles.tgPreviewName, { color: appTheme.text }]} numberOfLines={1}>
+                            {info.name}
+                          </Text>
+                          <Text style={{ color: info.online ? '#4ade80' : appTheme.textSub, fontSize: 11 }}>
+                            {peekChat.type === 'channel'
+                              ? 'канал'
+                              : peekChat.type === 'group'
+                              ? 'группа'
+                              : info.online
+                              ? 'в сети'
+                              : 'нажмите, чтобы открыть'}
+                          </Text>
+                        </View>
+                        <View style={[styles.tgOpenPill, { backgroundColor: appTheme.accentSoft }]}>
+                          <Text style={{ color: appTheme.accent, fontSize: 11.5, fontWeight: '800' }}>
+                            Открыть ›
+                          </Text>
+                        </View>
+                      </View>
+
+                      <ScrollView
+                        style={{ maxHeight: 195 }}
+                        contentContainerStyle={{ padding: 10, gap: 6 }}
+                        showsVerticalScrollIndicator={false}
                       >
-                        <Text style={styles.ctxText}>
-                          {cf.icon} {inFld ? `Убрать из «${cf.name}»` : `Добавить в «${cf.name}»`}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                        {loadingPeek ? (
+                          <ActivityIndicator color={appTheme.accent} style={{ marginVertical: 18 }} />
+                        ) : peekMessages.length === 0 ? (
+                          <Text style={{ color: appTheme.textSub, fontSize: 12.5, textAlign: 'center', paddingVertical: 16 }}>
+                            Сообщений пока нет
+                          </Text>
+                        ) : (
+                          peekMessages.map((pm) => {
+                            const mine = !!(me && pm.uid === me.uid);
+                            const previewTxt = formatLastMsgPreview(pm.text || (pm.photoUrl ? '📷 Фото' : pm.audioUrl ? '🎤 Голосовое' : ''), false);
+                            return (
+                              <View
+                                key={pm.id}
+                                style={[
+                                  styles.tgMiniBubble,
+                                  mine
+                                    ? { alignSelf: 'flex-end', backgroundColor: appTheme.accentSoft, borderBottomRightRadius: 4 }
+                                    : { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.08)', borderBottomLeftRadius: 4 },
+                                ]}
+                              >
+                                {!mine && isCommunity && (
+                                  <Text style={{ color: appTheme.accent, fontSize: 10.5, fontWeight: '800', marginBottom: 1 }}>
+                                    {pm.author || 'Участник'}
+                                  </Text>
+                                )}
+                                <Text style={{ color: appTheme.text, fontSize: 12.5 }} numberOfLines={3}>
+                                  {previewTxt}
+                                </Text>
+                              </View>
+                            );
+                          })
+                        )}
+                      </ScrollView>
+                    </GlassCard>
+                  </TouchableOpacity>
+
+                  {/* Bottom: Floating Telegram Context Action Menu */}
+                  <GlassCard radius={22} strong style={styles.tgCtxCard}>
+                    {peekSubmenu === 'main' ? (
+                      <>
+                        <TouchableOpacity
+                          style={styles.tgCtxRow}
+                          onPress={() => {
+                            const id = peekChat.id;
+                            setPeekChat(null);
+                            togglePinChat(id);
+                          }}
+                        >
+                          <Ionicons name={isPinned ? 'pin' : 'pin-outline'} size={19} color={appTheme.text} />
+                          <Text style={[styles.tgCtxText, { color: appTheme.text }]}>
+                            {isPinned ? 'Открепить' : 'Закрепить'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.tgCtxRow}
+                          onPress={() => {
+                            const id = peekChat.id;
+                            setPeekChat(null);
+                            toggleMuteChat(id);
+                          }}
+                        >
+                          <Ionicons
+                            name={isMuted ? 'notifications-outline' : 'volume-mute-outline'}
+                            size={19}
+                            color={appTheme.text}
+                          />
+                          <Text style={[styles.tgCtxText, { color: appTheme.text }]}>
+                            {isMuted ? 'Включить уведомления' : 'Выключить звук'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.tgCtxRow}
+                          onPress={() => {
+                            const id = peekChat.id;
+                            setPeekChat(null);
+                            toggleMarkUnread(id);
+                          }}
+                        >
+                          <Ionicons
+                            name={isMarked ? 'checkmark-done-outline' : 'mail-unread-outline'}
+                            size={19}
+                            color={appTheme.text}
+                          />
+                          <Text style={[styles.tgCtxText, { color: appTheme.text }]}>
+                            {isMarked ? 'Пометить прочитанным' : 'Пометить непрочитанным'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.tgCtxRow}
+                          onPress={() => {
+                            const id = peekChat.id;
+                            setPeekChat(null);
+                            toggleArchiveChat(id);
+                          }}
+                        >
+                          <Ionicons name="archive-outline" size={19} color={appTheme.text} />
+                          <Text style={[styles.tgCtxText, { color: appTheme.text }]}>
+                            {isArchived ? 'Вернуть из архива' : 'В архив'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.tgCtxRow}
+                          onPress={() => setPeekSubmenu('folders')}
+                        >
+                          <Ionicons name="folder-outline" size={19} color={appTheme.text} />
+                          <Text style={[styles.tgCtxText, { color: appTheme.text, flex: 1 }]}>
+                            Добавить в папку
+                          </Text>
+                          <Ionicons name="chevron-forward" size={16} color={appTheme.textSub} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.tgCtxRow}
+                          onPress={() => {
+                            const id = peekChat.id;
+                            setPeekChat(null);
+                            toggleVaultChat(id);
+                            showToast(
+                              isVault ? 'Возвращён из Сейфа' : 'Скрыт в Сейф 🕵️',
+                              `Код сейфа: ${vaultPasscode}`,
+                              'info'
+                            );
+                          }}
+                        >
+                          <Ionicons
+                            name={isVault ? 'lock-open-outline' : 'eye-off-outline'}
+                            size={19}
+                            color={appTheme.text}
+                          />
+                          <Text style={[styles.tgCtxText, { color: appTheme.text }]}>
+                            {isVault ? 'Вернуть из Сейфа' : 'Скрыть в Сейф'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.tgCtxRow, { borderBottomWidth: 0 }]}
+                          onPress={() => {
+                            const target = peekChat;
+                            setPeekChat(null);
+                            showDialog({
+                              title: isCommunity ? 'Покинуть чат?' : 'Очистить историю?',
+                              message: isCommunity
+                                ? `Выйти из «${info.name}»?`
+                                : `Удалить переписку с «${info.name}»?`,
+                              buttons: [
+                                { text: 'Отмена', style: 'cancel' },
+                                {
+                                  text: isCommunity ? 'Выйти' : 'Удалить',
+                                  style: 'destructive',
+                                  onPress: async () => {
+                                    if (isCommunity && me?.uid) {
+                                      const nextMembers = (target.members || []).filter((u) => u !== me.uid);
+                                      await update(ref(rtdb, `chats/${target.id}`), { members: nextMembers });
+                                    } else {
+                                      await remove(ref(rtdb, `messages/${target.id}`));
+                                      await update(ref(rtdb, `chats/${target.id}`), { lastMsg: '', lastMsgAt: Date.now() });
+                                    }
+                                    showToast('Готово ✓', info.name, 'info');
+                                  },
+                                },
+                              ],
+                            });
+                          }}
+                        >
+                          <Ionicons name={isCommunity ? 'exit-outline' : 'trash-outline'} size={19} color="#ef4444" />
+                          <Text style={[styles.tgCtxText, { color: '#ef4444' }]}>
+                            {isCommunity ? 'Покинуть' : 'Удалить историю'}
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <TouchableOpacity
+                          style={styles.tgCtxRow}
+                          onPress={() => setPeekSubmenu('main')}
+                        >
+                          <Ionicons name="arrow-back" size={18} color={appTheme.accent} />
+                          <Text style={[styles.tgCtxText, { color: appTheme.accent, fontWeight: '800' }]}>
+                            Назад к действиям
+                          </Text>
+                        </TouchableOpacity>
+                        {customFolders.map((cf) => {
+                          const inFld = cf.chatIds.includes(peekChat.id);
+                          return (
+                            <TouchableOpacity
+                              key={cf.id}
+                              style={styles.tgCtxRow}
+                              onPress={() => {
+                                toggleChatInFolder(cf.id, peekChat.id);
+                                setPeekChat(null);
+                              }}
+                            >
+                              <Text style={{ fontSize: 17 }}>{cf.icon}</Text>
+                              <Text style={[styles.tgCtxText, { color: appTheme.text, flex: 1 }]}>
+                                {cf.name}
+                              </Text>
+                              {inFld && <Ionicons name="checkmark" size={18} color={appTheme.accent} />}
+                            </TouchableOpacity>
+                          );
+                        })}
+                        <TouchableOpacity
+                          style={[styles.tgCtxRow, { borderBottomWidth: 0 }]}
+                          onPress={() => {
+                            const id = peekChat.id;
+                            setPeekChat(null);
+                            setNewFolderName('');
+                            setNewFolderIcon('📁');
+                            setNewFolderChatIds([id]);
+                            setShowFolderModal(true);
+                          }}
+                        >
+                          <Ionicons name="add-circle-outline" size={19} color={appTheme.accent} />
+                          <Text style={[styles.tgCtxText, { color: appTheme.accent }]}>
+                            Создать новую папку
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </GlassCard>
                 </View>
-              </GlassCard>
-            )}
+              );
+            })()}
           </TouchableOpacity>
         </Modal>
 
@@ -1510,4 +1688,58 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   ctxText: { color: '#f8fafc', fontSize: 14.5, fontWeight: '600' },
+  tgPeekBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(4, 8, 16, 0.84)',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  tgPeekStack: {
+    gap: 10,
+    width: '100%',
+  },
+  tgPreviewCard: {
+    overflow: 'hidden',
+  },
+  tgPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  tgPreviewName: {
+    fontSize: 14.5,
+    fontWeight: '800',
+  },
+  tgOpenPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  tgMiniBubble: {
+    maxWidth: '84%',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 15,
+  },
+  tgCtxCard: {
+    width: '82%',
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  tgCtxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11.5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
+  },
+  tgCtxText: {
+    fontSize: 14.5,
+    fontWeight: '600',
+  },
 });
