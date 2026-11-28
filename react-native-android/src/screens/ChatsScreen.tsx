@@ -525,75 +525,79 @@ export default function ChatsScreen({ navigation }: any) {
         <StoriesBar onReplyToStory={handleReplyToStory} />
 
         {/* Pill Folder Tabs (with Custom Folders) */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.foldersRow, { alignItems: 'center' }]}
-        >
-          {[
-            { key: 'all', label: 'Все' },
-            { key: 'dm', label: 'Личные' },
-            { key: 'groups', label: 'Группы' },
-            { key: 'channels', label: 'Каналы' },
-            ...(incomingRequests.length > 0
-              ? [{ key: 'reqs', label: `Заявки (${incomingRequests.length})` }]
-              : []),
-            ...customFolders.map((cf) => ({ key: cf.id, label: `${cf.icon} ${cf.name}` })),
-          ].map((f) => {
-            const act = activeFolder === f.key && !showArchived;
-            return (
-              <TouchableOpacity
-                key={f.key}
-                style={[
-                  styles.folderTab,
-                  {
-                    backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.04)',
-                    borderColor: act ? appTheme.accent : appTheme.border,
-                  },
-                ]}
-                onPress={() => {
-                  setShowArchived(false);
-                  setActiveFolder(f.key);
-                }}
-                onLongPress={() => {
-                  if (f.key.startsWith('fld_')) {
-                    deleteCustomFolder(f.key);
-                    setActiveFolder('all');
-                    showToast('Папка удалена', f.label, 'info');
-                  }
-                }}
-              >
-                <Text
-                  style={[
-                    styles.folderTabText,
-                    { color: act ? appTheme.accent : appTheme.textSub },
-                  ]}
-                >
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-          <TouchableOpacity
-            style={[
-              styles.folderTab,
-              {
-                backgroundColor: 'rgba(255,255,255,0.04)',
-                borderColor: appTheme.border,
-                paddingHorizontal: 10,
-                opacity: 0.75,
-              },
-            ]}
-            onPress={() => {
-              setNewFolderName('');
-              setNewFolderIcon('📁');
-              setNewFolderChatIds([]);
-              setShowFolderModal(true);
-            }}
+        <View style={{ flexShrink: 0, height: 42, marginBottom: 6, justifyContent: 'center' }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={[styles.foldersRow, { alignItems: 'center' }]}
           >
-            <Ionicons name="add" size={15} color={appTheme.textSub} />
-          </TouchableOpacity>
-        </ScrollView>
+            {[
+              { key: 'all', label: 'Все' },
+              { key: 'dm', label: 'Личные' },
+              { key: 'groups', label: 'Группы' },
+              { key: 'channels', label: 'Каналы' },
+              ...(incomingRequests.length > 0
+                ? [{ key: 'reqs', label: `Заявки (${incomingRequests.length})` }]
+                : []),
+              ...customFolders.map((cf) => ({ key: cf.id, label: `${cf.icon} ${cf.name}` })),
+            ].map((f) => {
+              const act = activeFolder === f.key && !showArchived;
+              return (
+                <TouchableOpacity
+                  key={f.key}
+                  style={[
+                    styles.folderTab,
+                    {
+                      backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.04)',
+                      borderColor: act ? appTheme.accent : appTheme.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setShowArchived(false);
+                    setActiveFolder(f.key);
+                  }}
+                  onLongPress={() => {
+                    if (f.key.startsWith('fld_')) {
+                      deleteCustomFolder(f.key);
+                      setActiveFolder('all');
+                      showToast('Папка удалена', f.label, 'info');
+                    }
+                  }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.folderTabText,
+                      { color: act ? appTheme.accent : appTheme.textSub },
+                    ]}
+                  >
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              style={[
+                styles.folderTab,
+                {
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                  borderColor: appTheme.border,
+                  paddingHorizontal: 10,
+                  opacity: 0.75,
+                },
+              ]}
+              onPress={() => {
+                setNewFolderName('');
+                setNewFolderIcon('📁');
+                setNewFolderChatIds([]);
+                setShowFolderModal(true);
+              }}
+            >
+              <Ionicons name="add" size={16} color={appTheme.textSub} />
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
 
         {/* Archive Toggle Pill */}
         {archivedChatIds.length > 0 && activeFolder !== 'reqs' && (
@@ -1065,16 +1069,23 @@ const styles = StyleSheet.create({
   foldersRow: {
     flexDirection: 'row',
     paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingVertical: 3,
     gap: 6,
   },
   folderTab: {
-    paddingVertical: 6,
+    height: 32,
     paddingHorizontal: 13,
     borderRadius: 999,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  folderTabText: { fontSize: 11.5, fontWeight: '800' },
+  folderTabText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+    includeFontPadding: false,
+  },
   listContent: { paddingBottom: 108 },
   chatCard: {
     flexDirection: 'row',

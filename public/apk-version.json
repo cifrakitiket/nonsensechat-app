@@ -1,9 +1,9 @@
 {
   "version": "3.0",
-  "versionCode": 3001,
+  "versionCode": 3002,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 24021397,
-  "publishedAt": "2026-11-28T06:20:10.198Z",
-  "releaseNotes": "NonsenseChat 3.0 (build 3001) — Убрана панель контактов (чужие профили больше не светятся в общем списке), а с плашек чатов убраны свайп-кнопки закрепить/мут/архив — теперь только по зажатию!"
+  "fileSize": 24021497,
+  "publishedAt": "2026-11-28T06:25:49.032Z",
+  "releaseNotes": "NonsenseChat 3.0 (build 3002) — Исправлено обрезание полосы папок в списке чатов и подпись «История»"
 }

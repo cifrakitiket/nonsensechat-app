@@ -147,7 +147,7 @@ export const StoriesBar: React.FC<StoriesBarProps> = ({ onReplyToStory }) => {
             </View>
           </View>
           <Text style={[styles.tileNick, { color: appTheme.textSub }]} numberOfLines={1}>
-            Моя история
+            История
           </Text>
         </TouchableOpacity>
 
@@ -337,7 +337,7 @@ export const StoriesBar: React.FC<StoriesBarProps> = ({ onReplyToStory }) => {
 const styles = StyleSheet.create({
   barWrap: { marginBottom: 6 },
   barContent: { paddingHorizontal: 12, gap: 12 },
-  storyTile: { width: 62, alignItems: 'center' },
+  storyTile: { width: 66, alignItems: 'center' },
   ring: {
     width: 56,
     height: 56,
