@@ -1,9 +1,9 @@
 {
   "version": "3.0",
-  "versionCode": 3004,
+  "versionCode": 3005,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 24023357,
-  "publishedAt": "2026-11-28T06:53:11.380Z",
-  "releaseNotes": "NonsenseChat 3.0 (build 3004) — Истории сворачиваются и разворачиваются чисто свайпом как в Telegram + свайп влево/вправо для переключения папок!"
+  "fileSize": 24023749,
+  "publishedAt": "2026-11-28T06:59:55.526Z",
+  "releaseNotes": "NonsenseChat 3.0 (build 3005) — Убрана багованная LayoutAnimation с чатов (исправлены полупрозрачность и дыры в списке), истории открываются по умолчанию и надёжно разворачиваются/сворачиваются свайпом через PanResponder + свайп между папками!"
 }

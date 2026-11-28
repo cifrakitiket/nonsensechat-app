@@ -5,7 +5,7 @@ export const FEMALE_UIDS = new Set<string>([
 ]);
 
 export const APP_VERSION = '3.0';
-export const APP_VERSION_CODE = 3004;
+export const APP_VERSION_CODE = 3005;
 
 export interface ThemeItem {
   id: string;
