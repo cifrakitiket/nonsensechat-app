@@ -115,11 +115,12 @@ export default function ChatsScreen({ navigation }: any) {
   const [showArchived, setShowArchived] = useState(false);
   const [storiesExpanded, setStoriesExpanded] = useState(true);
   const storiesAnim = useRef(new Animated.Value(1)).current;
+  const flatListRefs = useRef<Record<string, FlatList<any> | null>>({});
   const scrollYMapRef = useRef<Record<string, number>>({});
   const listHeightMapRef = useRef<Record<string, number>>({});
   const contentHeightMapRef = useRef<Record<string, number>>({});
   const gestureHandledRef = useRef(false);
-  const storyTouchStartYRef = useRef(0);
+  const topGestureHandledRef = useRef(false);
   const folderScrollRef = useRef<ScrollView | null>(null);
   const pagerRef = useRef<ScrollView | null>(null);
   const folderTabXRef = useRef<Record<string, number>>({});
@@ -142,7 +143,7 @@ export default function ChatsScreen({ navigation }: any) {
     setStoriesExpanded(next);
     Animated.timing(storiesAnim, {
       toValue: next ? 1 : 0,
-      duration: 210,
+      duration: 190,
       useNativeDriver: false,
     }).start();
   };
@@ -161,6 +162,43 @@ export default function ChatsScreen({ navigation }: any) {
     [incomingRequests.length, customFolders]
   );
 
+  const headerPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_evt, g) => {
+        const ax = Math.abs(g.dx);
+        const ay = Math.abs(g.dy);
+        if (ay <= 5 || ay <= ax * 1.4) return false;
+        if (!storiesExpandedRef.current && g.dy > 5) return true;
+        if (storiesExpandedRef.current && g.dy < -5) return true;
+        return false;
+      },
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        topGestureHandledRef.current = false;
+      },
+      onPanResponderMove: (_evt, g) => {
+        if (topGestureHandledRef.current) return;
+        const ax = Math.abs(g.dx);
+        const ay = Math.abs(g.dy);
+        if (!storiesExpandedRef.current && g.dy > 16 && ay > ax * 1.2) {
+          topGestureHandledRef.current = true;
+          triggerHaptic(8);
+          setStoriesVisible(true);
+        } else if (storiesExpandedRef.current && g.dy < -16 && ay > ax * 1.2) {
+          topGestureHandledRef.current = true;
+          triggerHaptic(8);
+          setStoriesVisible(false);
+        }
+      },
+      onPanResponderRelease: () => {
+        topGestureHandledRef.current = false;
+      },
+      onPanResponderTerminate: () => {
+        topGestureHandledRef.current = false;
+      },
+    })
+  ).current;
+
   const listPanResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (_evt, g) => {
@@ -170,18 +208,19 @@ export default function ChatsScreen({ navigation }: any) {
         const scrollY = scrollYMapRef.current[curKey] || 0;
         const listH = listHeightMapRef.current[curKey] || 0;
         const contentH = contentHeightMapRef.current[curKey] || 0;
-        // Never steal horizontal swipes from the fluid ViewPager
+        // Let native horizontal ViewPager handle all horizontal swipes smoothly
         if (ax >= ay) return false;
-        // Pull down at top of list to reveal stories
-        if (!storiesExpandedRef.current && scrollY <= 4 && g.dy > 14 && ay > ax * 1.4) {
+        // Intercept pull-down BEFORE Android 8dp ScrollView touchSlop locks the gesture!
+        if (!storiesExpandedRef.current && scrollY <= 18 && g.dy > 5 && ay > ax * 1.25) {
           return true;
         }
-        // Swipe up when list doesn't scroll vertically to collapse stories
-        if (storiesExpandedRef.current && contentH <= listH + 16 && g.dy < -16 && ay > ax * 1.4) {
+        // Swipe up on short / barely scrollable lists to collapse stories
+        if (storiesExpandedRef.current && contentH <= listH + 48 && g.dy < -5 && ay > ax * 1.25) {
           return true;
         }
         return false;
       },
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
         gestureHandledRef.current = false;
       },
@@ -191,13 +230,13 @@ export default function ChatsScreen({ navigation }: any) {
         const ay = Math.abs(g.dy);
         const curKey = activeFolderRef.current;
         const scrollY = scrollYMapRef.current[curKey] || 0;
-        if (!storiesExpandedRef.current && scrollY <= 4 && g.dy > 24 && ay > ax * 1.25) {
+        if (!storiesExpandedRef.current && scrollY <= 18 && g.dy > 16 && ay > ax * 1.15) {
           gestureHandledRef.current = true;
           triggerHaptic(8);
           setStoriesVisible(true);
           return;
         }
-        if (storiesExpandedRef.current && g.dy < -24 && ay > ax * 1.25) {
+        if (storiesExpandedRef.current && g.dy < -16 && ay > ax * 1.15) {
           gestureHandledRef.current = true;
           triggerHaptic(8);
           setStoriesVisible(false);
@@ -633,6 +672,8 @@ export default function ChatsScreen({ navigation }: any) {
           </View>
         )}
 
+        {/* Search + Collapsible Stories + Folders (supports vertical swipe anywhere on top area) */}
+        <View {...headerPanResponder.panHandlers}>
         {/* Pill Search */}
         <View style={{ paddingHorizontal: 12, marginBottom: 8 }}>
           <GlassCard radius={RADII.PILL} style={styles.searchPill}>
@@ -684,21 +725,11 @@ export default function ChatsScreen({ navigation }: any) {
             overflow: 'hidden',
             maxHeight: storiesAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 98],
+              outputRange: [0, 96],
             }),
             opacity: storiesAnim,
           }}
           pointerEvents={storiesExpanded ? 'auto' : 'none'}
-          onTouchStart={(e) => {
-            storyTouchStartYRef.current = e.nativeEvent.pageY;
-          }}
-          onTouchMove={(e) => {
-            const dy = e.nativeEvent.pageY - storyTouchStartYRef.current;
-            if (dy < -24 && storiesExpandedRef.current) {
-              triggerHaptic(8);
-              setStoriesVisible(false);
-            }
-          }}
         >
           <StoriesBar onReplyToStory={handleReplyToStory} />
         </Animated.View>
@@ -777,6 +808,7 @@ export default function ChatsScreen({ navigation }: any) {
               <Ionicons name="add" size={16} color={appTheme.textSub} />
             </TouchableOpacity>
           </ScrollView>
+        </View>
         </View>
 
         {/* Fluid Horizontal ViewPager + Vertical Pull-to-Stories */}
@@ -923,6 +955,9 @@ export default function ChatsScreen({ navigation }: any) {
               return (
                 <View key={tab.key} style={{ width: screenWidth, flex: 1 }}>
                   <FlatList
+                    ref={(r) => {
+                      flatListRefs.current[tab.key] = r;
+                    }}
                     data={tabChats}
                     keyExtractor={(item) => item.id}
                     renderItem={renderChatItem}
@@ -938,8 +973,12 @@ export default function ChatsScreen({ navigation }: any) {
                     onScroll={(e) => {
                       const y = e.nativeEvent.contentOffset.y;
                       scrollYMapRef.current[tab.key] = y;
-                      if (y > 18 && storiesExpandedRef.current) {
+                      if (y > 14 && storiesExpandedRef.current) {
                         setStoriesVisible(false);
+                        if (y < 45) {
+                          scrollYMapRef.current[tab.key] = 0;
+                          flatListRefs.current[tab.key]?.scrollToOffset({ offset: 0, animated: false });
+                        }
                       }
                     }}
                     ListEmptyComponent={

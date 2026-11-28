@@ -1,9 +1,9 @@
 {
   "version": "3.0",
-  "versionCode": 3006,
+  "versionCode": 3007,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 24024257,
-  "publishedAt": "2026-11-28T07:03:22.463Z",
-  "releaseNotes": "NonsenseChat 3.0 (build 3006) — Настоящий плавный ViewPager между папками (страница тянется за пальцем и переключается только после полного просвайпа)!"
+  "fileSize": 24024641,
+  "publishedAt": "2026-11-28T07:09:49.246Z",
+  "releaseNotes": "NonsenseChat 3.0 (build 3007) — Исправлен жест разворачивания свёрнутых историй на Android (ранний перехват PanResponder до системного touchSlop 8dp + свайп с области поиска/папок)!"
 }
