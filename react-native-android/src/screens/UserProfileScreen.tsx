@@ -511,64 +511,78 @@ export default function UserProfileScreen({ route, navigation }: any) {
           reportTargetId={resolvedUid}
         />
 
-        {/* Profile More Actions Menu */}
+        {/* Compact Telegram Context Menu (Transparent Backdrop) */}
         <Modal visible={showMoreMenu} transparent animationType="fade" onRequestClose={() => setShowMoreMenu(false)}>
           <TouchableOpacity
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 20 }}
+            style={{
+              flex: 1,
+              backgroundColor: 'transparent',
+              justifyContent: 'flex-start',
+              alignItems: 'flex-end',
+              paddingTop: insets.top + 56,
+              paddingRight: 12,
+            }}
             activeOpacity={1}
             onPress={() => setShowMoreMenu(false)}
           >
-            <GlassCard radius={26} strong style={{ padding: 16 }}>
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 10 }}>
-                {user.nick}
-              </Text>
-              <TouchableOpacity
-                style={styles.menuRow}
-                onPress={async () => {
-                  setShowMoreMenu(false);
-                  if (alreadyFriend || reqSent) return;
-                  try {
-                    await sendFriendRequest(resolvedUid);
-                    showToast('Заявка отправлена ✓', `Запрос отправлен ${user.nick}`, 'success');
-                  } catch (e: any) {
-                    showToast('Ошибка', e?.message || 'Не удалось отправить заявку', 'error');
-                  }
-                }}
-              >
-                <Text style={styles.menuRowTxt}>
-                  {alreadyFriend ? '✓ Уже в друзьях' : reqSent ? '⏳ Заявка отправлена' : '➕ Добавить в друзья'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() => {
-                  setShowMoreMenu(false);
-                  setShowNoteEditor(true);
-                }}
-              >
-                <Text style={styles.menuRowTxt}>📝 Личная заметка</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() => {
-                  setShowMoreMenu(false);
-                  toggleBlockUser(resolvedUid);
-                }}
-              >
-                <Text style={[styles.menuRowTxt, { color: '#fb923c' }]}>
-                  {(me?.blockedUids || []).includes(resolvedUid) ? '✓ Разблокировать' : '🚫 Заблокировать'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.menuRow, { borderBottomWidth: 0 }]}
-                onPress={() => {
-                  setShowMoreMenu(false);
-                  setShowReportModal(true);
-                }}
-              >
-                <Text style={[styles.menuRowTxt, { color: '#ef4444' }]}>⚠️ Пожаловаться</Text>
-              </TouchableOpacity>
-            </GlassCard>
+            <View onStartShouldSetResponder={() => true}>
+              <GlassCard radius={18} strong style={styles.tgCtxCard}>
+                <TouchableOpacity
+                  style={styles.tgCtxRow}
+                  onPress={async () => {
+                    setShowMoreMenu(false);
+                    if (alreadyFriend || reqSent) return;
+                    try {
+                      await sendFriendRequest(resolvedUid);
+                      showToast('Заявка отправлена ✓', `Запрос отправлен ${user.nick}`, 'success');
+                    } catch (e: any) {
+                      showToast('Ошибка', e?.message || 'Не удалось отправить заявку', 'error');
+                    }
+                  }}
+                >
+                  <Ionicons
+                    name={alreadyFriend ? 'checkmark-circle-outline' : reqSent ? 'time-outline' : 'person-add-outline'}
+                    size={17}
+                    color="#f8fafc"
+                  />
+                  <Text style={styles.tgCtxText}>
+                    {alreadyFriend ? 'В друзьях' : reqSent ? 'Заявка отправлена' : 'В друзья'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.tgCtxRow}
+                  onPress={() => {
+                    setShowMoreMenu(false);
+                    setShowNoteEditor(true);
+                  }}
+                >
+                  <Ionicons name="document-text-outline" size={17} color="#f8fafc" />
+                  <Text style={styles.tgCtxText}>Личная заметка</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.tgCtxRow}
+                  onPress={() => {
+                    setShowMoreMenu(false);
+                    toggleBlockUser(resolvedUid);
+                  }}
+                >
+                  <Ionicons name="ban-outline" size={17} color="#fb923c" />
+                  <Text style={[styles.tgCtxText, { color: '#fb923c' }]}>
+                    {(me?.blockedUids || []).includes(resolvedUid) ? 'Разблокировать' : 'Заблокировать'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tgCtxRow, { borderBottomWidth: 0 }]}
+                  onPress={() => {
+                    setShowMoreMenu(false);
+                    setShowReportModal(true);
+                  }}
+                >
+                  <Ionicons name="warning-outline" size={17} color="#ef4444" />
+                  <Text style={[styles.tgCtxText, { color: '#ef4444' }]}>Пожаловаться</Text>
+                </TouchableOpacity>
+              </GlassCard>
+            </View>
           </TouchableOpacity>
         </Modal>
       </View>
@@ -609,12 +623,26 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tgTileLbl: { color: '#e2e8f0', fontSize: 11.5, fontWeight: '700' },
-  menuRow: {
-    paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+  tgCtxCard: {
+    width: 222,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    elevation: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
   },
-  menuRowTxt: { color: '#f8fafc', fontSize: 15, fontWeight: '600' },
+  tgCtxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9.5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
+  },
+  tgCtxText: { color: '#f8fafc', fontSize: 13.5, fontWeight: '600' },
   showcase: { padding: 16 },
   showcaseTitle: { fontSize: 11.5, fontWeight: '800', letterSpacing: 0.7, marginBottom: 12 },
   statsRow: { flexDirection: 'row', gap: 8 },

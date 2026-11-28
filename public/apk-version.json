@@ -1,9 +1,9 @@
 {
   "version": "3.0",
-  "versionCode": 3008,
+  "versionCode": 3009,
   "apkUrl": "https://hb.vkcs.cloud/noname/nonsensechat.apk",
   "fileName": "nonsensechat.apk",
-  "fileSize": 24032449,
-  "publishedAt": "2026-11-28T07:26:36.371Z",
-  "releaseNotes": "NonsenseChat 3.0 (build 3008) — Контекстное меню чатов как в Telegram (превью переписки + меню с иконками и подменю папок) + личные кастомные эмодзи и приватные стикерпаки (чужие наборы не видны в общем списке)!"
+  "fileSize": 24033049,
+  "publishedAt": "2026-11-28T07:34:13.197Z",
+  "releaseNotes": "NonsenseChat 3.0 (build 3009) — Единый компактный стиль всех контекстных меню в Telegram-стиле без затемнения фона и превью чата"
 }

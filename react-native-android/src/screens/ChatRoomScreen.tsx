@@ -2979,222 +2979,240 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           isChannelPost={chat?.type === 'channel'}
         />
 
-        {/* Message Action & Reactions Sheet */}
+        {/* Message Action & Reactions Popup */}
         <Modal visible={!!actionMsg} transparent animationType="fade" onRequestClose={() => setActionMsg(null)}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setActionMsg(null)}>
-            <GlassCard radius={28} strong style={styles.sheetCard}>
-              <View style={styles.quickReactRow}>
-                {QUICK_REACTIONS.map((em) => (
-                  <TouchableOpacity
-                    key={em}
-                    style={styles.quickReactBtn}
-                    onPress={() => {
-                      const m = actionMsg;
-                      setActionMsg(null);
-                      if (m) toggleReaction(m, em);
-                    }}
+          <TouchableOpacity style={styles.tgCtxBackdropCenter} activeOpacity={1} onPress={() => setActionMsg(null)}>
+            <View onStartShouldSetResponder={() => true} style={{ alignItems: 'center', maxWidth: '100%' }}>
+              <GlassCard radius={20} strong style={styles.tgReactPill}>
+                <View style={styles.tgReactRow}>
+                  {QUICK_REACTIONS.map((em) => (
+                    <TouchableOpacity
+                      key={em}
+                      style={styles.tgReactBtn}
+                      onPress={() => {
+                        const m = actionMsg;
+                        setActionMsg(null);
+                        if (m) toggleReaction(m, em);
+                      }}
+                    >
+                      <Text style={{ fontSize: 21 }}>{em}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {recentCustomEmojis.length > 0 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ maxHeight: 34, marginTop: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 4 }}
+                    contentContainerStyle={{ gap: 6, paddingHorizontal: 2, alignItems: 'center' }}
                   >
-                    <Text style={{ fontSize: 24 }}>{em}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                    {recentCustomEmojis.slice(0, 12).map((tok) => {
+                      const m = tok.match(/^\[ce:([^:\]]+):([^:\]]+)\]$/);
+                      if (!m) return null;
+                      const uri = customEmojiMap[`${m[1]}:${m[2]}`];
+                      if (!uri) return null;
+                      return (
+                        <TouchableOpacity
+                          key={tok}
+                          style={styles.tgReactBtn}
+                          onPress={() => {
+                            const targetMsg = actionMsg;
+                            setActionMsg(null);
+                            if (targetMsg) toggleReaction(targetMsg, `ce~${m[1]}~${m[2]}`);
+                          }}
+                        >
+                          <Image source={{ uri }} style={{ width: 22, height: 22, borderRadius: 5 }} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </GlassCard>
 
-              {recentCustomEmojis.length > 0 && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={{ maxHeight: 42, marginBottom: 8 }}
-                  contentContainerStyle={{ gap: 8, paddingHorizontal: 4 }}
-                >
-                  {recentCustomEmojis.slice(0, 12).map((tok) => {
-                    const m = tok.match(/^\[ce:([^:\]]+):([^:\]]+)\]$/);
-                    if (!m) return null;
-                    const uri = customEmojiMap[`${m[1]}:${m[2]}`];
-                    if (!uri) return null;
-                    return (
-                      <TouchableOpacity
-                        key={tok}
-                        style={styles.quickReactBtn}
-                        onPress={() => {
-                          const targetMsg = actionMsg;
-                          setActionMsg(null);
-                          if (targetMsg) toggleReaction(targetMsg, `ce~${m[1]}~${m[2]}`);
-                        }}
-                      >
-                        <Image source={{ uri }} style={{ width: 26, height: 26, borderRadius: 6 }} />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              )}
-
-              <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  const m = actionMsg;
-                  setActionMsg(null);
-                  if (m) {
-                    setReplyTo({
-                      id: m.id,
-                      author: m.author || 'Пользователь',
-                      text: decodeMsgText(m.text) || 'Медиа',
-                    });
-                  }
-                }}
-              >
-                <Text style={styles.sheetRowText}>↩️ Ответить</Text>
-              </TouchableOpacity>
-
-              {!!decodeMsgText(actionMsg?.text) && (
-                <>
+              <GlassCard radius={18} strong style={styles.tgCtxCard}>
+                <ScrollView style={{ maxHeight: 330 }} showsVerticalScrollIndicator={false}>
                   <TouchableOpacity
-                    style={styles.sheetRow}
+                    style={styles.tgCtxRow}
                     onPress={() => {
                       const m = actionMsg;
                       setActionMsg(null);
                       if (m) {
-                        setQuoteModalMsg(m);
-                        setQuoteSelectionText(decodeMsgText(m.text));
+                        setReplyTo({
+                          id: m.id,
+                          author: m.author || 'Пользователь',
+                          text: decodeMsgText(m.text) || 'Медиа',
+                        });
                       }
                     }}
                   >
-                    <Text style={styles.sheetRowText}>✂️ Цитировать часть текста</Text>
+                    <Ionicons name="arrow-undo-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Ответить</Text>
                   </TouchableOpacity>
 
+                  {!!decodeMsgText(actionMsg?.text) && (
+                    <>
+                      <TouchableOpacity
+                        style={styles.tgCtxRow}
+                        onPress={() => {
+                          const m = actionMsg;
+                          setActionMsg(null);
+                          if (m) {
+                            setQuoteModalMsg(m);
+                            setQuoteSelectionText(decodeMsgText(m.text));
+                          }
+                        }}
+                      >
+                        <Ionicons name="cut-outline" size={17} color={appTheme.text} />
+                        <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Цитировать часть</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.tgCtxRow}
+                        onPress={() => {
+                          const m = actionMsg;
+                          setActionMsg(null);
+                          if (m) translateMessageText(m);
+                        }}
+                      >
+                        <Ionicons name="language-outline" size={17} color={appTheme.text} />
+                        <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Перевести (RU ↔ EN)</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
                   <TouchableOpacity
-                    style={styles.sheetRow}
+                    style={styles.tgCtxRow}
                     onPress={() => {
                       const m = actionMsg;
                       setActionMsg(null);
-                      if (m) translateMessageText(m);
+                      setForwardMsg(m);
                     }}
                   >
-                    <Text style={styles.sheetRowText}>🌍 Перевести сообщение (RU ↔ EN)</Text>
+                    <Ionicons name="arrow-redo-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Переслать</Text>
                   </TouchableOpacity>
-                </>
-              )}
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  const m = actionMsg;
-                  setActionMsg(null);
-                  setForwardMsg(m);
-                }}
-              >
-                <Text style={styles.sheetRowText}>↪️ Переслать</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tgCtxRow}
+                    onPress={() => {
+                      const m = actionMsg;
+                      setActionMsg(null);
+                      if (m) {
+                        setSelectionMode(true);
+                        setSelectedIds([m.id]);
+                      }
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Выбрать несколько</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  const m = actionMsg;
-                  setActionMsg(null);
-                  if (m) {
-                    setSelectionMode(true);
-                    setSelectedIds([m.id]);
-                  }
-                }}
-              >
-                <Text style={styles.sheetRowText}>☑️ Выбрать несколько</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tgCtxRow}
+                    onPress={() => {
+                      const m = actionMsg;
+                      setActionMsg(null);
+                      if (m) setReactionsDetailMsg(m);
+                    }}
+                  >
+                    <Ionicons name="eye-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Прочтения и реакции</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  const m = actionMsg;
-                  setActionMsg(null);
-                  if (m) setReactionsDetailMsg(m);
-                }}
-              >
-                <Text style={styles.sheetRowText}>👁️ Кто прочитал и реакции</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tgCtxRow}
+                    onPress={async () => {
+                      const m = actionMsg;
+                      setActionMsg(null);
+                      const txt = decodeMsgText(m?.text);
+                      if (txt) {
+                        Share.share({ message: txt }).catch(() => {});
+                      } else {
+                        showToast('Сообщение', 'Нет текста для отправки', 'info');
+                      }
+                    }}
+                  >
+                    <Ionicons name="copy-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Поделиться / Копировать</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={async () => {
-                  const m = actionMsg;
-                  setActionMsg(null);
-                  const txt = decodeMsgText(m?.text);
-                  if (txt) {
-                    Share.share({ message: txt }).catch(() => {});
-                  } else {
-                    showToast('Сообщение', 'Нет текста для отправки', 'info');
-                  }
-                }}
-              >
-                <Text style={styles.sheetRowText}>📋 Поделиться / Скопировать</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tgCtxRow}
+                    onPress={async () => {
+                      const m = actionMsg;
+                      setActionMsg(null);
+                      if (m) {
+                        const entry = { id: m.id, text: decodeMsgText(m.text) || 'Медиа', author: m.author || '' };
+                        const nextPins = [entry, ...pinnedList.filter((p: any) => p.id !== m.id)].slice(0, 5);
+                        await update(ref(rtdb, `chats/${chatId}`), {
+                          pinnedMsgs: nextPins,
+                          pinnedMsg: nextPins[0],
+                        });
+                        showToast('Закреплено 📌', `Закреплено сообщений: ${nextPins.length}`, 'success');
+                      }
+                    }}
+                  >
+                    <Ionicons name="pin-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Закрепить</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={async () => {
-                  const m = actionMsg;
-                  setActionMsg(null);
-                  if (m) {
-                    const entry = { id: m.id, text: decodeMsgText(m.text) || 'Медиа', author: m.author || '' };
-                    const nextPins = [entry, ...pinnedList.filter((p: any) => p.id !== m.id)].slice(0, 5);
-                    await update(ref(rtdb, `chats/${chatId}`), {
-                      pinnedMsgs: nextPins,
-                      pinnedMsg: nextPins[0],
-                    });
-                    showToast('Закреплено 📌', `Закреплено сообщений: ${nextPins.length}`, 'success');
-                  }
-                }}
-              >
-                <Text style={styles.sheetRowText}>📌 Закрепить (мульти-закреп)</Text>
-              </TouchableOpacity>
+                  {actionMsg?.uid === me?.uid && actionMsg?.type === 'text' && (
+                    <TouchableOpacity
+                      style={styles.tgCtxRow}
+                      onPress={() => {
+                        const m = actionMsg;
+                        setActionMsg(null);
+                        setEditingMsg({ id: m.id, text: decodeMsgText(m.text) });
+                        setText(decodeMsgText(m.text));
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={17} color={appTheme.text} />
+                      <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Редактировать</Text>
+                    </TouchableOpacity>
+                  )}
 
-              {actionMsg?.uid === me?.uid && actionMsg?.type === 'text' && (
-                <TouchableOpacity
-                  style={styles.sheetRow}
-                  onPress={() => {
-                    const m = actionMsg;
-                    setActionMsg(null);
-                    setEditingMsg({ id: m.id, text: decodeMsgText(m.text) });
-                    setText(decodeMsgText(m.text));
-                  }}
-                >
-                  <Text style={styles.sheetRowText}>✏️ Редактировать</Text>
-                </TouchableOpacity>
-              )}
+                  <TouchableOpacity
+                    style={[
+                      styles.tgCtxRow,
+                      !(actionMsg?.uid === me?.uid || chat?.type === 'dm' || chat?.owner === me?.uid) && { borderBottomWidth: 0 },
+                    ]}
+                    onPress={() => {
+                      const m = actionMsg;
+                      setActionMsg(null);
+                      if (m && me?.uid) {
+                        update(ref(rtdb, `messages/${chatId}/${m.id}/hiddenFor`), {
+                          [me.uid]: true,
+                        });
+                        showToast('Скрыто 🙈', 'Удалено только у вас', 'info');
+                      }
+                    }}
+                  >
+                    <Ionicons name="eye-off-outline" size={17} color="#fb923c" />
+                    <Text style={[styles.tgCtxText, { color: '#fb923c' }]}>Удалить только у меня</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  const m = actionMsg;
-                  setActionMsg(null);
-                  if (m && me?.uid) {
-                    update(ref(rtdb, `messages/${chatId}/${m.id}/hiddenFor`), {
-                      [me.uid]: true,
-                    });
-                    showToast('Скрыто 🙈', 'Удалено только у вас', 'info');
-                  }
-                }}
-              >
-                <Text style={[styles.sheetRowText, { color: '#fb923c' }]}>🙈 Удалить только у меня</Text>
-              </TouchableOpacity>
-
-              {(actionMsg?.uid === me?.uid || chat?.type === 'dm' || chat?.owner === me?.uid) && (
-                <TouchableOpacity
-                  style={[styles.sheetRow, { borderBottomWidth: 0 }]}
-                  onPress={() => {
-                    const m = actionMsg;
-                    setActionMsg(null);
-                    if (m) {
-                      remove(ref(rtdb, `messages/${chatId}/${m.id}`));
-                      showToast('Удалено 🗑️', 'Удалено у всех собеседников', 'info');
-                    }
-                  }}
-                >
-                  <Text style={[styles.sheetRowText, { color: '#ef4444' }]}>
-                    🗑️ {chat?.type === 'dm' ? 'Удалить у обоих' : 'Удалить у всех'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              </ScrollView>
-            </GlassCard>
+                  {(actionMsg?.uid === me?.uid || chat?.type === 'dm' || chat?.owner === me?.uid) && (
+                    <TouchableOpacity
+                      style={[styles.tgCtxRow, { borderBottomWidth: 0 }]}
+                      onPress={() => {
+                        const m = actionMsg;
+                        setActionMsg(null);
+                        if (m) {
+                          remove(ref(rtdb, `messages/${chatId}/${m.id}`));
+                          showToast('Удалено 🗑️', 'Удалено у всех собеседников', 'info');
+                        }
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={17} color="#ef4444" />
+                      <Text style={[styles.tgCtxText, { color: '#ef4444' }]}>
+                        {chat?.type === 'dm' ? 'Удалить у обоих' : 'Удалить у всех'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              </GlassCard>
+            </View>
           </TouchableOpacity>
         </Modal>
 
@@ -3343,76 +3361,90 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
         {/* Long-Press Send Options (Message Effects, Silent, Scheduled, Formatting, Channel Options) */}
         <Modal visible={showSendOptions} transparent animationType="fade" onRequestClose={() => setShowSendOptions(false)}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSendOptions(false)}>
-            <GlassCard radius={26} strong style={styles.sheetCard}>
-              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>Особая отправка и Формат</Text>
-              <View style={styles.quickReactRow}>
-                {['🔥', '🎉', '❤️', '⚡', '💎'].map((ef) => (
-                  <TouchableOpacity
-                    key={ef}
-                    style={styles.quickReactBtn}
-                    onPress={() => {
-                      setShowSendOptions(false);
-                      sendTextOrSaveEdit(false, ef);
-                    }}
-                  >
-                    <Text style={{ fontSize: 24 }}>{ef}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  setShowSendOptions(false);
-                  setShowFormatBar((v) => !v);
-                }}
-              >
-                <Text style={styles.sheetRowText}>
-                  {showFormatBar ? '✓ Панель форматирования (Aa) включена' : 'Aa Панель форматирования текста'}
-                </Text>
-              </TouchableOpacity>
-              {chat?.type === 'channel' && (chat.owner === me?.uid || (chat.admins || []).includes(me?.uid || '')) && (
-                <>
-                  <TouchableOpacity
-                    style={styles.sheetRow}
-                    onPress={() => setChannelPaidCost((c) => (c === 0 ? 15 : c === 15 ? 50 : c === 50 ? 100 : 0))}
-                  >
-                    <Text style={styles.sheetRowText}>
-                      🥟 Платный пост: {channelPaidCost > 0 ? `${channelPaidCost} пирожков` : 'Бесплатно'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.sheetRow}
-                    onPress={() => setChannelAuthorSig((v) => !v)}
-                  >
-                    <Text style={styles.sheetRowText}>
-                      ✍️ Подпись автора: {channelAuthorSig ? me?.nick : 'Скрыта'}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  setShowSendOptions(false);
-                  sendTextOrSaveEdit(true);
-                }}
-              >
-                <Text style={styles.sheetRowText}>🔇 Отправить без звука</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetRow} onPress={() => handleScheduleMessage(60 * 1000)}>
-                <Text style={styles.sheetRowText}>⏰ Отложить на 1 минуту</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetRow} onPress={() => handleScheduleMessage(5 * 60 * 1000)}>
-                <Text style={styles.sheetRowText}>⏰ Отложить на 5 минут</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetRow} onPress={() => handleScheduleMessage(30 * 60 * 1000)}>
-                <Text style={styles.sheetRowText}>⏰ Отложить на 30 минут</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetRow} onPress={() => handleScheduleMessage(60 * 60 * 1000)}>
-                <Text style={styles.sheetRowText}>⏰ Отложить на 1 час</Text>
-              </TouchableOpacity>
-            </GlassCard>
+          <TouchableOpacity style={styles.tgCtxBackdropBottomRight} activeOpacity={1} onPress={() => setShowSendOptions(false)}>
+            <View onStartShouldSetResponder={() => true} style={{ alignItems: 'flex-end' }}>
+              <GlassCard radius={20} strong style={[styles.tgReactPill, { marginBottom: 6, paddingHorizontal: 8, paddingVertical: 5 }]}>
+                <View style={styles.tgReactRow}>
+                  {['🔥', '🎉', '❤️', '⚡', '💎'].map((ef) => (
+                    <TouchableOpacity
+                      key={ef}
+                      style={styles.tgReactBtn}
+                      onPress={() => {
+                        setShowSendOptions(false);
+                        sendTextOrSaveEdit(false, ef);
+                      }}
+                    >
+                      <Text style={{ fontSize: 19 }}>{ef}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </GlassCard>
+
+              <GlassCard radius={18} strong style={[styles.tgCtxCard, { width: 242 }]}>
+                <TouchableOpacity
+                  style={styles.tgCtxRow}
+                  onPress={() => {
+                    setShowSendOptions(false);
+                    setShowFormatBar((v) => !v);
+                  }}
+                >
+                  <Ionicons name="text-outline" size={17} color={showFormatBar ? appTheme.accent : appTheme.text} />
+                  <Text style={[styles.tgCtxText, { color: showFormatBar ? appTheme.accent : appTheme.text }]}>
+                    {showFormatBar ? 'Форматирование (вкл.)' : 'Форматирование (Aa)'}
+                  </Text>
+                </TouchableOpacity>
+
+                {chat?.type === 'channel' && (chat.owner === me?.uid || (chat.admins || []).includes(me?.uid || '')) && (
+                  <>
+                    <TouchableOpacity
+                      style={styles.tgCtxRow}
+                      onPress={() => setChannelPaidCost((c) => (c === 0 ? 15 : c === 15 ? 50 : c === 50 ? 100 : 0))}
+                    >
+                      <Ionicons name="cash-outline" size={17} color={channelPaidCost > 0 ? '#fbbf24' : appTheme.text} />
+                      <Text style={[styles.tgCtxText, { color: appTheme.text }]}>
+                        Платный: {channelPaidCost > 0 ? `${channelPaidCost} пирожков` : 'Бесплатно'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.tgCtxRow}
+                      onPress={() => setChannelAuthorSig((v) => !v)}
+                    >
+                      <Ionicons name="create-outline" size={17} color={appTheme.text} />
+                      <Text style={[styles.tgCtxText, { color: appTheme.text }]}>
+                        Подпись: {channelAuthorSig ? me?.nick : 'Скрыта'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                <TouchableOpacity
+                  style={styles.tgCtxRow}
+                  onPress={() => {
+                    setShowSendOptions(false);
+                    sendTextOrSaveEdit(true);
+                  }}
+                >
+                  <Ionicons name="volume-mute-outline" size={17} color={appTheme.text} />
+                  <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Отправить без звука</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.tgCtxRow} onPress={() => handleScheduleMessage(60 * 1000)}>
+                  <Ionicons name="time-outline" size={17} color={appTheme.text} />
+                  <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Отложить на 1 минуту</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.tgCtxRow} onPress={() => handleScheduleMessage(5 * 60 * 1000)}>
+                  <Ionicons name="time-outline" size={17} color={appTheme.text} />
+                  <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Отложить на 5 минут</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.tgCtxRow} onPress={() => handleScheduleMessage(30 * 60 * 1000)}>
+                  <Ionicons name="time-outline" size={17} color={appTheme.text} />
+                  <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Отложить на 30 минут</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.tgCtxRow, { borderBottomWidth: 0 }]} onPress={() => handleScheduleMessage(60 * 60 * 1000)}>
+                  <Ionicons name="calendar-outline" size={17} color={appTheme.text} />
+                  <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Отложить на 1 час</Text>
+                </TouchableOpacity>
+              </GlassCard>
+            </View>
           </TouchableOpacity>
         </Modal>
 
@@ -3510,277 +3542,294 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
         {/* Chat Extras Menu (Telegram Quick Grid + Settings) */}
         <Modal visible={showChatMenu} transparent animationType="fade" onRequestClose={() => setShowChatMenu(false)}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowChatMenu(false)}>
-            <GlassCard radius={28} strong style={styles.sheetCard}>
-              <Text style={[styles.sheetTitle, { color: appTheme.text }]}>{displayName}</Text>
-
-              {/* 4-Icon Quick Actions Row */}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-                <TouchableOpacity
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}
-                  onPress={() => {
-                    setShowChatMenu(false);
-                    setSearchOpen(true);
-                  }}
-                >
-                  <Ionicons name="search-outline" size={20} color={appTheme.accent} />
-                  <Text style={{ color: appTheme.text, fontSize: 11, fontWeight: '700', marginTop: 4 }}>Поиск</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}
-                  onPress={() => {
-                    setShowChatMenu(false);
-                    setShowSharedMedia(true);
-                  }}
-                >
-                  <Ionicons name="images-outline" size={20} color={appTheme.accent} />
-                  <Text style={{ color: appTheme.text, fontSize: 11, fontWeight: '700', marginTop: 4 }}>Медиа</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}
-                  onPress={() => {
-                    setShowChatMenu(false);
-                    setShowDateModal(true);
-                  }}
-                >
-                  <Ionicons name="calendar-outline" size={20} color={appTheme.accent} />
-                  <Text style={{ color: appTheme.text, fontSize: 11, fontWeight: '700', marginTop: 4 }}>Дата</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}
-                  onPress={async () => {
-                    setShowChatMenu(false);
-                    if (partnerUid) {
-                      startCall({ uid: partnerUid, nick: displayName, avatar: partner?.avatar, isVideo: true, chatId });
-                    } else if (chat?.type === 'channel') {
-                      try {
-                        await boostChannelWithPirozhki(chatId, 25);
-                        showToast('Канал забущен ⚡', '+1 голос каналу (за 25 🥟)!', 'success');
-                      } catch (e: any) {
-                        showToast('Буст канала ⚡', e?.message || 'Недостаточно пирожков', 'error');
+          <TouchableOpacity
+            style={[styles.tgCtxBackdropTopRight, { paddingTop: insets.top + 54 }]}
+            activeOpacity={1}
+            onPress={() => setShowChatMenu(false)}
+          >
+            <View onStartShouldSetResponder={() => true}>
+              <GlassCard radius={18} strong style={[styles.tgCtxCard, { width: 256 }]}>
+                {/* Compact 4-Icon Quick Row */}
+                <View style={styles.tgChatQuickRow}>
+                  <TouchableOpacity
+                    style={styles.tgChatQuickBtn}
+                    onPress={() => {
+                      setShowChatMenu(false);
+                      setSearchOpen(true);
+                    }}
+                  >
+                    <Ionicons name="search-outline" size={17} color={appTheme.accent} />
+                    <Text style={[styles.tgChatQuickLbl, { color: appTheme.text }]}>Поиск</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tgChatQuickBtn}
+                    onPress={() => {
+                      setShowChatMenu(false);
+                      setShowSharedMedia(true);
+                    }}
+                  >
+                    <Ionicons name="images-outline" size={17} color={appTheme.accent} />
+                    <Text style={[styles.tgChatQuickLbl, { color: appTheme.text }]}>Медиа</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tgChatQuickBtn}
+                    onPress={() => {
+                      setShowChatMenu(false);
+                      setShowDateModal(true);
+                    }}
+                  >
+                    <Ionicons name="calendar-outline" size={17} color={appTheme.accent} />
+                    <Text style={[styles.tgChatQuickLbl, { color: appTheme.text }]}>Дата</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tgChatQuickBtn}
+                    onPress={async () => {
+                      setShowChatMenu(false);
+                      if (partnerUid) {
+                        startCall({ uid: partnerUid, nick: displayName, avatar: partner?.avatar, isVideo: true, chatId });
+                      } else if (chat?.type === 'channel') {
+                        try {
+                          await boostChannelWithPirozhki(chatId, 25);
+                          showToast('Канал забущен ⚡', '+1 голос каналу (за 25 🥟)!', 'success');
+                        } catch (e: any) {
+                          showToast('Буст канала ⚡', e?.message || 'Недостаточно пирожков', 'error');
+                        }
+                      } else if (chat?.type === 'group') {
+                        setShowVoiceRoom(true);
+                      } else if (isAiHub) {
+                        setShowAiSettings(true);
+                      } else {
+                        handleExportChat();
                       }
-                    } else if (chat?.type === 'group') {
-                      setShowVoiceRoom(true);
-                    } else if (isAiHub) {
-                      setShowAiSettings(true);
-                    } else {
-                      handleExportChat();
-                    }
-                  }}
-                >
-                  <Ionicons
-                    name={
-                      partnerUid
-                        ? 'videocam-outline'
+                    }}
+                  >
+                    <Ionicons
+                      name={
+                        partnerUid
+                          ? 'videocam-outline'
+                          : chat?.type === 'channel'
+                          ? 'flash-outline'
+                          : chat?.type === 'group'
+                          ? 'mic-outline'
+                          : isAiHub
+                          ? 'options-outline'
+                          : 'download-outline'
+                      }
+                      size={17}
+                      color={chat?.type === 'channel' ? '#fbbf24' : appTheme.accent}
+                    />
+                    <Text style={[styles.tgChatQuickLbl, { color: appTheme.text }]}>
+                      {partnerUid
+                        ? 'Видео'
                         : chat?.type === 'channel'
-                        ? 'flash-outline'
+                        ? `Ур.${Math.floor((Number(chat?.boostCount) || 0) / 3) + 1}`
                         : chat?.type === 'group'
-                        ? 'mic-outline'
+                        ? 'Эфир'
                         : isAiHub
-                        ? 'options-outline'
-                        : 'download-outline'
-                    }
-                    size={20}
-                    color={chat?.type === 'channel' ? '#fbbf24' : appTheme.accent}
-                  />
-                  <Text style={{ color: appTheme.text, fontSize: 11, fontWeight: '700', marginTop: 4 }}>
-                    {partnerUid
-                      ? 'Видео'
-                      : chat?.type === 'channel'
-                      ? `Ур.${Math.floor((Number(chat?.boostCount) || 0) / 3) + 1}`
-                      : chat?.type === 'group'
-                      ? 'Эфир'
-                      : isAiHub
-                      ? 'ИИ API'
-                      : 'Экспорт'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
-              {partnerUid && (
-                <TouchableOpacity
-                  style={styles.sheetRow}
-                  onPress={() => {
-                    setShowChatMenu(false);
-                    navigation.navigate('PirozhkiStore', { initialTab: 'gift', targetUid: partnerUid });
-                  }}
-                >
-                  <Text style={styles.sheetRowText}>🥟 Подарить пирожки</Text>
-                </TouchableOpacity>
-              )}
-
-              {(chat?.type === 'group' || chat?.type === 'channel') && (
-                <TouchableOpacity
-                  style={styles.sheetRow}
-                  onPress={() => {
-                    setShowChatMenu(false);
-                    setShowGroupAdminModal(true);
-                  }}
-                >
-                  <Text style={styles.sheetRowText}>👑 Темы, Инвайты, Админы и Журнал</Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={[styles.sheetRow, { flexDirection: 'column', gap: 8 }]}>
-                <Text style={styles.sheetRowText}>🔔 Звук уведомлений для этого чата</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                  {[
-                    { k: 'default', l: '🔔 По умолч.' },
-                    { k: 'crystal', l: '💎 Кристалл' },
-                    { k: 'retro', l: '👾 Ретро' },
-                    { k: 'soft', l: '🌊 Мягкий' },
-                    { k: 'silent', l: '🔕 Без звука' },
-                  ].map((tn) => {
-                    const curTone = chatSoundTones[chatId] || 'default';
-                    const act = curTone === tn.k;
-                    return (
-                      <TouchableOpacity
-                        key={tn.k}
-                        onPress={() => {
-                          setChatSoundTone(chatId, tn.k);
-                          showToast('Звук чата 🔔', tn.l, 'success');
-                        }}
-                        style={[
-                          styles.mentionChip,
-                          {
-                            backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
-                            borderColor: act ? appTheme.accent : appTheme.border,
-                          },
-                        ]}
-                      >
-                        <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 11.5, fontWeight: '800' }}>
-                          {tn.l}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              <View style={[styles.sheetRow, { flexDirection: 'column', gap: 8 }]}>
-                <Text style={styles.sheetRowText}>⏱️ Автоудаление новых сообщений</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {[
-                    { label: 'Выкл', ms: 0 },
-                    { label: '24 часа', ms: 24 * 3600 * 1000 },
-                    { label: '7 дней', ms: 7 * 24 * 3600 * 1000 },
-                  ].map((opt) => {
-                    const act = (Number(chat?.autoDeleteMs) || 0) === opt.ms;
-                    return (
-                      <TouchableOpacity
-                        key={opt.label}
-                        style={[
-                          styles.mentionChip,
-                          {
-                            flex: 1,
-                            alignItems: 'center',
-                            backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
-                            borderColor: act ? appTheme.accent : appTheme.border,
-                          },
-                        ]}
-                        onPress={() => {
-                          update(ref(rtdb, `chats/${chatId}`), { autoDeleteMs: opt.ms });
-                          showToast('Автоудаление ⏱️', `Режим: ${opt.label}`, 'success');
-                        }}
-                      >
-                        <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 12, fontWeight: '800' }}>
-                          {opt.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                        ? 'ИИ API'
+                        : 'Экспорт'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={async () => {
-                  setShowChatMenu(false);
-                  const recent = messages
-                    .slice(-25)
-                    .map((m) => `${m.author || 'Участник'}: ${decodeMsgText(m.text)}`)
-                    .filter((s) => s.length > 4)
-                    .join('\n');
-                  if (!recent) {
-                    showToast('ИИ-пересказ', 'В чате пока нет текстовых сообщений', 'info');
-                    return;
-                  }
-                  showToast('ИИ читает чат... ✨', undefined, 'info');
-                  try {
-                    const summary = await callAiHubProvider(
-                      `Сделай краткий структурированный пересказ последних сообщений переписки:\n\n${recent}`,
-                      { maxChars: 800 }
-                    );
-                    showToast('✨ Пересказ готов', summary.slice(0, 120), 'success');
-                    await pushChatMessage(
-                      {
-                        uid: me!.uid,
-                        isAi: true,
-                        author: '🤖 ИИ Пересказ',
-                        at: Date.now(),
-                        type: 'text',
-                        text: `✨ **Краткий пересказ чата:**\n${summary}`,
-                      },
-                      '✨ ИИ-пересказ чата'
-                    );
-                  } catch (e: any) {
-                    showToast('Ошибка ИИ', e?.message || 'Не удалось пересказать', 'error');
-                  }
-                }}
-              >
-                <Text style={styles.sheetRowText}>✨ ИИ-пересказ последних сообщений</Text>
-              </TouchableOpacity>
+                <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+                  {partnerUid && (
+                    <TouchableOpacity
+                      style={styles.tgCtxRow}
+                      onPress={() => {
+                        setShowChatMenu(false);
+                        navigation.navigate('PirozhkiStore', { initialTab: 'gift', targetUid: partnerUid });
+                      }}
+                    >
+                      <Ionicons name="gift-outline" size={17} color={appTheme.text} />
+                      <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Подарить пирожки</Text>
+                    </TouchableOpacity>
+                  )}
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  setShowChatMenu(false);
-                  setInfoModalMode('e2ee');
-                }}
-              >
-                <Text style={styles.sheetRowText}>🔒 Ключ шифрования (E2EE)</Text>
-              </TouchableOpacity>
+                  {(chat?.type === 'group' || chat?.type === 'channel') && (
+                    <TouchableOpacity
+                      style={styles.tgCtxRow}
+                      onPress={() => {
+                        setShowChatMenu(false);
+                        setShowGroupAdminModal(true);
+                      }}
+                    >
+                      <Ionicons name="shield-checkmark-outline" size={17} color={appTheme.text} />
+                      <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Управление, темы, админы</Text>
+                    </TouchableOpacity>
+                  )}
 
-              {(chat?.type === 'group' || chat?.type === 'channel') && (
-                <TouchableOpacity
-                  style={styles.sheetRow}
-                  onPress={async () => {
-                    setShowChatMenu(false);
-                    if (!me?.uid || !chat) return;
-                    const nextMembers = (chat.members || []).filter((u: string) => u !== me.uid);
-                    await update(ref(rtdb, `chats/${chatId}`), { members: nextMembers });
-                    showToast('Вы вышли', displayName, 'info');
-                    navigation.goBack();
-                  }}
-                >
-                  <Text style={[styles.sheetRowText, { color: '#fb923c' }]}>
-                    🚪 Покинуть {chat?.type === 'channel' ? 'канал' : 'группу'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+                  <View style={[styles.tgCtxRow, { flexDirection: 'column', alignItems: 'stretch', gap: 6 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Ionicons name="notifications-outline" size={17} color={appTheme.text} />
+                      <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Звук уведомлений</Text>
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 5 }}>
+                      {[
+                        { k: 'default', l: 'Умолч.' },
+                        { k: 'crystal', l: 'Кристалл' },
+                        { k: 'retro', l: 'Ретро' },
+                        { k: 'soft', l: 'Мягкий' },
+                        { k: 'silent', l: 'Тихо' },
+                      ].map((tn) => {
+                        const curTone = chatSoundTones[chatId] || 'default';
+                        const act = curTone === tn.k;
+                        return (
+                          <TouchableOpacity
+                            key={tn.k}
+                            onPress={() => {
+                              setChatSoundTone(chatId, tn.k);
+                              showToast('Звук чата 🔔', tn.l, 'success');
+                            }}
+                            style={[
+                              styles.tgMiniChip,
+                              {
+                                backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
+                                borderColor: act ? appTheme.accent : appTheme.border,
+                              },
+                            ]}
+                          >
+                            <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 11, fontWeight: '700' }}>
+                              {tn.l}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
 
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPress={() => {
-                  setShowChatMenu(false);
-                  setInfoModalMode('report');
-                }}
-              >
-                <Text style={[styles.sheetRowText, { color: '#f87171' }]}>⚠️ Пожаловаться</Text>
-              </TouchableOpacity>
+                  <View style={[styles.tgCtxRow, { flexDirection: 'column', alignItems: 'stretch', gap: 6 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Ionicons name="timer-outline" size={17} color={appTheme.text} />
+                      <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Автоудаление</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 5 }}>
+                      {[
+                        { label: 'Выкл', ms: 0 },
+                        { label: '24 часа', ms: 24 * 3600 * 1000 },
+                        { label: '7 дней', ms: 7 * 24 * 3600 * 1000 },
+                      ].map((opt) => {
+                        const act = (Number(chat?.autoDeleteMs) || 0) === opt.ms;
+                        return (
+                          <TouchableOpacity
+                            key={opt.label}
+                            style={[
+                              styles.tgMiniChip,
+                              {
+                                flex: 1,
+                                alignItems: 'center',
+                                backgroundColor: act ? appTheme.accentSoft : 'rgba(255,255,255,0.06)',
+                                borderColor: act ? appTheme.accent : appTheme.border,
+                              },
+                            ]}
+                            onPress={() => {
+                              update(ref(rtdb, `chats/${chatId}`), { autoDeleteMs: opt.ms });
+                              showToast('Автоудаление ⏱️', `Режим: ${opt.label}`, 'success');
+                            }}
+                          >
+                            <Text style={{ color: act ? appTheme.accent : appTheme.textSub, fontSize: 11, fontWeight: '700' }}>
+                              {opt.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
 
-              <TouchableOpacity
-                style={[styles.sheetRow, { borderBottomWidth: 0 }]}
-                onPress={() => {
-                  setShowChatMenu(false);
-                  handleExportChat();
-                }}
-              >
-                <Text style={styles.sheetRowText}>📤 Экспортировать историю чата</Text>
-              </TouchableOpacity>
-              </ScrollView>
-            </GlassCard>
+                  <TouchableOpacity
+                    style={styles.tgCtxRow}
+                    onPress={async () => {
+                      setShowChatMenu(false);
+                      const recent = messages
+                        .slice(-25)
+                        .map((m) => `${m.author || 'Участник'}: ${decodeMsgText(m.text)}`)
+                        .filter((s) => s.length > 4)
+                        .join('\n');
+                      if (!recent) {
+                        showToast('ИИ-пересказ', 'В чате пока нет текстовых сообщений', 'info');
+                        return;
+                      }
+                      showToast('ИИ читает чат... ✨', undefined, 'info');
+                      try {
+                        const summary = await callAiHubProvider(
+                          `Сделай краткий структурированный пересказ последних сообщений переписки:\n\n${recent}`,
+                          { maxChars: 800 }
+                        );
+                        showToast('✨ Пересказ готов', summary.slice(0, 120), 'success');
+                        await pushChatMessage(
+                          {
+                            uid: me!.uid,
+                            isAi: true,
+                            author: '🤖 ИИ Пересказ',
+                            at: Date.now(),
+                            type: 'text',
+                            text: `✨ **Краткий пересказ чата:**\n${summary}`,
+                          },
+                          '✨ ИИ-пересказ чата'
+                        );
+                      } catch (e: any) {
+                        showToast('Ошибка ИИ', e?.message || 'Не удалось пересказать', 'error');
+                      }
+                    }}
+                  >
+                    <Ionicons name="sparkles-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>ИИ-пересказ чата</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.tgCtxRow}
+                    onPress={() => {
+                      setShowChatMenu(false);
+                      setInfoModalMode('e2ee');
+                    }}
+                  >
+                    <Ionicons name="lock-closed-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Ключ шифрования (E2EE)</Text>
+                  </TouchableOpacity>
+
+                  {(chat?.type === 'group' || chat?.type === 'channel') && (
+                    <TouchableOpacity
+                      style={styles.tgCtxRow}
+                      onPress={async () => {
+                        setShowChatMenu(false);
+                        if (!me?.uid || !chat) return;
+                        const nextMembers = (chat.members || []).filter((u: string) => u !== me.uid);
+                        await update(ref(rtdb, `chats/${chatId}`), { members: nextMembers });
+                        showToast('Вы вышли', displayName, 'info');
+                        navigation.goBack();
+                      }}
+                    >
+                      <Ionicons name="exit-outline" size={17} color="#fb923c" />
+                      <Text style={[styles.tgCtxText, { color: '#fb923c' }]}>
+                        Покинуть {chat?.type === 'channel' ? 'канал' : 'группу'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.tgCtxRow}
+                    onPress={() => {
+                      setShowChatMenu(false);
+                      setInfoModalMode('report');
+                    }}
+                  >
+                    <Ionicons name="alert-circle-outline" size={17} color="#f87171" />
+                    <Text style={[styles.tgCtxText, { color: '#f87171' }]}>Пожаловаться</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.tgCtxRow, { borderBottomWidth: 0 }]}
+                    onPress={() => {
+                      setShowChatMenu(false);
+                      handleExportChat();
+                    }}
+                  >
+                    <Ionicons name="download-outline" size={17} color={appTheme.text} />
+                    <Text style={[styles.tgCtxText, { color: appTheme.text }]}>Экспорт истории чата</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </GlassCard>
+            </View>
           </TouchableOpacity>
         </Modal>
 
@@ -4253,6 +4302,101 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.68)',
     justifyContent: 'flex-end',
     padding: 14,
+  },
+  tgCtxBackdropCenter: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  tgCtxBackdropTopRight: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingRight: 12,
+  },
+  tgCtxBackdropBottomRight: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    paddingBottom: 72,
+    paddingRight: 12,
+  },
+  tgReactPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 8,
+    maxWidth: 300,
+    elevation: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+  },
+  tgReactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  tgReactBtn: {
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  tgCtxCard: {
+    width: 244,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    elevation: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+  },
+  tgCtxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9.5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
+  },
+  tgCtxText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  tgChatQuickRow: {
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 6,
+    paddingTop: 4,
+    paddingBottom: 7,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  tgChatQuickBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  tgChatQuickLbl: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  tgMiniChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
   },
   sheetCard: { padding: 18 },
   sheetTitle: { fontSize: 17, fontWeight: '800', marginBottom: 14, textAlign: 'center' },
